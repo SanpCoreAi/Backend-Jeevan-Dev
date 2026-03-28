@@ -29,8 +29,7 @@ exports.loginUser = async ({ email, password }) => {
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    console.log("Entered password:", password);
-console.log("Match:", isPasswordValid);
+  
 
     if (!isPasswordValid) {
       return {
@@ -41,40 +40,40 @@ console.log("Match:", isPasswordValid);
         },
       };
     }
-
-    const accessToken = jwt.sign(
+const accessToken = jwt.sign(
   { id: user.id, role_id: user.role_id },
-  process.env.JWT_SECRET || "SECRET_KEY",
-  { expiresIn: "1m" } // short life
+  process.env.ACCESS_SECRET || "ACCESS_SECRET",
+  { expiresIn: "15m" }
 );
 
 const refreshToken = jwt.sign(
   { id: user.id },
-  process.env.JWT_REFRESH_SECRET,
-  { expiresIn: "7d" } // long life
+  process.env.REFRESH_SECRET || "REFRESH_SECRET",
+  { expiresIn: "7d" }
 );
 
-await db.query(
+
+    await db.query(
   "UPDATE users SET refresh_token = ? WHERE id = ?",
   [refreshToken, user.id]
 );
 
-    return {
-      statusCode: 201,
-      body: {
-        success: true,
-        message: "Login successful.",
-       accessToken,
+   return {
+  statusCode: 200,
+  body: {
+    success: true,
+    message: "Login successful.",
+    accessToken,
     refreshToken,
-        user: {
-          id: user.id,
-          name: user.full_name,
-          email: user.email,
-          mobile: user.phone_number,
-          role_id: user.role_id,
-        },
-      },
-    };
+    user: {
+      id: user.id,
+      name: user.full_name,
+      email: user.email,
+      mobile: user.phone_number,
+      role_id: user.role_id,
+    },
+  },  
+};
   } catch (error) {
     console.error("Error (loginUser):", error.message);
 
