@@ -5,6 +5,8 @@ const { parse12to24, generateSlots12, time24To12} = require("../../utils/timeHel
 
 async function createSchedule(doctorId, body) {
   try {
+
+    // ✅ validation
     if (!body.start_time || !body.end_time) {
       return {
         success: false,
@@ -32,6 +34,7 @@ async function createSchedule(doctorId, body) {
       };
     }
 
+    // ✅ overnight case handle
     if (start24 >= end24) {
       const s = body.start_date ? new Date(body.start_date) : null;
       const e = body.end_date ? new Date(body.end_date) : null;
@@ -45,6 +48,7 @@ async function createSchedule(doctorId, body) {
       }
     }
 
+    // ✅ duplicate schedule check
     const isDuplicate = await ScheduleModel.findOverlappingSchedule({
       doctor_id: doctorId,
       start_time: start24,
@@ -61,6 +65,7 @@ async function createSchedule(doctorId, body) {
       };
     }
 
+    // ✅ hospital wise conflict check (🔥 FIXED)
     const schedules = await ScheduleModel.getScheduleByDoctor(doctorId);
 
     const toMinutes = t => {
@@ -72,14 +77,25 @@ async function createSchedule(doctorId, body) {
     let newEnd = toMinutes(end24);
     if (newEnd <= newStart) newEnd += 1440;
 
-    for (const s of schedules) {
+    for (const s of schedules || []) {
+
+      if (!s) continue;
+      if (!s.start_time || !s.end_time) continue;
+
+      // same hospital check
       if ((s.hospital_name ?? null) !== (body.hospital_name ?? null)) continue;
 
       let exStart = toMinutes(s.start_time);
       let exEnd = toMinutes(s.end_time);
+
       if (exEnd <= exStart) exEnd += 1440;
 
-      if (exStart < newEnd && exEnd > newStart) {
+      // 🔥 DATE OVERLAP FIX
+      const isDateOverlap =
+        (!body.end_date || !s.start_date || new Date(body.end_date) >= new Date(s.start_date)) &&
+        (!s.end_date || !body.start_date || new Date(s.end_date) >= new Date(body.start_date));
+
+      if (isDateOverlap && exStart < newEnd && exEnd > newStart) {
         return {
           success: false,
           statusCode: 409,
@@ -88,6 +104,7 @@ async function createSchedule(doctorId, body) {
       }
     }
 
+    // ✅ schedule create
     const scheduleId = await ScheduleModel.createSchedule({
       doctor_id: doctorId,
       location_id: body.location_id ?? null,
@@ -99,9 +116,11 @@ async function createSchedule(doctorId, body) {
       active_days: body.active_days || [],
       start_date: body.start_date,
       end_date: body.end_date,
-      note: body.note ?? null
+      note: body.note ?? null,
+      offlinepatient_number: body.offlinepatient_number ?? null
     });
 
+    // ✅ slots generate
     const slots = generateSlots12(
       start24,
       end24,
@@ -142,6 +161,7 @@ async function createSchedule(doctorId, body) {
           });
         }
       }
+
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
@@ -149,9 +169,11 @@ async function createSchedule(doctorId, body) {
 
     return {
       success: true,
+      message: "Schedule created successfully",
       data: {
         scheduleId,
-        totalSlots: slotRows.length
+        totalSlots: slotRows.length,
+        offlinepatient_number: body.offlinepatient_number ?? null
       }
     };
 
@@ -164,20 +186,25 @@ async function createSchedule(doctorId, body) {
   }
 }
 
+
+
 async function getAllSchedules(doctorId) {
   const schedules = await ScheduleModel.getAllByDoctor(doctorId);
-const dbSlots = await SlotModel.getSlotsBySchedule(s.id);
-return {
-  ...s,
-  start_time: time24To12(s.start_time),
-  end_time: time24To12(s.end_time),
-  slots: dbSlots.map(slot => ({
-    date: slot.start_date,
-    start: time24To12(slot.start_time),
-    end: time24To12(slot.end_time),
-    status: slot.status
-  }))
-};
+
+  return {
+    success: true,
+    data: schedules.map(s => ({
+      ...s,
+      start_time: time24To12(s.start_time),
+      end_time: time24To12(s.end_time),
+      slots: generateSlots12(
+        s.start_time,
+        s.end_time,
+        s.slot_duration,
+        s.break_minutes
+      )
+    }))
+  };
 }
 
 async function getScheduleByDoctorId(doctorId) {
@@ -191,27 +218,19 @@ async function getScheduleByDoctorId(doctorId) {
     };
   }
 
-  const result = await Promise.all(
-    schedules.map(async (s) => {
-      const dbSlots = await SlotModel.getSlotsBySchedule(s.id);
-
-      return {
-        ...s,
-        start_time: time24To12(s.start_time),
-        end_time: time24To12(s.end_time),
-        slots: dbSlots.map(slot => ({
-          date: slot.start_date,
-          start: time24To12(slot.start_time),
-          end: time24To12(slot.end_time),
-          status: slot.status
-        }))
-      };
-    })
-  );
-
   return {
     success: true,
-    data: result
+    data: schedules.map(s => ({
+      ...s,
+      start_time: time24To12(s.start_time),
+      end_time: time24To12(s.end_time),
+      slots: generateSlots12(
+        s.start_time,
+        s.end_time,
+        s.slot_duration,
+        s.break_minutes
+      )
+    }))
   };
 }
 

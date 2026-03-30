@@ -14,11 +14,11 @@ exports.create = async (data) => {
     data.start_time,
     data.end_time,
 
-    data.patient_id,   // ✅ yahi missing tha
+    data.patient_id,   
 
     data.doctor_id,
     data.schedule_id,
-    data.mode,         // ✅ 'online' / 'offline' dynamic lo
+    data.mode,         
     data.booking_type
   ]);
 

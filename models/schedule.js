@@ -2,8 +2,7 @@ const db = require("../config/db");
 
 async function createSchedule(data) {
   const sql = `
-    INSERT INTO schedules
-    (
+    INSERT INTO schedules (
       doctor_id,
       location_id,
       hospital_name,
@@ -14,9 +13,10 @@ async function createSchedule(data) {
       active_days,
       start_date,
       end_date,
-      note
+      note,
+      offlinepatient_number
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const [res] = await db.query(sql, [
@@ -30,7 +30,8 @@ async function createSchedule(data) {
     JSON.stringify(data.active_days || []),
     data.start_date,
     data.end_date,
-    data.note
+    data.note,
+    data.offlinepatient_number ?? null // ✅ ADD THIS LINE
   ]);
 
   return res.insertId;
