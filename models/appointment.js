@@ -58,30 +58,49 @@ exports.getAppointmentPublicById = async ( patientId) => {
 };
 
 
-exports.getDoctorAppointmentsForTable = async (doctorId) => {
+exports.getDoctorAppointmentsForTable = async (doctorId, hospitalName, limit, offset) => {
+
+  // 🔹 Data Query
   const [rows] = await db.query(
     `
-SELECT 
-  COALESCE(u.full_name, 'Unknown') AS name,
-  d.specialization AS diagnostic,
-  DATE_FORMAT(a.slot_date, '%d-%m-%Y') AS date,
-  a.token_number AS appointment_id,
-  a.appointment_type AS mode,
-  'Pending' AS status
+    SELECT 
+      COALESCE(u.full_name, 'Unknown') AS name,
+      d.specialization AS diagnostic,
+      DATE_FORMAT(a.slot_date, '%d-%m-%Y') AS date,
+      a.token_number AS appointment_id,
+      a.appointment_type AS mode,
+      a.hospital_name AS hospital_name,
+      'Pending' AS status
 
-FROM appointments a
+    FROM appointments a
+    LEFT JOIN users u ON u.id = a.patient_id
+    LEFT JOIN doctors d ON d.user_id = a.doctor_id
 
-LEFT JOIN users u ON u.id = a.patient_id
-LEFT JOIN doctors d ON d.user_id = a.doctor_id   -- ✅ FIX HERE
+    WHERE a.doctor_id = ?
+    AND TRIM(LOWER(a.hospital_name)) = TRIM(LOWER(?))
 
-WHERE a.doctor_id = ?
+    ORDER BY a.slot_date DESC, a.token_number ASC
 
-ORDER BY a.slot_date DESC, a.token_number ASC
+    LIMIT ? OFFSET ?
     `,
-    [doctorId]
+    [doctorId, hospitalName, limit, offset]
   );
 
-  return rows;
+  // 🔹 Count Query (IMPORTANT 🔥)
+  const [[countResult]] = await db.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM appointments a
+    WHERE a.doctor_id = ?
+    AND TRIM(LOWER(a.hospital_name)) = TRIM(LOWER(?))
+    `,
+    [doctorId, hospitalName]
+  );
+
+  return {
+    rows,
+    total: countResult.total
+  };
 };
 
 exports.getByIdAndPatient = async (patientId) => {

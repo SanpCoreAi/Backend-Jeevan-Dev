@@ -91,10 +91,10 @@ exports.getAppointmentById = async (req, res) => {
 };
 
 
-
 exports.getDoctorAppointmentsForTable = async (req, res) => {
   try {
-    const doctorId = req.user?.id;   // ✅ yaha se aayega
+    const doctorId = req.user?.id;
+    const { hospitalName, page = 1, limit = 30 } = req.query;
 
     if (!doctorId) {
       return res.status(400).json({
@@ -103,16 +103,29 @@ exports.getDoctorAppointmentsForTable = async (req, res) => {
       });
     }
 
-    const result = await appointmentService.getDoctorAppointmentsForTable(doctorId);
+    if (!hospitalName) {
+      return res.status(400).json({
+        success: false,
+        message: "hospitalName is required"
+      });
+    }
 
-    res.status(200).json(result);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
+    const data = await appointmentService.getDoctorAppointmentsForTable(
+      doctorId,
+      hospitalName,
+      Number(page),
+      Number(limit)
+    );
+
+    res.json(data);
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
-
-
 
 exports.getAppointmentPublicById = async (req, res) => {
 

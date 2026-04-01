@@ -145,21 +145,36 @@ exports.bookAppointment = async (patientId, patientEmail, doctorId, body) => {
 };
 
 
-exports.getDoctorAppointmentsForTable = async (doctorId) => {
+exports.getDoctorAppointmentsForTable = async (doctorId, hospitalName, page, limit) => {
 
-  const data = await Appointment.getDoctorAppointmentsForTable(doctorId);
+  const offset = (page - 1) * limit;
 
-  // 🔥 Split logic
-  const offlineAppointments = data.filter(item => item.mode === "offline");
-  const onlineAppointments = data.filter(item => item.mode === "online");
+  const { rows } = await Appointment.getDoctorAppointmentsForTable(
+    doctorId,
+    hospitalName,
+    limit,
+    offset
+  );
+
+  if (!rows || rows.length === 0) {
+    return {
+      success: false,
+      message: `No appointments found for hospital: ${hospitalName}`,
+      offlineAppointments: [],
+      onlineAppointments: []
+    };
+  }
+
+  const offlineAppointments = rows.filter(item => item.mode === "offline");
+  const onlineAppointments = rows.filter(item => item.mode === "online");
 
   return {
     success: true,
+    message: "Appointments fetched successfully",
     offlineAppointments,
     onlineAppointments
   };
 };
-
 
 
 exports.getAppointmentById = async (patientId) => {
