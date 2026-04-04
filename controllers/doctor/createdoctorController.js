@@ -33,7 +33,7 @@ return res.status(201).json({
 }
 
 async function getDoctorProfile(req, res) {
-  const userId = req.user?.id;   // ✅ user id from token
+  const userId = req.user?.id;
 
   const result = await DoctorService.getProfile(userId);
 

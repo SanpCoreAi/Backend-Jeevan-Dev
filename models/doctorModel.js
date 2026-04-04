@@ -11,6 +11,8 @@ const createDoctor = async (params) => {
   return result.insertId;
 };
 
+
+// Get doctor by user ID with images, files, and average rating
 const getByUserId = async (userId) => {
 const sql = `
      SELECT
@@ -28,7 +30,7 @@ const sql = `
           )
         )
         FROM doctor_image di
-        WHERE df.doctor_id = d.id
+        WHERE di.doctor_id = d.id
       ), JSON_ARRAY()) AS images,
       COALESCE((
         SELECT JSON_ARRAYAGG(
@@ -147,12 +149,13 @@ const updateDoctorQr = async (doctorId, qrCode) => {
 };
 
 
-const getDoctorPublicProfileById = async (userId) => {
+const getDoctorPublicProfileById = async (doctorId) => {
   const sql = `
     SELECT
       d.*,
-      u.full_name AS user_full_name,
-      u.email AS user_email,
+
+      u.full_name   AS user_full_name,
+      u.email       AS user_email,
       u.phone_number AS user_phone_number,
 
       IFNULL((
@@ -163,11 +166,11 @@ const getDoctorPublicProfileById = async (userId) => {
 
     FROM doctors d
     LEFT JOIN users u ON u.id = d.user_id
-    WHERE d.user_id = ?   -- ✅ FIX
+    WHERE d.id = ?
     LIMIT 1
   `;
 
-  const [rows] = await db.execute(sql, [userId]);
+  const [rows] = await db.execute(sql, [doctorId]);
   return rows[0] || null;
 };
 

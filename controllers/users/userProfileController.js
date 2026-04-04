@@ -28,10 +28,38 @@ exports.createUserProfile = async (req, res) => {
   }
 };
 
+exports.getPatientDetails = async (req, res) => {
+  try {
+    const patientId = req.user.id;
 
-exports.getUserProfile = async (req, res) => {
+    const data = await userProfileService.getPatientDetails(patientId);
+
+    if (!data) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error"
+    });
+  }
+};
+
+
+exports.createUserProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -39,26 +67,19 @@ exports.getUserProfile = async (req, res) => {
       });
     }
 
-    const profile = await userProfileService.getProfile(userId);
+    await userProfileService.createProfile(userId, req.body);
 
-    if (!profile) {
-      return res.status(404).json({
-        success: false,
-        message: "User profile not found"
-      });
-    }
-
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
-      data: profile
+      message: "User profile created successfully"
     });
 
   } catch (error) {
-    console.error("Get profile error:", error);
+    console.error("Create profile error:", error);
+
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch user profile",
-      error: error.message
+      message: error.message || "Profile creation failed"
     });
   }
 };
