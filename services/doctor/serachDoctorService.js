@@ -1,5 +1,9 @@
 const { findAllWithUser } = require("../../models/doctorModel");
 
+const BASE_FILE_URL =
+  process.env.BASE_FILE_URL || "https://your-s3-url.com";
+
+// ✅ Safe JSON parser
 const parseJSON = (value, fallback = []) => {
   if (!value) return fallback;
   if (Array.isArray(value)) return value;
@@ -10,8 +14,33 @@ const parseJSON = (value, fallback = []) => {
   }
 };
 
+// ✅ Normalize function
+const normalize = (str) => {
+  return String(str || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+};
+
+// 🔥 FUZZY MATCH FUNCTION (NEW)
+const fuzzyMatch = (text, searchWords) => {
+  return searchWords.some((word) =>
+    text.includes(word) ||
+    word.includes(text) ||
+    text.replace(/\s/g, "").includes(word.replace(/\s/g, ""))
+  );
+};
+
 async function searchDoctorService(filters) {
-  let { name, email,  specialization, qualification, experience, medicalLicenseNo, language, hospitalName,
+  let {
+    name,
+    email,
+    specialization,
+    qualification,
+    experience,
+    medicalLicenseNo,
+    language,
+    hospitalName,
     flatPlotNo,
     buildingSociety,
     streetName,
@@ -32,46 +61,71 @@ async function searchDoctorService(filters) {
   const offset = (page - 1) * limit;
 
   let doctors = await findAllWithUser();
-  console.log("Total doctors in DB:", doctors.length);
 
+  // ✅ Normalize Data
   doctors = doctors.map((d) => ({
     ...d,
+    id: d.doctor_id,
     full_name: d.user_full_name,
     email: d.user_email,
     phone_number: d.user_phone_number,
     language: parseJSON(d.language),
     availability: parseJSON(d.availability),
     hospitalDetail: parseJSON(d.hospital_detail),
+    images: parseJSON(d.images),
+    files: parseJSON(d.files),
   }));
 
+  // ✅ FILTERING
   doctors = doctors.filter((d) => {
+    if (email && normalize(d.email) !== normalize(email)) return false;
 
-    if (email && d.email !== email) return false;
+    // 🔥 FINAL NAME FILTER (FIXED)
+  // ✅ NAME FILTER (STRICT EXACT MATCH)
+// ✅ NAME FILTER (STRICT MATCH - FINAL FIX)
+if (name) {
+  const search = normalize(name);
 
-    if (name && !d.full_name?.toLowerCase().includes(name.toLowerCase()))
-      return false;
+  const fullNameWords = normalize(d.full_name).split(" ");
+  const usernameWords = normalize(d.username).split(" ");
+
+  const match =
+    fullNameWords.includes(search) ||
+    usernameWords.includes(search);
+
+  if (!match) return false;
+}
 
     if (
       specialization &&
-      !d.specialization?.toLowerCase().includes(specialization.toLowerCase())
-    )
-      return false;
+      !normalize(d.specialization).includes(normalize(specialization))
+    ) return false;
+
     if (
       qualification &&
-      !d.qualification?.toLowerCase().includes(qualification.toLowerCase())
-    )
+      !normalize(d.qualification).includes(normalize(qualification))
+    ) return false;
+
+    if (experience && Number(d.experience) < Number(experience))
       return false;
-    if (experience && Number(d.experience) < Number(experience)) return false;
-    if (medicalLicenseNo && d.medical_license_no !== medicalLicenseNo)
-      return false;
+
+    if (
+      medicalLicenseNo &&
+      normalize(d.medical_license_no) !== normalize(medicalLicenseNo)
+    ) return false;
 
     if (language) {
       const searchLang = Array.isArray(language) ? language : [language];
-      const doctorLang = d.language.map((l) => l.toLowerCase());
-      if (!searchLang.some((l) => doctorLang.includes(l.toLowerCase())))
-        return false;
+      const doctorLang = (d.language || []).map(normalize);
+
+      const match = searchLang.some((l) =>
+        doctorLang.includes(normalize(l))
+      );
+
+      if (!match) return false;
     }
 
+    // HOSPITAL FILTER
     if (
       hospitalName ||
       flatPlotNo ||
@@ -84,127 +138,140 @@ async function searchDoctorService(filters) {
       state ||
       pinCode
     ) {
-      const h = d.hospitalDetail;
-      if (!h || !h.address) return false;
+      const hospitals = Array.isArray(d.hospitalDetail)
+        ? d.hospitalDetail
+        : [];
 
-      if (
-        hospitalName &&
-        !h.hospitalName?.toLowerCase().includes(hospitalName.toLowerCase())
-      )
-        return false;
+      const matchHospital = hospitals.some((h) => {
+        if (!h) return false;
 
-      const a = h.address;
+        if (
+          hospitalName &&
+          !normalize(h.hospitalName).includes(normalize(hospitalName))
+        ) return false;
 
-      if (flatPlotNo && a.flatNo !== flatPlotNo) return false;
-      if (
-        buildingSociety &&
-        !a.building?.toLowerCase().includes(buildingSociety.toLowerCase())
-      )
-        return false;
-      if (
-        streetName &&
-        !a.street?.toLowerCase().includes(streetName.toLowerCase())
-      )
-        return false;
-      if (
-        areaLocality &&
-        !a.area?.toLowerCase().includes(areaLocality.toLowerCase())
-      )
-        return false;
-      if (
-        landmark &&
-        !a.landmark?.toLowerCase().includes(landmark.toLowerCase())
-      )
-        return false;
-      if (
-        district &&
-        !a.district?.toLowerCase().includes(district.toLowerCase())
-      )
-        return false;
-      if (city && !a.city?.toLowerCase().includes(city.toLowerCase()))
-        return false;
-      if (state && !a.state?.toLowerCase().includes(state.toLowerCase()))
-        return false;
-      if (pinCode && a.pinCode !== pinCode) return false;
+        if (
+          flatPlotNo &&
+          normalize(h.flatPlotNo) !== normalize(flatPlotNo)
+        ) return false;
+
+        if (
+          buildingSociety &&
+          !normalize(h.buildingSociety).includes(normalize(buildingSociety))
+        ) return false;
+
+        if (
+          streetName &&
+          !normalize(h.streetName).includes(normalize(streetName))
+        ) return false;
+
+        if (
+          areaLocality &&
+          !normalize(h.areaLocality).includes(normalize(areaLocality))
+        ) return false;
+
+        if (
+          landmark &&
+          !normalize(h.landmark).includes(normalize(landmark))
+        ) return false;
+
+        if (
+          district &&
+          !normalize(h.district).includes(normalize(district))
+        ) return false;
+
+        if (
+          city &&
+          !normalize(h.city).includes(normalize(city))
+        ) return false;
+
+        if (
+          state &&
+          !normalize(h.state).includes(normalize(state))
+        ) return false;
+
+        if (
+          pinCode &&
+          normalize(h.pinCode) !== normalize(pinCode)
+        ) return false;
+
+        return true;
+      });
+
+      if (!matchHospital) return false;
     }
 
     return true;
   });
 
-  const uniqueDoctors = [];
+  // REMOVE DUPLICATES
   const seenEmails = new Set();
-  doctors.forEach((d) => {
-    if (!seenEmails.has(d.email)) {
-      uniqueDoctors.push(d);
-      seenEmails.add(d.email);
-    }
+  doctors = doctors.filter((d) => {
+    if (seenEmails.has(d.email)) return false;
+    seenEmails.add(d.email);
+    return true;
   });
-  doctors = uniqueDoctors;
 
+  // SORTING
   doctors.sort((a, b) => {
     if (sortBy === "experience") {
       return order === "asc"
-        ? a.experience - b.experience
-        : b.experience - a.experience;
+        ? Number(a.experience) - Number(b.experience)
+        : Number(b.experience) - Number(a.experience);
     }
+
     if (sortBy === "consultationFee") {
       return order === "asc"
-        ? a.consultation_fee - b.consultation_fee
-        : b.consultation_fee - a.consultation_fee;
+        ? Number(a.consultation_fee) - Number(b.consultation_fee)
+        : Number(b.consultation_fee) - Number(a.consultation_fee);
     }
+
     return order === "asc"
-      ? (a.full_name || "").localeCompare(b.full_name || "")
-      : (b.full_name || "").localeCompare(a.full_name || "");
+      ? normalize(a.full_name).localeCompare(normalize(b.full_name))
+      : normalize(b.full_name).localeCompare(normalize(a.full_name));
   });
 
-  const finalDoctors = doctors.slice(offset, offset + limit);
+  const paginatedDoctors = doctors.slice(offset, offset + limit);
 
-return {
-  success: true,
-  data: finalDoctors.map((d) => ({
-    id: Number(d.id),
+  return {
+    success: true,
+    total: doctors.length,
+    page,
+    limit,
+    data: paginatedDoctors.map((d) => ({
+      id: Number(d.id),
+      fullName: d.full_name,
+      email: d.email,
+      phoneNumber: d.phone_number,
+      username: d.username,
+      specialization: d.specialization,
+      qualification: d.qualification,
+      experience: Number(d.experience),
+      consultationFee: Number(d.consultation_fee),
+      medicalLicenseNo: d.medical_license_no,
+      bio: d.bio,
+      language: d.language,
+      availability: d.availability,
+      hospitalDetail: d.hospitalDetail,
+      avgRating: Number(d.avg_rating),
 
-    fullName: d.full_name,
-    email: d.email,
-    phoneNumber: d.phone_number,
+      images: (d.images || []).map((img) => ({
+        id: img.id,
+        fileKey: img.fileKey,
+        url: `${BASE_FILE_URL}/${img.fileKey}`,
+      })),
 
-    username: d.username,
-    specialization: d.specialization,
-    qualification: d.qualification,
-    experience: Number(d.experience),
-    consultationFee: Number(d.consultation_fee),
-    medicalLicenseNo: d.medical_license_no,
-    bio: d.bio,
+      files: (d.files || []).map((file) => ({
+        id: file.id,
+        fileKey: file.fileKey,
+        url: `${BASE_FILE_URL}/${file.fileKey}`,
+      })),
 
-    language: d.language,
-    availability: d.availability,
-    hospitalDetail: d.hospitalDetail,
-
-    avgRating: Number(d.avg_rating),
-
-    // ✅ Doctor Images
-    images: (d.images || []).map(img => ({
-      id: img.id,
-      fileKey: img.fileKey,
-      url: `${BASE_FILE_URL}/${img.fileKey}`
+      profileImage: d.images?.[0]?.fileKey
+        ? `${BASE_FILE_URL}/${d.images[0].fileKey}`
+        : null,
     })),
-
-    // ✅ Doctor Files
-    files: (d.files || []).map(file => ({
-      id: file.id,
-      fileKey: file.fileKey,
-      url: `${BASE_FILE_URL}/${file.fileKey}`
-    })),
-
-    // ✅ Optional single profile image
-    profileImage: d.images?.[0]
-      ? `${BASE_FILE_URL}/${d.images[0].fileKey}`
-      : null
-  }))
-};
-
-
-
+  };
 }
 
 module.exports = { searchDoctorService };
