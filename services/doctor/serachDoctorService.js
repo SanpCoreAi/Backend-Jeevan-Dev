@@ -1,8 +1,5 @@
 const { findAllWithUser } = require("../../models/doctorModel");
 
-
-
-// ✅ Safe JSON parser
 const parseJSON = (value, fallback = []) => {
   if (!value) return fallback;
   if (Array.isArray(value)) return value;
@@ -13,7 +10,6 @@ const parseJSON = (value, fallback = []) => {
   }
 };
 
-// ✅ Normalize function
 const normalize = (str) => {
   return String(str || "")
     .toLowerCase()
@@ -21,7 +17,6 @@ const normalize = (str) => {
     .replace(/\s+/g, " ");
 };
 
-// 🔥 FUZZY MATCH FUNCTION (NEW)
 const fuzzyMatch = (text, searchWords) => {
   return searchWords.some((word) =>
     text.includes(word) ||
@@ -61,7 +56,6 @@ async function searchDoctorService(filters) {
 
   let doctors = await findAllWithUser();
 
-  // ✅ Normalize Data
   doctors = doctors.map((d) => ({
     ...d,
     id: d.doctor_id,
@@ -75,13 +69,9 @@ async function searchDoctorService(filters) {
     files: parseJSON(d.files),
   }));
 
-  // ✅ FILTERING
   doctors = doctors.filter((d) => {
     if (email && normalize(d.email) !== normalize(email)) return false;
 
-    // 🔥 FINAL NAME FILTER (FIXED)
-  // ✅ NAME FILTER (STRICT EXACT MATCH)
-// ✅ NAME FILTER (STRICT MATCH - FINAL FIX)
 if (name) {
   const search = normalize(name);
 
@@ -124,7 +114,6 @@ if (name) {
       if (!match) return false;
     }
 
-    // HOSPITAL FILTER
     if (
       hospitalName ||
       flatPlotNo ||
@@ -203,7 +192,6 @@ if (name) {
     return true;
   });
 
-  // REMOVE DUPLICATES
   const seenEmails = new Set();
   doctors = doctors.filter((d) => {
     if (seenEmails.has(d.email)) return false;
@@ -211,7 +199,6 @@ if (name) {
     return true;
   });
 
-  // SORTING
   doctors.sort((a, b) => {
     if (sortBy === "experience") {
       return order === "asc"
