@@ -1,7 +1,6 @@
 const { findAllWithUser } = require("../../models/doctorModel");
 
-const BASE_FILE_URL =
-  process.env.BASE_FILE_URL || "https://your-s3-url.com";
+
 
 // ✅ Safe JSON parser
 const parseJSON = (value, fallback = []) => {
