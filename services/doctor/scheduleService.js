@@ -1,12 +1,11 @@
 const ScheduleModel = require("../../models/schedule");
 const SlotModel = require("../../models/slot");
 const db = require("../../config/db");
-const { parse12to24, generateSlots12, time24To12} = require("../../utils/timeHelper");
+const {parse12to24,generateSlots12,time24To12} = require("../../utils/timeHelper");
 
 async function createSchedule(doctorId, body) {
   try {
 
-    // ✅ validation
     if (!body.start_time || !body.end_time) {
       return {
         success: false,
@@ -30,11 +29,10 @@ async function createSchedule(doctorId, body) {
       return {
         success: false,
         statusCode: 400,
-        message: "Invalid start_time or end_time format"
+        message: "Invalid time format"
       };
     }
 
-    // ✅ overnight case handle
     if (start24 >= end24) {
       const s = body.start_date ? new Date(body.start_date) : null;
       const e = body.end_date ? new Date(body.end_date) : null;
@@ -48,9 +46,9 @@ async function createSchedule(doctorId, body) {
       }
     }
 
-    // ✅ duplicate schedule check
     const isDuplicate = await ScheduleModel.findOverlappingSchedule({
       doctor_id: doctorId,
+      hospital_name: body.hospital_name ?? null,
       start_time: start24,
       end_time: end24,
       start_date: body.start_date,
@@ -61,50 +59,10 @@ async function createSchedule(doctorId, body) {
       return {
         success: false,
         statusCode: 409,
-        message: "Schedule already exists for this time range"
+        message: "Schedule already exists for this hospital & time"
       };
     }
 
-    // ✅ hospital wise conflict check (🔥 FIXED)
-    const schedules = await ScheduleModel.getScheduleByDoctor(doctorId);
-
-    const toMinutes = t => {
-      const [h, m] = String(t).split(":").map(Number);
-      return (h || 0) * 60 + (m || 0);
-    };
-
-    const newStart = toMinutes(start24);
-    let newEnd = toMinutes(end24);
-    if (newEnd <= newStart) newEnd += 1440;
-
-    for (const s of schedules || []) {
-
-      if (!s) continue;
-      if (!s.start_time || !s.end_time) continue;
-
-      // same hospital check
-      if ((s.hospital_name ?? null) !== (body.hospital_name ?? null)) continue;
-
-      let exStart = toMinutes(s.start_time);
-      let exEnd = toMinutes(s.end_time);
-
-      if (exEnd <= exStart) exEnd += 1440;
-
-      // 🔥 DATE OVERLAP FIX
-      const isDateOverlap =
-        (!body.end_date || !s.start_date || new Date(body.end_date) >= new Date(s.start_date)) &&
-        (!s.end_date || !body.start_date || new Date(s.end_date) >= new Date(body.start_date));
-
-      if (isDateOverlap && exStart < newEnd && exEnd > newStart) {
-        return {
-          success: false,
-          statusCode: 409,
-          message: "Schedule time conflicts with an existing schedule"
-        };
-      }
-    }
-
-    // ✅ schedule create
     const scheduleId = await ScheduleModel.createSchedule({
       doctor_id: doctorId,
       location_id: body.location_id ?? null,
@@ -120,7 +78,6 @@ async function createSchedule(doctorId, body) {
       offlinepatient_number: body.offlinepatient_number ?? null
     });
 
-    // ✅ slots generate
     const slots = generateSlots12(
       start24,
       end24,
@@ -172,8 +129,7 @@ async function createSchedule(doctorId, body) {
       message: "Schedule created successfully",
       data: {
         scheduleId,
-        totalSlots: slotRows.length,
-        offlinepatient_number: body.offlinepatient_number ?? null
+        totalSlots: slotRows.length
       }
     };
 
@@ -185,7 +141,6 @@ async function createSchedule(doctorId, body) {
     };
   }
 }
-
 
 
 async function getAllSchedules(doctorId) {
@@ -207,32 +162,58 @@ async function getAllSchedules(doctorId) {
   };
 }
 
+
 async function getScheduleByDoctorId(doctorId) {
   const schedules = await ScheduleModel.getScheduleByDoctor(doctorId);
 
   if (!schedules.length) {
     return {
       success: false,
-      statusCode: 404,
       message: "No schedules found"
     };
   }
 
+  const finalData = [];
+
+  for (const s of schedules) {
+    const slotsFromDB = await ScheduleModel.getSlotsByScheduleId(s.id);
+
+    const formattedSlots = slotsFromDB.map(slot => ({
+      start: time24To12(slot.start_time),
+      end: time24To12(slot.end_time),
+      status: slot.status
+    }));
+
+    finalData.push({
+      scheduleId: s.id,
+      doctorId: s.doctor_id,
+      hospitalName: s.hospital_name,
+
+      timing: {
+        start: time24To12(s.start_time),
+        end: time24To12(s.end_time),
+        slotDuration: s.slot_duration,
+        breakMinutes: s.break_minutes
+      },
+
+      availability: {
+        activeDays: s.active_days,
+        startDate: s.start_date,
+        endDate: s.end_date,
+        status: s.status
+      },
+
+      slots: formattedSlots
+    });
+  }
+
   return {
     success: true,
-    data: schedules.map(s => ({
-      ...s,
-      start_time: time24To12(s.start_time),
-      end_time: time24To12(s.end_time),
-      slots: generateSlots12(
-        s.start_time,
-        s.end_time,
-        s.slot_duration,
-        s.break_minutes
-      )
-    }))
+    count: finalData.length,
+    data: finalData
   };
 }
+
 
 async function getSchedulePublicByDoctorId(doctorId) {
   return getScheduleByDoctorId(doctorId);
@@ -240,22 +221,27 @@ async function getSchedulePublicByDoctorId(doctorId) {
 
 async function updateSchedule(doctorId, scheduleId, body) {
   try {
-    if (body.active_days && typeof body.active_days === "string") {
-      body.active_days = body.active_days.split(",").map(d => d.trim());
+
+    const oldSchedules = await ScheduleModel.getScheduleByDoctor(doctorId);
+    const existing = oldSchedules.find(s => s.id == scheduleId);
+
+    if (!existing) {
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Schedule not found"
+      };
     }
 
-    if (body.start_time && body.end_time) {
-      body.start_time = parse12to24(body.start_time);
-      body.end_time = parse12to24(body.end_time);
-
-      if (!body.start_time || !body.end_time) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: "Invalid time format"
-        };
-      }
+    if (
+      body.hospital_name &&
+      body.hospital_name !== existing.hospital_name
+    ) {
+      return await createSchedule(doctorId, body);
     }
+
+    if (body.start_time) body.start_time = parse12to24(body.start_time);
+    if (body.end_time) body.end_time = parse12to24(body.end_time);
 
     const updated = await ScheduleModel.update(
       doctorId,
@@ -266,8 +252,8 @@ async function updateSchedule(doctorId, scheduleId, body) {
     if (!updated) {
       return {
         success: false,
-        statusCode: 404,
-        message: "Schedule not found"
+        statusCode: 400,
+        message: "Update failed"
       };
     }
 
@@ -290,7 +276,7 @@ async function deleteSchedule(id, doctorId) {
     return {
       success: false,
       statusCode: 404,
-      message: "Schedule not found or unauthorized"
+      message: "Schedule not found"
     };
   }
 
@@ -299,6 +285,7 @@ async function deleteSchedule(id, doctorId) {
     message: "Schedule deleted successfully"
   };
 }
+
 
 async function getHospitalNamesByDoctor(doctorId) {
   const [rows] = await db.query(
@@ -327,7 +314,6 @@ async function getHospitalNamesByDoctor(doctorId) {
     }))
   };
 }
-
 
 module.exports = {
   createSchedule,

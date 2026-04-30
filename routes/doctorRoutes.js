@@ -9,10 +9,12 @@ const DoctorRatingController = require("../controllers/doctor/doctorRatingContro
 router.post("/create-profile", verifyToken, doctorController.createDoctorProfile);
 router.put("/update-profile", verifyToken, doctorController.updateDoctorProfile);
 router.get("/getDoctorProfileById", verifyToken, doctorController.getDoctorProfile);
-router.get("/getDoctorPublicProfileById/:doctorId", verifyToken, doctorController.getDoctorPublicProfileById);
+router.get("/getDoctorPublicProfileById/:userId", verifyToken, doctorController.getDoctorPublicProfileById);
+
+router.put("/getAlldoctor", verifyToken, doctorController.getAllDoctors);
+
 router.get("/getDoctors", verifyToken, getDoctors);
 
-// routes/doctorRoutes.js
 router.get("/doctor/search", DoctorSearchController.searchDoctors);
 
 router.get("/public/:doctorId", doctorController.getDoctorPublicProfileById);
@@ -20,10 +22,5 @@ router.get("/public/:doctorId", doctorController.getDoctorPublicProfileById);
 
 router.get("/:doctorId", DoctorRatingController.getDoctorProfileWithRating);
 
-// const { getAllDoctors, } = require("../controllers/doctor/createdoctorController");
-
-// router.get("/getAllDoctors", getAllDoctors);
-
-// router.get("/getDoctorByProfile", verifyToken, getDoctorById);
 
 module.exports = router;

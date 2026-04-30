@@ -4,8 +4,12 @@ const router = express.Router();
 const { verifyToken } = require("../middlewares/authMiddleware");
 const userProfileController = require("../controllers/users/userProfileController");
 
-router.post( "/user/profile", verifyToken, userProfileController.createUserProfile);
+router.post("/createProfile", verifyToken, userProfileController.createUserProfile);
 
-router.get( "/getViewPatientprofile", verifyToken, userProfileController.getPatientDetails);
+router.get("/getProfile", verifyToken, userProfileController.getUserProfile);
+
+router.put("/updateProfile", verifyToken, userProfileController.updateUserProfile);
+
+router.patch("/updateProfile", verifyToken, userProfileController.updateUserProfile);
 
 module.exports = router;

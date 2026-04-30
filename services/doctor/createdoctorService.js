@@ -1,28 +1,25 @@
 const DoctorModel = require("../../models/doctorModel");
 const safeJSON = require("../../utils/safeJson");
 const QRCode = require("qrcode");
+const path = require("path");
+const fs = require("fs");
+
+const BASE_FILE_URL = "http://localhost:4000/uploads"; // change in production
 
 function parseJSON(data, defaultValue = []) {
   try {
     if (!data) return defaultValue;
     if (typeof data === "string") return JSON.parse(data);
     return data;
-  } catch (err) {
+  } catch {
     return defaultValue;
   }
 }
 
-const BASE_FILE_URL = "doctor-profile-upload-file";
-
-const buildFileUrl = (folder, fileKey) => {
-  if (!fileKey) return null;
-
-  if (fileKey.includes("/")) {
-    return `${BASE_FILE_URL}/${fileKey}`;
-  }
-
-  return `${BASE_FILE_URL}/${folder}/${fileKey}`;
-};
+const qrFolder = path.join(__dirname, "../../uploads/qr");
+if (!fs.existsSync(qrFolder)) {
+  fs.mkdirSync(qrFolder, { recursive: true });
+}
 
 function buildAddress(hospital) {
   if (!hospital) return null;
@@ -42,19 +39,9 @@ function buildAddress(hospital) {
     .join(", ");
 }
 
-/* ================= CREATE PROFILE ================= */
-
 async function createProfile(userId, body) {
-
   if (!userId) {
     return { success: false, message: "Unauthorized user" };
-  }
-
-  if (!body.username || !body.specialization) {
-    return {
-      success: false,
-      message: "Username and specialization are required"
-    };
   }
 
   const params = [
@@ -85,42 +72,31 @@ async function createProfile(userId, body) {
     hospitals
   });
 
-  const qrCode = await QRCode.toDataURL(qrData);
+  const fileName = `qr_${doctorId}.png`;
+  const filePath = path.join(qrFolder, fileName);
 
-  await DoctorModel.updateDoctorQr(doctorId, qrCode);
+  await QRCode.toFile(filePath, qrData);
+
+  await DoctorModel.updateDoctorQr(doctorId, fileName);
 
   return {
     success: true,
     userId,
     doctorId,
-    qrCode
+    qrCode: `${BASE_FILE_URL}/qr/${fileName}`
   };
 }
 
-/* ================= GET PROFILE ================= */
-
 async function getProfile(userId) {
-
-  if (!userId) {
-    return {
-      success: false,
-      message: "Unauthorized user"
-    };
-  }
-
   const d = await DoctorModel.getBydoctorId(userId);
 
   if (!d) {
-    return {
-      success: false,
-      message: "Doctor profile not found"
-    };
+    return { success: false, message: "Doctor profile not found" };
   }
 
   let qrCode = d.qr_code;
 
   if (!qrCode) {
-
     const hospitalDetail = parseJSON(d.hospital_detail);
 
     const hospitals = hospitalDetail.map(h => ({
@@ -133,137 +109,102 @@ async function getProfile(userId) {
       hospitals
     });
 
-    qrCode = await QRCode.toDataURL(qrData);
+    const fileName = `qr_${d.id}.png`;
+    const filePath = path.join(qrFolder, fileName);
 
-    await DoctorModel.updateDoctorQr(d.id, qrCode);
+    await QRCode.toFile(filePath, qrData);
+
+    await DoctorModel.updateDoctorQr(d.id, fileName);
+
+    qrCode = fileName;
   }
-
-  const images = parseJSON(d.images);
-  const files = parseJSON(d.files);
 
   return {
     success: true,
     data: {
-      id: Number(d.user_id),
-      fullName: d.user_full_name,
-      email: d.user_email,
-      phoneNumber: d.user_phone_number,
-
+      id: d.user_id,
       username: d.username,
       specialization: d.specialization,
       qualification: d.qualification,
-      experience: Number(d.experience),
-      consultationFee: Number(d.consultation_fee),
-      medicalLicenseNo: d.medical_license_no,
+      experience: d.experience,
+      consultationFee: d.consultation_fee,
       bio: d.bio,
 
       language: parseJSON(d.language),
       availability: parseJSON(d.availability),
       hospitalDetail: parseJSON(d.hospital_detail),
 
-      avgRating: Number(d.avg_rating || 0),
+      user: {
+        fullName: d.user_full_name,
+        email: d.user_email,
+        phoneNumber: d.user_phone_number
+      },
 
-      images: images.map(img => ({
-        id: img.id,
-        fileKey: img.fileKey,
-        url: buildFileUrl(img.folder, img.fileKey)
-      })),
+      // files: parseJSON(d.files),
+      images: parseJSON(d.images),
 
-      files: files.map(file => ({
-        id: file.id,
-        fileKey: file.fileKey,
-        url: buildFileUrl(file.folder, file.fileKey)
-      })),
+      avgRating: Number(d.avg_rating),
 
-      profileImage:
-        images.length > 0
-          ? buildFileUrl(images[0].folder, images[0].fileKey)
-          : `${BASE_FILE_URL}/default-doctor-profile.png`,
-
-      qr_code: qrCode
+      qr_code: `${BASE_FILE_URL}/qr/${qrCode}`
     }
   };
 }
 
-/* ================= PUBLIC PROFILE ================= */
+async function getDoctorPublicProfileById(userId) {
 
-async function getDoctorPublicProfileById(doctorId) {
-
-  const doctor = await DoctorModel.getDoctorPublicProfileById(doctorId);
+  const doctor = await DoctorModel.getDoctorPublicProfileById(userId);
 
   if (!doctor) {
     return {
       success: false,
-      message: "Doctor profile not found"
+      message: "Doctor not found",
+      statusCode: 404
     };
   }
-
-  let qrCode = doctor.qr_code;
-
-  if (!qrCode) {
-
-    const hospitalDetail = parseJSON(doctor.hospital_detail);
-
-    const hospitals = hospitalDetail.map(h => ({
-      hospitalName: h.hospitalName,
-      address: buildAddress(h)
-    }));
-
-    const qrData = JSON.stringify({
-      doctorId: doctor.user_id,
-      hospitals
-    });
-
-    qrCode = await QRCode.toDataURL(qrData);
-
-    await DoctorModel.updateDoctorQr(doctor.id, qrCode);
-  }
-
-  const images = parseJSON(doctor.images);
 
   return {
     success: true,
     data: {
-      userId: Number(doctor.user_id),
-      fullName: doctor.user_full_name,
+      id: doctor.id,              // doctor id
+      userId: doctor.user_id,     // user id
       username: doctor.username,
       specialization: doctor.specialization,
-      experience: Number(doctor.experience),
-      consultationFee: Number(doctor.consultation_fee),
+      qualification: doctor.qualification,
+      experience: doctor.experience,
+      consultationFee: doctor.consultation_fee,
+      bio: doctor.bio,
+
+      language: parseJSON(doctor.language),
+      availability: parseJSON(doctor.availability),
       hospitalDetail: parseJSON(doctor.hospital_detail),
-      qr_code: qrCode,
-      profileImage:
-        images.length > 0
-          ? buildFileUrl(images[0].folder, images[0].fileKey)
-          : `${BASE_FILE_URL}/default-doctor-profile.png`
+
+      user: {
+        fullName: doctor.user_full_name,
+        email: doctor.user_email,
+        phoneNumber: doctor.user_phone_number
+      },
+
+      avgRating: Number(doctor.avg_rating)
     }
   };
 }
 
-/* ================= UPDATE PROFILE ================= */
-
 async function updateProfile(userId, body) {
-
-  const doctor = await DoctorModel.getByUserId(userId);
-
-  if (!doctor) {
-    return {
-      success: false,
-      message: "Doctor profile not found"
-    };
+  if (!userId) {
+    throw new Error("Unauthorized user");
   }
 
   const params = [
-    body.username || doctor.username,
-    body.specialization || doctor.specialization,
-    body.qualification || doctor.qualification,
-    body.experience ?? doctor.experience,
-    JSON.stringify(body.language || safeJSON(doctor.language, [])),
-    body.consultationFee ?? doctor.consultation_fee,
-    body.medicalLicenseNo || doctor.medical_license_no,
-    body.bio || doctor.bio,
-    JSON.stringify(body.availability || safeJSON(doctor.availability, [])),
-    JSON.stringify(body.hospitalDetail || safeJSON(doctor.hospital_detail, [])),
+    body.username ?? null,
+    body.specialization ?? null,
+    body.qualification ?? null,
+    body.experience ?? 0,
+    JSON.stringify(body.language ?? []),
+    body.consultationFee ?? 0,
+    body.medicalLicenseNo ?? null,
+    body.bio ?? null,
+    JSON.stringify(body.availability ?? []),
+    JSON.stringify(body.hospitalDetail ?? []),
     userId
   ];
 
@@ -275,31 +216,42 @@ async function updateProfile(userId, body) {
   };
 }
 
-/* ================= GET ALL DOCTORS ================= */
-
 async function getAllDoctors() {
+  const doctors = await DoctorModel.findAllWithUser();
 
-  const doctors = await DoctorModel.getAllDoctors();
+  return doctors.map(d => ({
+    doctorId: d.doctor_id,
+    userId: d.user_id,
+    username: d.username,
+    specialization: d.specialization,
+    qualification: d.qualification,
+    experience: d.experience,
+    consultationFee: d.consultation_fee,
 
-  return {
-    success: true,
-    data: doctors.map(d => ({
-      id: d.id,
-      username: d.username,
-      specialization: d.specialization,
-      qualification: d.qualification,
-      experience: d.experience,
-      language: safeJSON(d.language, []),
-      consultationFee: d.consultation_fee,
-      hospitalDetail: safeJSON(d.hospital_detail, [])
-    }))
-  };
+    user: {
+      fullName: d.user_full_name,
+      email: d.user_email,
+      phoneNumber: d.user_phone_number
+    },
+
+    language: parseJSON(d.language),
+    availability: parseJSON(d.availability),
+    hospitalDetail: parseJSON(d.hospital_detail),
+
+    images: parseJSON(d.images),
+
+    avgRating: Number(d.avg_rating),
+
+    qr_code: d.qr_code
+      ? `${BASE_FILE_URL}/qr/${d.qr_code}`
+      : null
+  }));
 }
 
 module.exports = {
   createProfile,
-  getProfile,
   updateProfile,
-  getDoctorPublicProfileById,
-  getAllDoctors
+  getAllDoctors,
+  getProfile,
+  getDoctorPublicProfileById
 };

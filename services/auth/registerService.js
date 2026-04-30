@@ -4,53 +4,51 @@ const User = require("../../models/usermodel");
 const { sendVerificationEmail } = require("../../utils/sendEmail");
 
 exports.registerUserOrAssistant = async (data) => {
-  const { full_name, email, phone_number, password, role_id, doctor_id } = data;
-
   try {
-    const existingUser = await User.findByEmail(email);
-    if (existingUser) {
-      return {
-        statusCode: 409,
-        body: { message: "Email already registered" }
-      };
+    const { full_name, email, phone_number, password, role_id, doctor_id } = data;
+
+    const emailExists = await User.findByEmail(email);
+    if (emailExists) {
+      return { 
+        statusCode: 409, body: 
+        { 
+          message: "Email already exists" 
+        } };
     }
 
-    const existingPhone = await User.findByPhone(phone_number);
-    if (existingPhone) {
-      return {
-        statusCode: 409,
-        body: { message: "Phone number already registered" }
-      };
+
+    const phoneExists = await User.findByPhone(phone_number);
+    if (phoneExists) {
+      return { statusCode: 409, body: { 
+        message: "Phone already exists" 
+      } };
     }
 
     if (doctor_id) {
-      const hashedDefaultPassword = await bcrypt.hash("assistant@123", 10);
+      const defaultPassword = process.env.DEFAULT_ASSISTANT_PASSWORD || "ChangeMe@123";
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
       const userId = await User.createUser({
         full_name,
         email,
         phone_number,
-        password: hashedDefaultPassword,
+        password: hashedPassword,
         doctor_id,
         role_id: role_id || 3,
-        verificationToken: null,
         email_verified: 1,
       });
 
       return {
         statusCode: 201,
         body: {
-          message: "Doctor assistant registered successfully.",
+          message: "Assistant created successfully",
           user_id: userId,
         },
       };
     }
 
     if (!password) {
-      return {
-        statusCode: 400,
-        body: { message: "Password is required for normal user registration" }
-      };
+      return { statusCode: 400, body: { message: "Password is required" } };
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -61,112 +59,81 @@ exports.registerUserOrAssistant = async (data) => {
       email,
       phone_number,
       password: hashedPassword,
-      doctor_id: null,
       role_id: role_id || 2,
       verificationToken,
       email_verified: 0,
     });
 
-    await sendVerificationEmail(email, verificationToken);
-
-    return {
-      statusCode: 201,
-      body: {
-        message: "Registration successful. Please verify your email.",
-        user_id: userId,
-      },
-    };
-
-  } catch (error) {
-    return {
-      statusCode: 500,
-      body: { message: "User registration failed: " + error.message }
-    };
-  }
-};
-
-exports.getUserByDoctorId = async (doctor_id) => {
-  try {
-    const users = await User.findByDoctorId(doctor_id);
-
-    if (!users || users.length === 0) {
+    try {
+      await sendVerificationEmail(email, verificationToken);
       return {
-        statusCode: 404,
+        statusCode: 201,
         body: {
-          message: "No assistants found for this doctor.",
-          data: [],
+          message: "User registered. Please verify email.",
+          user_id: userId,
+        },
+      };
+    } catch (emailError) {
+      console.error("Verification email send failed:", emailError.message);
+      return {
+        statusCode: 201,
+        body: {
+          message: "User registered, but verification email could not be sent. Please contact support.",
+          user_id: userId,
+          email_error: emailError.message,
         },
       };
     }
 
-    return {
-      statusCode: 200,
-      body: {
-        message: "Assistants fetched successfully.",
-        results: users.length,
-        data: users,
-      },
-    };
-
   } catch (error) {
     return {
       statusCode: 500,
-      body: { message: "Fetching doctor assistants failed: " + error.message }
+      body: { message: "Registration failed: " + error.message },
     };
   }
 };
 
+
 exports.verifyEmail = async (token) => {
   try {
     if (!token) {
-      return {
-        statusCode: 400,
-        body: { message: "Verification token is missing" }
-      };
+      return { statusCode: 400, body: { message: "Token missing" } };
     }
 
     const user = await User.verifyUserByToken(token);
+
     if (!user) {
-      return {
-        statusCode: 400,
-        body: { message: "Invalid or expired verification token" }
-      };
+      return { statusCode: 400, body: { message: "Invalid or expired token" } };
     }
 
     await User.markEmailVerified(user.id);
 
     return {
       statusCode: 200,
-      body: { message: "Email verified successfully." }
+      body: { message: "Email verified successfully" },
     };
 
   } catch (error) {
     return {
       statusCode: 500,
-      body: { message: "Email verification failed: " + error.message }
+      body: { message: "Verification failed: " + error.message },
     };
   }
 };
 
-exports.getUsers = async (filters = {}) => {
-  try {
-    const users = await User.findUsers(filters);
 
-    if (!users || users.length === 0) {
-      return {
-        statusCode: 404,
-        body: {
-          message: "No users found.",
-          results: 0,
-          data: [],
-        },
-      };
+exports.getUserByDoctorId = async (doctor_id) => {
+  try {
+    if (!doctor_id) {
+      return { statusCode: 400, body: { message: "doctor_id required" } };
     }
+
+    const users = await User.findByDoctorId(doctor_id);
 
     return {
       statusCode: 200,
       body: {
-        message: "Users fetched successfully.",
+        message: "Users fetched successfully",
         results: users.length,
         data: users,
       },
@@ -175,7 +142,32 @@ exports.getUsers = async (filters = {}) => {
   } catch (error) {
     return {
       statusCode: 500,
-      body: { message: "Fetching users failed: " + error.message }
+      body: { message: error.message },
+    };
+  }
+};
+
+exports.getUsers = async (filters) => {
+  try {
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+    const offset = (page - 1) * limit;
+
+    const users = await User.findUsers(filters, limit, offset);
+
+    return {
+      statusCode: 200,
+      body: {
+        message: "Users fetched successfully",
+        results: users.length,
+        data: users,
+      },
+    };
+
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: { message: error.message },
     };
   }
 };

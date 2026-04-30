@@ -1,38 +1,32 @@
-const jwt = require("jsonwebtoken");
-const db = require("../../config/db");
+const authService = require("../../services/auth/refreshTokenService");
 
 exports.refreshTokenController = async (req, res) => {
-  const { refreshToken } = req.body;
-  
-
-  if (!refreshToken) {
-    return res.status(401).json({ message: "Refresh token required" });
-  }
-
   try {
-    const decoded = jwt.verify(
-      refreshToken,
-      process.env.REFRESH_SECRET || "REFRESH_SECRET"
-    );
+    const { refreshToken } = req.body;
 
-    const [rows] = await db.query(
-      "SELECT * FROM users WHERE id = ? AND refresh_token = ?",
-      [decoded.id, refreshToken]
-    );
-
-    if (!rows.length) {
-      return res.status(403).json({ message: "Invalid refresh token" });
+    if (!refreshToken) {
+      return res.status(401).json({
+        success: false,
+        message: "Refresh token is required",
+      });
     }
 
-    const newAccessToken = jwt.sign(
-      { id: decoded.id },
-      process.env.ACCESS_SECRET || "ACCESS_SECRET",
-      { expiresIn: "15m" }
-    );
+    const result = await authService.refreshToken(refreshToken);
 
-    res.json({ accessToken: newAccessToken });
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      data: {
+        accessToken: result.body.accessToken || null,
+      },
+    });
 
-  } catch (err) {
-    res.status(403).json({ message: "Invalid or expired refresh token" });
+  } catch (error) {
+    console.error("Refresh Token Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
   }
 };

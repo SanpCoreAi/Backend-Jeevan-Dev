@@ -4,6 +4,7 @@ const { findAllWithUser } = require("../../models/doctorModel");
 const BASE_FILE_URL =
   process.env.AWS_S3_BUCKET_URL || process.env.APP_BASE_URL;
 
+// सुरक्षित JSON parse
 const parseJSON = (value, fallback = []) => {
   if (!value) return fallback;
   if (Array.isArray(value)) return value;
@@ -14,6 +15,7 @@ const parseJSON = (value, fallback = []) => {
   }
 };
 
+// normalize string
 const normalize = (str) => {
   return String(str || "")
     .toLowerCase()
@@ -34,28 +36,35 @@ async function searchDoctorService(filters) {
   limit = Math.min(50, Math.max(1, Number(limit)));
   const offset = (page - 1) * limit;
 
+  // 🔹 Fetch all doctors
   let doctors = await findAllWithUser();
 
+  // 🔹 Normalize data
   doctors = doctors.map((d) => ({
-    id: d.doctor_id,
+    user_id: d.user_id,
     full_name: d.user_full_name,
     email: d.user_email,
     phone_number: d.user_phone_number,
     username: d.username,
     specialization: d.specialization,
     qualification: d.qualification,
-    experience: Number(d.experience),
-    consultation_fee: Number(d.consultation_fee),
+    experience: Number(d.experience) || 0,
+    consultation_fee: Number(d.consultation_fee) || 0,
     medical_license_no: d.medical_license_no,
     bio: d.bio,
+    city: d.city || "",
+    state: d.state || "",
+    pin_code: d.pin_code || "",
+    district: d.district || "",
+    landmark: d.landmark || "",
     language: parseJSON(d.language),
     availability: parseJSON(d.availability),
     hospitalDetail: parseJSON(d.hospital_detail),
     images: parseJSON(d.images),
-    files: parseJSON(d.files),
     avg_rating: Number(d.avg_rating || 0),
   }));
 
+  // 🔍 FILTER LOGIC (FIXED)
 doctors = doctors.filter((d) => {
   if (!search) return true;
 
@@ -67,76 +76,58 @@ doctors = doctors.filter((d) => {
   const specialization = normalize(d.specialization);
   const qualification = normalize(d.qualification);
   const medicalLicense = normalize(d.medical_license_no);
-
-  const experience = String(d.experience || "");
-  const fee = String(d.consultation_fee || "");
+  const city = normalize(d.city);
+  const state = normalize(d.state);
+  const district = normalize(d.district);
+  const landmark = normalize(d.landmark);
+  const hospitalNames = (d.hospitalDetail || []).map(h => normalize(h.hospitalName));
+  const streetNames = (d.hospitalDetail || []).map(h => normalize(h.streetName));
+  const areaLocalities = (d.hospitalDetail || []).map(h => normalize(h.areaLocality));
+  const hospitalCities = (d.hospitalDetail || []).map(h => normalize(h.city));
+  const hospitalStates = (d.hospitalDetail || []).map(h => normalize(h.state));
+  const hospitalPinCodes = (d.hospitalDetail || []).map(h => normalize(h.pinCode));
+  const hospitalDistricts = (d.hospitalDetail || []).map(h => normalize(h.district));
+  const hospitalLandmarks = (d.hospitalDetail || []).map(h => normalize(h.landmark));
 
   const languages = (d.language || []).map((l) => normalize(l));
 
-  const hospitals = Array.isArray(d.hospitalDetail)
-    ? d.hospitalDetail
-    : [];
+return words.every((word) => {
+  const isNumber = /^\d+$/.test(word);
 
-  // 🔥 MAIN LOGIC
-  return words.every((word) => {
+  if (!isNumber) {
+    return (
+      fullName.includes(word) ||
+      username.includes(word) ||
+      specialization.includes(word) ||
+      qualification.includes(word) ||
+      medicalLicense.includes(word) ||
 
-    const isNumber = /^\d+$/.test(word);
+      city.includes(word) ||
+      state.includes(word) ||
+      district.includes(word) ||
+      landmark.includes(word) ||
 
-    // =========================
-    // ✅ Doctor level match
-    // =========================
-    let doctorMatch = false;
+      hospitalNames.some(h => h.includes(word)) ||
+      streetNames.some(s => s.includes(word)) ||
+      areaLocalities.some(a => a.includes(word)) ||
+      hospitalCities.some(c => c.includes(word)) ||
+      hospitalStates.some(s => s.includes(word)) ||
+      hospitalDistricts.some(d => d.includes(word)) ||
+      hospitalLandmarks.some(l => l.includes(word)) ||
 
-    if (!isNumber) {
-      doctorMatch =
-        fullName.includes(word) ||
-        username.includes(word) ||
-        specialization.includes(word) ||
-        qualification.includes(word) ||
-        medicalLicense.includes(word) ||
-        languages.some((l) => l.includes(word));
-    } else {
-      doctorMatch =
-        experience === word ||
-        fee === word;
-    }
-
-    // =========================
-    // ✅ Hospital level match
-    // =========================
-    const hospitalMatch = hospitals.some((h) => {
-      const hospitalName = normalize(h?.hospitalName);
-      const city = normalize(h?.city);
-      const state = normalize(h?.state);
-      const district = normalize(h?.district);
-      const pin = normalize(h?.pinCode);
-      const landmark = normalize(h?.landmark);
-      const area = normalize(h?.areaLocality);
-      const street = normalize(h?.streetName);
-      const society = normalize(h?.buildingSociety);
-      const flat = normalize(h?.flatPlotNo);
-
-      if (isNumber) {
-        return pin === word; // 🔥 exact pincode match
-      }
-
-      return (
-        hospitalName.includes(word) ||
-        city.includes(word) ||
-        state === word ||          // 🔥 STATE FIX (EXACT MATCH)
-        district.includes(word) ||
-        landmark.includes(word) ||
-        area.includes(word) ||
-        street.includes(word) ||
-        society.includes(word) ||
-        flat.includes(word)
-      );
-    });
-
-    return doctorMatch || hospitalMatch;
-  });
+      languages.some((l) => l.includes(word))
+    );
+  } else {
+    return (
+      hospitalPinCodes.some(p => p.includes(word)) || 
+      String(d.experience) === word ||
+      String(d.consultation_fee) === word
+    );
+  }
+});
 });
 
+  // 🔥 Remove duplicate doctors (by email)
   const seen = new Set();
   doctors = doctors.filter((d) => {
     if (seen.has(d.email)) return false;
@@ -164,14 +155,13 @@ doctors = doctors.filter((d) => {
 
   const paginated = doctors.slice(offset, offset + limit);
 
-  // 🔹 FINAL RESPONSE FORMAT
   return {
     success: true,
     total: doctors.length,
     page,
     limit,
     data: paginated.map((d) => ({
-      id: d.id,
+      userId: d.user_id,
       fullName: d.full_name,
       email: d.email,
       phoneNumber: d.phone_number,
@@ -182,26 +172,20 @@ doctors = doctors.filter((d) => {
       consultationFee: d.consultation_fee,
       medicalLicenseNo: d.medical_license_no,
       bio: d.bio,
+      city: d.city,
+      state: d.state,
+      pinCode: d.pin_code,
+      district: d.district,
+      landmark: d.landmark,
       language: d.language,
       availability: d.availability,
       hospitalDetail: d.hospitalDetail,
       avgRating: d.avg_rating,
 
-      images: (d.images || []).map((img) => ({
-        id: img.id,
-        fileKey: img.fileKey,
-        url: img.fileKey ? `${BASE_FILE_URL}/${img.fileKey}` : null,
-      })),
-
-      files: (d.files || []).map((file) => ({
-        id: file.id,
-        fileKey: file.fileKey,
-        url: file.fileKey ? `${BASE_FILE_URL}/${file.fileKey}` : null,
-      })),
-
-      profileImage: d.images?.[0]?.fileKey
-        ? `${BASE_FILE_URL}/${d.images[0].fileKey}`
-        : null,
+      profileImage:
+        d.images?.[0]?.fileKey
+          ? `${BASE_FILE_URL}/${d.images[0].fileKey}`
+          : null,
     })),
   };
 }

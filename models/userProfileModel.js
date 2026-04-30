@@ -1,91 +1,121 @@
 const db = require("../config/db");
 
-exports.createUserProfile = async (userId, data = {}) => {
-  const {
-    age = null,
-    gender = null,
-    language = [],
-    address = {},
-    blood_group = null,
-    weight = null,     
-    height = null,    
-    existing_conditions = [],
-    allergies = [],
-    bio = null
-  } = data;
 
-  const validGender = typeof gender === "string" ? gender.substring(0, 20) : null;
+exports.createUserProfile = async (userId, data) => {
+  try {
+    const {
+      username,
+      age = null,
+      gender = null,
+      language = [],
+      address = {},
+      blood_group = null,
+      weight = null,
+      height = null,
+      existing_conditions = [],
+      allergies = [],
+      bio = null,
+      emergency_contact = {}
+    } = data;
 
-  const sql = `
-    INSERT INTO user_profiles (
-      user_id,
+    const [existing] = await db.execute(
+      "SELECT user_id FROM user_profiles WHERE user_id = ?",
+      [userId]
+    );
+
+    if (existing.length > 0) {
+      return null;
+    }
+
+    const sql = `
+      INSERT INTO user_profiles (
+        user_id, username, age, gender, language, address,
+        blood_group, weight, height, existing_conditions,
+        allergies, bio, emergency_contact
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const values = [
+      userId,
+      username,
       age,
       gender,
-      language,
-      address,
+      JSON.stringify(language),
+      JSON.stringify(address),
       blood_group,
       weight,
       height,
-      existing_conditions,
-      allergies,
-      bio
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      JSON.stringify(existing_conditions),
+      JSON.stringify(allergies),
+      bio,
+      JSON.stringify(emergency_contact)
+    ];
+
+    const [result] = await db.execute(sql, values);
+
+    return {
+      insertId: result.insertId
+    };
+
+  } catch (error) {
+    console.error("DB Error:", error);
+    throw error; 
+  }
+};
+
+exports.updateUserProfile = async (userId, data) => {
+  const {
+    username,
+    age,
+    gender,
+    language,
+    address,
+    blood_group,
+    weight,
+    height,
+    existing_conditions,
+    allergies,
+    bio,
+    emergency_contact  
+  } = data;
+
+  const sql = `
+    UPDATE user_profiles SET
+      username = COALESCE(?, username),
+      age = COALESCE(?, age),
+      gender = COALESCE(?, gender),
+      language = COALESCE(?, language),
+      address = COALESCE(?, address),
+      blood_group = COALESCE(?, blood_group),
+      weight = COALESCE(?, weight),
+      height = COALESCE(?, height),
+      existing_conditions = COALESCE(?, existing_conditions),
+      allergies = COALESCE(?, allergies),
+      bio = COALESCE(?, bio),
+       emergency_contact = COALESCE(?, emergency_contact) 
+    WHERE user_id = ?
   `;
 
   const values = [
-    userId,
-    age,
-    validGender,
-    JSON.stringify(Array.isArray(language) ? language : [language]),
-    JSON.stringify(typeof address === "object" ? address : { text: address }),
-    blood_group,
-    weight,   // ✅ added
-    height,   // ✅ added
-    JSON.stringify(Array.isArray(existing_conditions) ? existing_conditions : [existing_conditions]),
-    JSON.stringify(Array.isArray(allergies) ? allergies : [allergies]),
-    bio
+    username ?? null,
+    age ?? null,
+    gender ?? null,
+    language ? JSON.stringify(language) : null,
+    address ? JSON.stringify(address) : null,
+    blood_group ?? null,
+    weight ?? null,
+    height ?? null,
+    existing_conditions ? JSON.stringify(existing_conditions) : null,
+    allergies ? JSON.stringify(allergies) : null,
+    bio ?? null,
+    emergency_contact ? JSON.stringify(emergency_contact) : null,
+    userId
   ];
 
   const [result] = await db.execute(sql, values);
-  return result.insertId;
+
+  return result.affectedRows > 0;
 };
-
-exports.getPatientDetails = async (patientId) => {
-  const sql = `
-    SELECT 
-      u.id AS patient_id,
-      u.full_name AS name,
-      u.email,
-      u.phone_number AS phone,
-
-      up.age,
-      up.gender,
-      up.blood_group,
-      up.height,
-      up.allergies,
-      up.existing_conditions,
-      up.weight,
-      up.created_at,
-
-      a.slot_date AS last_appointment,
-      a.appointment_type,
-      a.booking_type,
-      a.id AS appointment_id
-
-    FROM users u
-    LEFT JOIN user_profiles up ON u.id = up.user_id
-    LEFT JOIN appointments a ON u.id = a.patient_id
-
-    WHERE u.id = ?
-    ORDER BY a.slot_date IS NULL, a.slot_date DESC
-    LIMIT 1
-  `;
-
-  const [rows] = await db.execute(sql, [patientId]);
-
-  return rows;
-};
-
 
 exports.getUserProfileByUserId = async (userId) => {
   const sql = `
@@ -95,15 +125,18 @@ exports.getUserProfileByUserId = async (userId) => {
       u.email,
       u.phone_number,
 
+      p.username,
       p.age,
       p.gender,
       p.language,
       p.address,
       p.blood_group,
+      p.weight,
+      p.height,
       p.existing_conditions,
       p.allergies,
       p.bio,
-
+ p.emergency_contact,  
       di.file_key AS doctor_image
 
     FROM users u
@@ -115,6 +148,5 @@ exports.getUserProfileByUserId = async (userId) => {
   `;
 
   const [rows] = await db.execute(sql, [userId]);
-
-  return rows.length ? rows[0] : null;
+  return rows[0];
 };

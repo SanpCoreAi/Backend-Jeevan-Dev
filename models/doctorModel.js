@@ -28,7 +28,7 @@ const sql = `
           )
         )
         FROM doctor_image di
-        WHERE df.doctor_id = d.id
+        WHERE di.doctor_id = d.user_id
       ), JSON_ARRAY()) AS images,
       COALESCE((
         SELECT JSON_ARRAYAGG(
@@ -40,7 +40,7 @@ const sql = `
           )
         )
         FROM doctor_files df
-        WHERE df.doctor_id = d.id
+        WHERE df.doctor_id = d.user_id
       ), JSON_ARRAY()) AS files,
       IFNULL((
         SELECT AVG(f.rating)
@@ -57,11 +57,9 @@ const sql = `
   return rows[0] || null;
 };
 
-
-
 const getBydoctorId = async (userId) => {
 
- const sql = `
+const sql = `
   SELECT
     d.id,
     d.user_id,
@@ -92,7 +90,7 @@ const getBydoctorId = async (userId) => {
           )
         )
         FROM doctor_files df
-        WHERE df.doctor_id = d.id   -- ✅ FIX HERE
+        WHERE df.doctor_id = d.user_id   
         AND df.file_key IS NOT NULL
       ),
       JSON_ARRAY()
@@ -109,7 +107,7 @@ const getBydoctorId = async (userId) => {
           )
         )
         FROM doctor_image di
-        WHERE di.doctor_id = d.id   -- ✅ FIX HERE
+        WHERE di.doctor_id = d.user_id   
         AND di.file_key IS NOT NULL
       ),
       JSON_ARRAY()
@@ -146,36 +144,44 @@ const updateDoctorQr = async (doctorId, qrCode) => {
   await db.execute(sql, [qrCode, doctorId]);
 };
 
+const getDoctorPublicProfileById = async (doctorId) => {
 
-const getDoctorPublicProfileById = async (userId) => {
   const sql = `
     SELECT
-      d.*,
+      d.id,
+      d.user_id,
+      d.username,
+      d.specialization,
+      d.qualification,
+      d.experience,
+      d.consultation_fee,
+      d.bio,
+      d.language,
+      d.availability,
+      d.hospital_detail,
+
       u.full_name AS user_full_name,
       u.email AS user_email,
       u.phone_number AS user_phone_number,
 
-      IFNULL((
-        SELECT AVG(f.rating)
-        FROM feedbacks f
-        WHERE f.doctor_id = d.id
-      ), 0) AS avg_rating
+      IFNULL(
+        (
+          SELECT AVG(f.rating)
+          FROM feedbacks f
+          WHERE f.doctor_id = d.id
+        ),
+        0
+      ) AS avg_rating
 
     FROM doctors d
     LEFT JOIN users u ON u.id = d.user_id
-    WHERE d.user_id = ?   -- ✅ FIX
+    WHERE u.id = ?   -- ✅ recommended
     LIMIT 1
   `;
 
-  const [rows] = await db.execute(sql, [userId]);
+  const [rows] = await db.execute(sql, [doctorId]);
+
   return rows[0] || null;
-};
-
-
-const getAllDoctors = async () => {
-  const sql = `SELECT * FROM doctors`;
-  const [rows] = await db.execute(sql);
-  return rows;
 };
 
 const updateDoctor = async (params) => {
@@ -193,12 +199,14 @@ const updateDoctor = async (params) => {
       hospital_detail = ?
     WHERE user_id = ?
   `;
+
   await db.execute(sql, params);
 };
 
 
-const findAllWithUser = async () => {
-  const query = `
+/* ================= GET ALL DOCTORS (WITH USER + RATING) ================= */
+const getAllDoctors = async () => {
+  const sql = `
     SELECT
       d.id AS doctor_id,
       d.user_id,
@@ -207,32 +215,11 @@ const findAllWithUser = async () => {
       d.qualification,
       d.experience,
       d.consultation_fee,
-      d.medical_license_no,
-      d.bio,
-      d.language,
-      d.availability,
-      d.hospital_detail,
       d.qr_code,
 
-      u.full_name AS user_full_name,
-      u.email AS user_email,
-      u.phone_number AS user_phone_number,
-
-      COALESCE(
-        (
-          SELECT JSON_ARRAYAGG(
-            JSON_OBJECT(
-              'id', df.id,
-              'fileKey', df.file_key,
-              'folder', df.folder_name,
-              'createdAt', df.created_at
-            )
-          )
-          FROM doctor_files df
-          WHERE df.doctor_id = d.user_id
-        ),
-        JSON_ARRAY()
-      ) AS files,
+      u.full_name,
+      u.email,
+      u.phone_number,
 
       COALESCE(
         (
@@ -246,6 +233,7 @@ const findAllWithUser = async () => {
           )
           FROM doctor_image di
           WHERE di.doctor_id = d.user_id
+          AND di.file_key IS NOT NULL
         ),
         JSON_ARRAY()
       ) AS images,
@@ -258,13 +246,66 @@ const findAllWithUser = async () => {
       ) AS avg_rating
 
     FROM doctors d
-    LEFT JOIN users u ON u.id = d.user_id;
+    LEFT JOIN users u ON u.id = d.user_id
   `;
 
-  const [rows] = await db.execute(query); // ❌ no params
+  const [rows] = await db.execute(sql);
   return rows;
 };
 
+const findAllWithUser = async () => {
+  const query = `
+SELECT
+  d.id AS doctor_id,
+  d.user_id,
+  d.username,
+  d.specialization,
+  d.qualification,
+  d.experience,
+  d.consultation_fee,
+  d.medical_license_no,
+  d.bio,
+  d.language,
+  d.availability,
+  d.hospital_detail,
+  d.qr_code,
+
+  u.full_name AS user_full_name,
+  u.email AS user_email,
+  u.phone_number AS user_phone_number,
+
+  COALESCE(
+    (
+      SELECT JSON_ARRAYAGG(
+        JSON_OBJECT(
+          'id', di.id,
+          'fileKey', di.file_key,
+          'folder', di.folder_name,
+          'createdAt', di.created_at
+        )
+      )
+      FROM doctor_image di
+      WHERE di.doctor_id = d.user_id
+      AND di.file_key IS NOT NULL
+      AND di.file_key != ''
+    ),
+    JSON_ARRAY()
+  ) AS images,
+
+  ROUND(
+    IFNULL(
+      (SELECT AVG(f.rating) FROM feedbacks f WHERE f.doctor_id = d.id),
+      0
+    ), 1
+  ) AS avg_rating
+
+FROM doctors d
+LEFT JOIN users u ON u.id = d.user_id;
+  `;
+
+  const [rows] = await db.execute(query); 
+  return rows;
+};
 
 
 async function findUserByName(name) {

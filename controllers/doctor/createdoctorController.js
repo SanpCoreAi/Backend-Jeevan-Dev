@@ -1,5 +1,5 @@
 const DoctorService = require("../../services/doctor/createdoctorService");
-const { createDoctorSchema, updateDoctorSchema} = require("../../validation/doctor/doctorValidation");
+const { createDoctorSchema, updateDoctorSchema  } = require("../../validation/doctor/doctorValidation");
 
 async function createDoctorProfile(req, res) {
   try {
@@ -46,9 +46,16 @@ async function getDoctorProfile(req, res) {
 
 
 async function getDoctorPublicProfileById(req, res) {
-  const doctorId = req.params.doctorId;
+  const userId = req.params.userId;
 
-  const result = await DoctorService.getDoctorPublicProfileById(doctorId);
+  if (!userId) {
+    return res.status(400).json({
+      success: false,
+      message: "User ID is required"
+    });
+  }
+
+  const result = await DoctorService.getDoctorPublicProfileById(userId);
 
   return res
     .status(result.statusCode || 200)
@@ -58,7 +65,6 @@ async function getDoctorPublicProfileById(req, res) {
 
 async function updateDoctorProfile(req, res) {
   try {
-
     const { error, value } = updateDoctorSchema.validate(req.body);
 
     if (error) {
@@ -68,20 +74,17 @@ async function updateDoctorProfile(req, res) {
       });
     }
 
-    await DoctorService.updateProfile(req.user.id, value);
+    const result = await DoctorService.updateProfile(req.user.id, value);
 
-    return res.status(200).json({
-      success: true,
-      message: "Doctor profile updated successfully"
-    });
+    return res.status(200).json(result);
 
   } catch (err) {
+    console.error("Update Doctor Error:", err);
 
-    return res.status(400).json({
+    return res.status(500).json({
       success: false,
-      message: err.message
+      message: "Internal Server Error"
     });
-
   }
 }
 
@@ -96,10 +99,11 @@ async function getAllDoctors(req, res) {
     });
 
   } catch (err) {
-    console.error("getAllDoctors ERROR:", err);
+    console.error("Get All Doctors Error:", err);
+
     return res.status(500).json({
       success: false,
-      message: "Internal server error"
+      message: "Internal Server Error"
     });
   }
 }

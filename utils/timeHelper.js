@@ -1,13 +1,12 @@
 function parse12to24(time12) {
   if (!time12 || typeof time12 !== "string") return null;
-  // allow ranges like "11:30 AM - 11:50 AM"
+ 
   if (time12.includes("-")) {
     time12 = time12.split("-")[0].trim();
   }
 
   const t = time12.trim();
 
-  // accept 24-hour formats: HH:MM or HH:MM:SS
   const match24 = t.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
   if (match24) {
     const hour = String(Number(match24[1])).padStart(2, '0');
@@ -16,7 +15,6 @@ function parse12to24(time12) {
     return `${hour}:${minute}:${second}`;
   }
 
-  // accept 12-hour formats with AM/PM
   const match12 = t.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
   if (!match12) return null;
 

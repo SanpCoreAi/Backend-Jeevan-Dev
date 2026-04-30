@@ -25,7 +25,7 @@ const verifyToken = (req, res, next) => {
     // IMPORTANT: same secret jo login me use kiya
     const decoded = jwt.verify(
       token,
-      process.env.ACCESS_SECRET || "ACCESS_SECRET"
+      process.env.ACCESS_SECRET || "access_secret"
     );
 
     req.user = decoded; // user data store

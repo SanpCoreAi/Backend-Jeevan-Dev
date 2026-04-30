@@ -3,87 +3,73 @@ const jwt = require("jsonwebtoken");
 const User = require("../../models/usermodel");
 const db = require("../../config/db");
 
-
 exports.loginUser = async ({ email, password }) => {
   try {
+  
     const user = await User.findByEmail(email);
 
     if (!user) {
       return {
         statusCode: 401,
-        body: {
-          success: false,
-          message: "Invalid email or password",
-        },
+        body: { message: "Invalid email or password" },
       };
     }
 
     if (!user.email_verified) {
       return {
         statusCode: 403,
-        body: {
-          success: false,
-          message: "Email not verified. Please verify your email before logging in.",
-        },
+        body: { message: "Please verify your email first" },
       };
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-  
+    const isMatch = await bcrypt.compare(password, user.password);
 
-    if (!isPasswordValid) {
+    if (!isMatch) {
       return {
         statusCode: 401,
-        body: {
-          success: false,
-          message: "Invalid email or password",
-        },
+        body: { message: "Invalid email or password" },
       };
     }
-const accessToken = jwt.sign(
-  { id: user.id, role_id: user.role_id },
-  process.env.ACCESS_SECRET || "ACCESS_SECRET",
-  { expiresIn: "15m" }
-);
 
-const refreshToken = jwt.sign(
-  { id: user.id },
-  process.env.REFRESH_SECRET || "REFRESH_SECRET",
-  { expiresIn: "7d" }
-);
+    const accessToken = jwt.sign(
+      { id: user.id, role_id: user.role_id },
+      process.env.ACCESS_SECRET || "access_secret",
+      { expiresIn: "15m" }
+    );
 
+    const refreshToken = jwt.sign(
+      { id: user.id },
+      process.env.REFRESH_SECRET || "refresh_secret",
+      { expiresIn: "7d" }
+    );
 
     await db.query(
-  "UPDATE users SET refresh_token = ? WHERE id = ?",
-  [refreshToken, user.id]
-);
+      "UPDATE users SET refresh_token = ? WHERE id = ?",
+      [refreshToken, user.id]
+    );
 
-   return {
-  statusCode: 200,
-  body: {
-    success: true,
-    message: "Login successful.",
-    accessToken,
-    refreshToken,
-    user: {
-      id: user.id,
-      name: user.full_name,
-      email: user.email,
-      mobile: user.phone_number,
-      role_id: user.role_id,
-    },
-  },  
-};
+    return {
+      statusCode: 200,
+      body: {
+        message: "Login successful",
+        accessToken,
+        refreshToken,
+        user: {
+          id: user.id,
+          full_name: user.full_name,
+          email: user.email,
+          phone_number: user.phone_number,
+          role_id: user.role_id,
+        },
+      },
+    };
+
   } catch (error) {
-    console.error("Error (loginUser):", error.message);
+    console.error("Login Service Error:", error.message);
 
     return {
       statusCode: 500,
-      body: {
-        success: false,
-        message: "Unexpected login failure",
-        error: error.message,
-      },
+      body: { message: "Login failed: " + error.message },
     };
   }
 };

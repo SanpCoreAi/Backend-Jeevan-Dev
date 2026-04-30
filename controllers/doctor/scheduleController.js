@@ -21,15 +21,21 @@ exports.getAll = async (req, res) => {
 };
 
 exports.getByDoctorId = async (req, res) => {
-  const result = await ScheduleService.getScheduleByDoctorId(req.user.id);
+  try {
+    const result = await ScheduleService.getScheduleByDoctorId(req.user.id);
 
-  if (!result.success) {
-    return res
-      .status(result.statusCode || 404)
-      .json(result);
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error("Schedule Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
   }
-
-  res.json(result);
 };
 
 exports.getSchedulePublicByDoctorId = async (req, res) => {

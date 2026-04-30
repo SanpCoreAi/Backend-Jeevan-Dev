@@ -1,9 +1,9 @@
 const userProfileService = require("../../services/users/userProfileService");
 
-
 exports.createUserProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
+
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -11,33 +11,47 @@ exports.createUserProfile = async (req, res) => {
       });
     }
 
-    await userProfileService.createProfile(userId, req.body);
+    const result = await userProfileService.createProfile(userId, req.body);
+
+    if (!result.success) {
+      return res.status(result.statusCode || 400).json({
+        success: false,
+        message: result.message
+      });
+    }
 
     return res.status(201).json({
       success: true,
-      message: "User profile created successfully"
+      message: result.message,
+      data: result.data
     });
 
   } catch (error) {
     console.error("Create profile error:", error);
+
     return res.status(500).json({
       success: false,
-      message: "Profile creation failed",
-      error: error.message
+      message: error.message || "Internal server error"
     });
   }
 };
-
-exports.getPatientDetails = async (req, res) => {
+exports.getUserProfile = async (req, res) => {
   try {
-    const patientId = req.user.id;
+    const userId = req.user?.id;
 
-    const data = await userProfileService.getPatientDetails(patientId);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user"
+      });
+    }
+
+    const data = await userProfileService.getUserProfile(userId);
 
     if (!data) {
       return res.status(404).json({
         success: false,
-        message: "Patient not found"
+        message: "Profile not found"
       });
     }
 
@@ -47,7 +61,7 @@ exports.getPatientDetails = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Get profile error:", error);
     return res.status(500).json({
       success: false,
       message: "Server error"
@@ -55,8 +69,7 @@ exports.getPatientDetails = async (req, res) => {
   }
 };
 
-
-exports.createUserProfile = async (req, res) => {
+exports.updateUserProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
 
@@ -67,19 +80,22 @@ exports.createUserProfile = async (req, res) => {
       });
     }
 
-    await userProfileService.createProfile(userId, req.body);
+    const result = await userProfileService.updateUserProfile(
+      userId,
+      req.body
+    );
 
-    return res.status(201).json({
-      success: true,
-      message: "User profile created successfully"
-    });
+    if (!result.success) {
+      return res.status(result.statusCode || 400).json(result);
+    }
+
+    return res.status(200).json(result);
 
   } catch (error) {
-    console.error("Create profile error:", error);
-
+    console.error("Update profile error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Profile creation failed"
+      message: error.message
     });
   }
 };

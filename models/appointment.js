@@ -1,28 +1,29 @@
 const db = require("../config/db");
 
 exports.create = async (data) => {
+
   const sql = `
     INSERT INTO appointments
-    (token_number, slot_date, start_time, end_time, patient_id,
-     doctor_id, schedule_id, appointment_type, booking_type)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (token_number, slot_date, start_time, end_time,
+     patient_id, doctor_id, schedule_id,
+     appointment_type, booking_type, hospital_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const [res] = await db.query(sql, [
-    data.appointment_token,   
-    data.appointment_date,    
+    data.appointment_token,
+    data.appointment_date,
     data.start_time,
     data.end_time,
-
-    data.patient_id,   
-
+    data.patient_id,
     data.doctor_id,
     data.schedule_id,
-    data.mode,         
-    data.booking_type
+    data.mode,
+    data.booking_type,
+    data.hospital_name 
   ]);
 
-  return res.insertId;        
+  return res.insertId;
 };
 
 exports.insertOtherPatient = async (data) => {
@@ -103,6 +104,43 @@ exports.getDoctorAppointmentsForTable = async (doctorId, hospitalName, limit, of
   };
 };
 
+exports.getAppointmentById = async (doctorId, appointmentId) => {
+  const [rows] = await db.query(
+    `
+    SELECT 
+      a.id AS appointment_id,
+      COALESCE(u.full_name, 'Unknown') AS name,
+      u.phone_number AS phone,
+      u.email,
+      up.gender AS sex,         
+      up.age,                    
+      up.weight,
+      up.height,
+      up.blood_group,
+      a.token_number,
+      a.appointment_type AS mode,
+      a.hospital_name,
+      DATE_FORMAT(a.slot_date, '%d %b %Y') AS visit_date,
+      d.specialization AS diagnosis,
+      'Paid' AS payment_status,
+      'New' AS visit_type,
+      'Fever' AS diagnosis_text,
+      'Feeling unwell due to fever; resting and monitoring symptoms.' AS note
+
+    FROM appointments a
+    LEFT JOIN users u ON u.id = a.patient_id
+    LEFT JOIN user_profiles up ON up.user_id = u.id
+    LEFT JOIN doctors d ON d.id = a.doctor_id
+
+    WHERE a.doctor_id = ?
+    AND a.id = ?
+    `,
+    [doctorId, appointmentId]
+  );
+
+  return rows;
+};
+
 exports.getByIdAndPatient = async (patientId) => {
 
   const [rows] = await db.query(
@@ -121,19 +159,34 @@ exports.getByIdAndPatient = async (patientId) => {
 
 exports.getAllByPatient = async (patientId) => {
 
-  const [rows] = await db.query(
-    `
-    SELECT a.*
+  const [rows] = await db.query(`
+    SELECT 
+      a.*,
+      ap.patient_name,
+      ap.age,
+      ap.gender,
+      ap.patient_phone,
+      ap.patient_email,
+      u.full_name AS doctor_name,
+      d.specialization AS doctor_department
     FROM appointments a
-    JOIN appointment_patients ap 
+    LEFT JOIN appointment_patients ap 
       ON ap.appointment_id = a.id
-    WHERE ap.user_id = ?
+    LEFT JOIN doctors d 
+      ON d.user_id = a.doctor_id
+    LEFT JOIN users u 
+      ON u.id = a.doctor_id
+    WHERE a.patient_id = ?
     ORDER BY a.slot_date DESC
-    `,
-    [patientId]
-  );
+  `, [patientId]);
 
-  return rows;
+  return rows.map(row => {
+
+    return {
+      ...row,
+
+    };
+  });
 };
 
 exports.checkUserSameSlot = async (patientId, date, timeSlot) => {

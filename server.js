@@ -12,9 +12,10 @@ const userProfileRoutes = require("./routes/userProfileRoutes");
 const licenseFileRoutes = require("./routes/licenseFileRoutes");
 const feedbackRoutes = require("./routes/feedbackRoutes");
 const emergencyRoutes = require("./routes/emergencyRoutes");
-
+const likeRoutes = require("./routes/likeRoutes");
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
 const socketHandler = require("./socket/socketHandler");
+const prescriptionRoutes = require("./routes/prescriptionRoutes")
 
 dotenv.config();
 
@@ -32,13 +33,15 @@ socketHandler(io);
 
 app.set("io", io);
 app.use("/api/doctors", doctorRoutes);
+app.use("/api/likes", likeRoutes);
 app.use("/api/auth", authRoutes);
-app.use("/api/userProfile", userProfileRoutes);
+app.use("/api/user", userProfileRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/schedules", scheduleRoutes);
 app.use("/api/licenseFile", licenseFileRoutes);
 app.use("/api/emergency", emergencyRoutes);
+app.use("/api/prescriptions", prescriptionRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

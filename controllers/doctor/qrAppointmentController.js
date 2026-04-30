@@ -9,7 +9,6 @@ exports.scanBook = async (req, res) => {
       hospital_name = hospital_name.trim();
     }
 
-    // ✅ auto date (no need from frontend)
     const date = new Date().toISOString().split("T")[0];
 
     if (!hospital_name) {
@@ -23,7 +22,7 @@ exports.scanBook = async (req, res) => {
       user: req.user,
       doctorId,
       hospitalName: hospital_name,
-      date   // auto pass
+      date   
     });
 
     return res.status(201).json({

@@ -1,132 +1,128 @@
-const { registerUserOrAssistant, verifyEmail, getUsers,} = require("../../services/auth/registerService");
-const userService = require("../../services/auth/registerService");
-const userModel = require("../../models/usermodel");
+const authService = require("../../services/auth/registerService");
+
+const {registerValidation, verifyEmailValidation, getUsersValidation, getUserByDoctorIdValidation,}=require("../../validation/auth/userValidator");
 
 exports.register = async (req, res) => {
   try {
-    const result = await registerUserOrAssistant(req.body);
+    const error = registerValidation(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error,
+      });
+    }
 
-    return res.status(201).json({
-      success: true,
-      statusCode: 201,
-      message: result.body.message || "User registered successfully.",
-      user_id: result.body.user_id,
+    const result = await authService.registerUserOrAssistant(req.body);
+
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      data: {
+        user_id: result.body.user_id || null,
+      },
     });
-    
+
   } catch (error) {
-    console.error(" Error (register):", error);
+    console.error("Register Error:", error.message);
+
     return res.status(500).json({
       success: false,
-      statusCode: 500,
-      message: error.message || "Internal Server Error while registering user.",
+      message: "Internal Server Error",
     });
   }
 };
 
+
 exports.verifyEmail = async (req, res) => {
   try {
-    const { token } = req.query;
-
-    if (!token) {
+    const error = verifyEmailValidation(req.query);
+    if (error) {
       return res.status(400).json({
         success: false,
-        statusCode: 400,
-        message: "Verification token missing.",
+        message: error,
       });
     }
 
-    console.log(" Verifying email with token:", token);
-    const result = await verifyEmail(token);
+    const result = await authService.verifyEmail(req.query.token);
 
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: result.body.message || "Email verified successfully.",
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
     });
-    
+
   } catch (error) {
-    console.error(" Error (verifyEmail):", error);
+    console.error("Verify Email Error:", error.message);
+
     return res.status(500).json({
       success: false,
-      statusCode: 500,
-      message: error.message || "Internal Server Error while verifying email.",
+      message: "Internal Server Error",
     });
   }
 };
 
 exports.getUserByDoctorId = async (req, res) => {
   try {
-    const { doctorId } = req.params;
-
-    if (!doctorId) {
+    const error = getUserByDoctorIdValidation(req.params);
+    if (error) {
       return res.status(400).json({
         success: false,
-        message: "doctor_id is required.",
+        message: error,
       });
     }
 
-    const users = await userService.getUserByDoctorId(doctorId);
+    const result = await authService.getUserByDoctorId(req.params.doctorId);
 
-    if (users.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No user found.",
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: users,
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      count: result.body.results || 0,
+      data: result.body.data || [],
     });
 
   } catch (error) {
-    console.error(" Error (getUserByDoctorId):", error);
+    console.error("GetUserByDoctorId Error:", error.message);
+
     return res.status(500).json({
       success: false,
-      message: "Internal server error.",
+      message: "Internal Server Error",
     });
   }
 };
 
-exports.getUserByDoctorIdService = async (doctor_id) => {
-  const users = await userModel.findByDoctorId(doctor_id);
-  return users;
-};
-
 exports.getUsers = async (req, res) => {
   try {
-    const filters = {
-      doctor_id: req.query.doctor_id || null,
-      role_id: req.query.role_id || null,
-      email: req.query.email || null,
-      name: req.query.name || null,
-    };
-
-    const result = await getUsers(filters);
-    const users = result.body.data || [];
-
-    if (users.length === 0) {
-      return res.status(404).json({
+    const error = getUsersValidation(req.query);
+    if (error) {
+      return res.status(400).json({
         success: false,
-        statusCode: 404,
-        message: "No users found with the given filters.",
+        message: error,
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      message: result.body.message || "Users retrieved successfully.",
-      count: result.body.results || users.length,
-      data: users,
+    const filters = {
+      doctor_id: req.query.doctor_id,
+      role_id: req.query.role_id,
+      email: req.query.email,
+      name: req.query.name,
+      page: parseInt(req.query.page) || 1,
+      limit: parseInt(req.query.limit) || 10,
+    };
+
+    const result = await authService.getUsers(filters);
+
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      count: result.body.results || 0,
+      data: result.body.data || [],
     });
 
   } catch (error) {
-    console.error(" Error (getUsers):", error);
+    console.error("GetUsers Error:", error.message);
+
     return res.status(500).json({
       success: false,
-      statusCode: 500,
-      message: error.message || "Internal Server Error while fetching users.",
+      message: "Internal Server Error",
     });
   }
 };

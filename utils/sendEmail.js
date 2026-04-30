@@ -3,18 +3,48 @@ dotenv.config();
 
 const nodemailer = require("nodemailer");
 
+const smtpHost = process.env.SMTP_HOST?.trim();
+const smtpPort = parseInt(process.env.SMTP_PORT, 10) || 587;
+const smtpUser = process.env.EMAIL_USER?.trim();
+const smtpPass = process.env.EMAIL_PASS?.replace(/\s+/g, "");
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+if (!smtpUser || !smtpPass) {
+  throw new Error("SMTP credentials are missing. Set EMAIL_USER and EMAIL_PASS in .env.");
+}
+
+const transporterOptions = smtpHost
+  ? {
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    }
+  : {
+      service: "gmail",
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    };
+
+const transporter = nodemailer.createTransport(transporterOptions);
+
+transporter.verify((err, success) => {
+  if (err) {
+    console.error("SMTP connection error:", err.message || err);
+  }
 });
 
 exports.sendVerificationEmail = async (email, token) => {
   try {
-    const verificationLink = `${process.env.FRONTEND_URL}/Home/pages/verify-email/${token}`;
+    const frontendUrl = process.env.FRONTEND_URL?.trim() || "http://localhost:3000";
+    const verificationLink = `${frontendUrl}/Home/pages/verify-email/${token}`;
 
     const mailOptions = {
       from: `"Hospital Portal" <${process.env.EMAIL_USER}>`,
@@ -43,7 +73,7 @@ exports.sendVerificationEmail = async (email, token) => {
 
   } catch (error) {
     console.error(" Error sending verification email:", error.message);
-    throw new Error("Failed to send verification email");
+    throw new Error("Failed to send verification email: " + error.message);
   }
 };
 
@@ -67,15 +97,25 @@ exports.sendEmail = async (to, subject, text) => {
 exports.sendAppointmentEmail = async ({ to, token, date, time }) => {
   try {
     await transporter.sendMail({
-      from: `"Hospital App" <${process.env.EMAIL_USER}>`, // FIXED
+      from: `"Hospital App" <${process.env.EMAIL_USER}>`,
       to,
-      subject: "Appointment Confirmed",
-      html: `...same html...`
+      subject: "Appointment Confirmed ✅",
+      html: `
+        <h2>Appointment Booked Successfully 🎉</h2>
+        
+        <p><strong>Appointment Token:</strong> ${token}</p>
+        <p><strong>Date:</strong> ${date}</p>
+        <p><strong>Time:</strong> ${time}</p>
+
+        <br/>
+
+        <p>Please keep your token safe for future reference.</p>
+      `
     });
 
     console.log("Appointment email sent to:", to);
 
   } catch (error) {
-   console.error("Email failed:", error);
+    console.error("Email failed:", error);
   }
 };

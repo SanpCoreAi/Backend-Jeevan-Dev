@@ -1,32 +1,64 @@
+const Joi = require("joi");
 
-exports.validateUser = (data) => {
-  
-  if (!data.full_name) return "Full name is required";
-  if (!data.email) return "Email is required";
-  if (!data.phone_number) return "Phone number is required";
-  if (!data.password) return "Password is required";
+exports.registerValidation = (data) => {
+  const schema = Joi.object({
+    full_name: Joi.string().min(3).max(50).required(),
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(data.email)) {
-    return "Invalid email format";
-  }
+    email: Joi.string()
+      .email()
+      .required(),
 
-  const phoneRegex = /^[0-9]{10}$/;
-  if (!phoneRegex.test(data.phone_number)) {
-    return "Phone number must be 10 digits";
-  }
+    phone_number: Joi.string()
+      .pattern(/^[0-9]{10}$/)
+      .required(),
 
-  if (data.password.length < 6) {
-    return "Password must be at least 6 characters long";
-  }
+    password: Joi.string()
+      .min(6)
+      .optional(),
 
-  if (data.doctor_id && isNaN(data.doctor_id)) {
-    return "doctor_id must be a valid number";
-  }
+    role_id: Joi.number()
+      .optional(),
 
-  if (data.role_id && isNaN(data.role_id)) {
-    return "role_id must be a valid number";
-  }
+    doctor_id: Joi.number()
+      .optional(),
+  });
 
-  return null; 
+  const { error } = schema.validate(data);
+
+  return error ? error.details[0].message : null;
+};
+
+exports.verifyEmailValidation = (query) => {
+  const schema = Joi.object({
+    token: Joi.string().required(),
+  });
+
+  const { error } = schema.validate(query);
+
+  return error ? error.details[0].message : null;
+};
+
+exports.getUsersValidation = (query) => {
+  const schema = Joi.object({
+    doctor_id: Joi.number().optional(),
+    role_id: Joi.number().optional(),
+    email: Joi.string().optional(),
+    name: Joi.string().optional(),
+    page: Joi.number().min(1).optional(),
+    limit: Joi.number().min(1).max(100).optional(),
+  });
+
+  const { error } = schema.validate(query);
+
+  return error ? error.details[0].message : null;
+};
+
+exports.getUserByDoctorIdValidation = (params) => {
+  const schema = Joi.object({
+    doctorId: Joi.number().required(),
+  });
+
+  const { error } = schema.validate(params);
+
+  return error ? error.details[0].message : null;
 };
