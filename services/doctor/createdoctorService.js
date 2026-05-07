@@ -4,7 +4,8 @@ const QRCode = require("qrcode");
 const path = require("path");
 const fs = require("fs");
 
-const BASE_FILE_URL = "http://localhost:4000/uploads"; // change in production
+const BASE_FILE_URL = "http://localhost:4000/uploads";
+const S3_BASE_URL = process.env.AWS_S3_BUCKET_URL;
 
 function parseJSON(data, defaultValue = []) {
   try {
@@ -17,6 +18,7 @@ function parseJSON(data, defaultValue = []) {
 }
 
 const qrFolder = path.join(__dirname, "../../uploads/qr");
+
 if (!fs.existsSync(qrFolder)) {
   fs.mkdirSync(qrFolder, { recursive: true });
 }
@@ -41,7 +43,10 @@ function buildAddress(hospital) {
 
 async function createProfile(userId, body) {
   if (!userId) {
-    return { success: false, message: "Unauthorized user" };
+    return {
+      success: false,
+      message: "Unauthorized user"
+    };
   }
 
   const params = [
@@ -91,7 +96,10 @@ async function getProfile(userId) {
   const d = await DoctorModel.getBydoctorId(userId);
 
   if (!d) {
-    return { success: false, message: "Doctor profile not found" };
+    return {
+      success: false,
+      message: "Doctor profile not found"
+    };
   }
 
   let qrCode = d.qr_code;
@@ -140,8 +148,9 @@ async function getProfile(userId) {
         phoneNumber: d.user_phone_number
       },
 
-      // files: parseJSON(d.files),
-      images: parseJSON(d.images),
+      imageUrl: d.image_key
+        ? `${S3_BASE_URL}/${d.image_key}`
+        : null,
 
       avgRating: Number(d.avg_rating),
 
@@ -151,7 +160,6 @@ async function getProfile(userId) {
 }
 
 async function getDoctorPublicProfileById(userId) {
-
   const doctor = await DoctorModel.getDoctorPublicProfileById(userId);
 
   if (!doctor) {
@@ -165,8 +173,8 @@ async function getDoctorPublicProfileById(userId) {
   return {
     success: true,
     data: {
-      id: doctor.id,              // doctor id
-      userId: doctor.user_id,     // user id
+      id: doctor.id,
+      userId: doctor.user_id,
       username: doctor.username,
       specialization: doctor.specialization,
       qualification: doctor.qualification,

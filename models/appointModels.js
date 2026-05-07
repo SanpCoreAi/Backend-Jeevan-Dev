@@ -1,30 +1,23 @@
 const db = require("../config/db");
 
 exports.getByToken = async (token) => {
-  const [rows] = await db.execute(
-    `SELECT 
-      a.id, 
-      a.token_number, 
-      a.status, 
-      a.appointment_type,
+  
 
-      a.patient_id, 
-      u.full_name AS patient_name, 
-      up.age, 
-      up.gender,   
 
-      d.id AS doctor_id, 
-      d.username AS doctor_name, 
-      d.specialization
 
-     FROM appointments a
-     JOIN users u ON a.patient_id = u.id
-     LEFT JOIN user_profiles up ON a.patient_id = up.user_id
-     JOIN doctors d ON a.doctor_id = d.id
-     WHERE a.token_number = ?
-     LIMIT 1`,
-    [token]
-  );
+ const [rows] = await db.execute(
+  `SELECT 
+    a.id AS appointment_id,
+    a.token_number,
+    a.status,
+    u.full_name AS patient_name
+   FROM appointments a
+   LEFT JOIN users u ON a.patient_id = u.id
+   WHERE a.token_number = ?
+   LIMIT 1`,
+  [token]
+);
+
 
   return rows[0];
 };
@@ -40,9 +33,7 @@ exports.getById = async (id) => {
 exports.start = async (id) => {
   await db.execute(
     `UPDATE appointments 
-     SET 
-       status = 'IN_PROGRESS',
-       status = status + 1
+     SET status = 'IN_PROGRESS'
      WHERE id = ?`,
     [id]
   );
@@ -50,7 +41,9 @@ exports.start = async (id) => {
 
 exports.complete = async (id) => {
   await db.execute(
-    `UPDATE appointments SET status='COMPLETED' WHERE id=?`,
+    `UPDATE appointments 
+     SET status='COMPLETED', completed_at=NOW() 
+     WHERE id=?`,
     [id]
   );
 };

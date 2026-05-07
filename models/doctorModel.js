@@ -59,74 +59,49 @@ const sql = `
 
 const getBydoctorId = async (userId) => {
 
-const sql = `
-  SELECT
-    d.id,
-    d.user_id,
-    d.username,
-    d.specialization,
-    d.qualification,
-    d.experience,
-    d.consultation_fee,
-    d.medical_license_no,
-    d.bio,
-    d.language,
-    d.availability,
-    d.hospital_detail,
-    d.qr_code,
+  const sql = `
+    SELECT
+      d.id,
+      d.user_id,
+      d.username,
+      d.specialization,
+      d.qualification,
+      d.experience,
+      d.consultation_fee,
+      d.medical_license_no,
+      d.bio,
+      d.language,
+      d.availability,
+      d.hospital_detail,
+      d.qr_code,
 
-    u.full_name AS user_full_name,
-    u.email AS user_email,
-    u.phone_number AS user_phone_number,
+      u.full_name AS user_full_name,
+      u.email AS user_email,
+      u.phone_number AS user_phone_number,
 
-    COALESCE(
+      -- ✅ Single image key
       (
-        SELECT JSON_ARRAYAGG(
-          JSON_OBJECT(
-            'id', df.id,
-            'fileKey', IFNULL(df.file_key,''),
-            'folder', IFNULL(df.folder_name,''),
-            'createdAt', df.created_at
-          )
-        )
-        FROM doctor_files df
-        WHERE df.doctor_id = d.user_id   
-        AND df.file_key IS NOT NULL
-      ),
-      JSON_ARRAY()
-    ) AS files,
-
-    COALESCE(
-      (
-        SELECT JSON_ARRAYAGG(
-          JSON_OBJECT(
-            'id', di.id,
-            'fileKey', IFNULL(di.file_key,''),
-            'folder', IFNULL(di.folder_name,''),
-            'createdAt', di.created_at
-          )
-        )
+        SELECT di.file_key
         FROM doctor_image di
-        WHERE di.doctor_id = d.user_id   
+        WHERE di.doctor_id = d.user_id
         AND di.file_key IS NOT NULL
-      ),
-      JSON_ARRAY()
-    ) AS images,
+        LIMIT 1
+      ) AS image_key,
 
-    IFNULL(
-      (
-        SELECT AVG(f.rating)
-        FROM feedbacks f
-        WHERE f.doctor_id = d.id
-      ),
-      0
-    ) AS avg_rating
+      IFNULL(
+        (
+          SELECT AVG(f.rating)
+          FROM feedbacks f
+          WHERE f.doctor_id = d.id
+        ),
+        0
+      ) AS avg_rating
 
-  FROM doctors d
-  LEFT JOIN users u ON u.id = d.user_id
-  WHERE d.user_id = ?
-  LIMIT 1
-`;
+    FROM doctors d
+    LEFT JOIN users u ON u.id = d.user_id
+    WHERE d.user_id = ?
+    LIMIT 1
+  `;
 
   const [rows] = await db.execute(sql, [userId]);
 

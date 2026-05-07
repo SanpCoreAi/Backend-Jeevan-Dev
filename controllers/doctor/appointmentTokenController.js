@@ -1,13 +1,22 @@
 const service = require("../../services/doctor/appointmentTokenService");
 
+
 exports.verifyToken = async (req, res) => {
   try {
-    const { token } = req.params;   
+    const { token } = req.params;
 
     const data = await service.verifyToken(token);
 
+    if (data.status === "COMPLETED") {
+      return res.status(400).json({
+        success: false,
+        message: "Appointment already completed"
+      });
+    }
+
     res.status(200).json({
       success: true,
+      message: "Token valid",
       data
     });
 
@@ -18,7 +27,6 @@ exports.verifyToken = async (req, res) => {
     });
   }
 };
-
 exports.start = async (req, res, next) => {
   try {
     const result = await service.start(req.params.id);
@@ -56,6 +64,33 @@ exports.complete = async (req, res, next) => {
   }
 };
 
+exports.editPrescription = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { medicines } = req.body;
+
+    if (!medicines || medicines.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Medicines required"
+      });
+    }
+
+    const result = await service.editPrescription(id, medicines);
+
+    res.json({
+      success: true,
+      message: result.message
+    });
+
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
+
 exports.revisit = async (req, res) => {
   try {
     const data = await service.revisit(
@@ -65,5 +100,33 @@ exports.revisit = async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+};
+
+
+
+exports.getPrescription = async (req, res) => {
+  try {
+    const { token_number } = req.query;
+
+    if (!token_number) {
+      return res.status(400).json({
+        success: false,
+        message: "token_number is required"
+      });
+    }
+
+    const data = await service.getFullPrescription(token_number);
+
+    res.json({
+      success: true,
+      data
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
