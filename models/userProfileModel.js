@@ -3,10 +3,13 @@ const db = require("../config/db");
 
 exports.createUserProfile = async (userId, data) => {
   try {
+
     const {
       username,
       age = null,
       gender = null,
+      dob = null,
+      registration_date = null,
       language = [],
       address = {},
       blood_group = null,
@@ -29,10 +32,22 @@ exports.createUserProfile = async (userId, data) => {
 
     const sql = `
       INSERT INTO user_profiles (
-        user_id, username, age, gender, language, address,
-        blood_group, weight, height, existing_conditions,
-        allergies, bio, emergency_contact
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        user_id,
+        username,
+        age,
+        gender,
+        dob,
+        registration_date,
+        language,
+        address,
+        blood_group,
+        weight,
+        height,
+        existing_conditions,
+        allergies,
+        bio,
+        emergency_contact
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -40,6 +55,8 @@ exports.createUserProfile = async (userId, data) => {
       username,
       age,
       gender,
+      dob,
+      registration_date,
       JSON.stringify(language),
       JSON.stringify(address),
       blood_group,
@@ -59,7 +76,7 @@ exports.createUserProfile = async (userId, data) => {
 
   } catch (error) {
     console.error("DB Error:", error);
-    throw error; 
+    throw error;
   }
 };
 
@@ -115,6 +132,33 @@ exports.updateUserProfile = async (userId, data) => {
   const [result] = await db.execute(sql, values);
 
   return result.affectedRows > 0;
+};
+
+exports.getPatientCardProfile = async (userId) => {
+
+  const sql = `
+    SELECT 
+      u.id AS patient_id,
+      u.full_name,
+
+      p.gender,
+      p.weight,
+      p.height,
+      p.dob,
+      p.registration_date
+
+    FROM users u
+
+    LEFT JOIN user_profiles p 
+      ON u.id = p.user_id
+
+    WHERE u.id = ?
+    LIMIT 1
+  `;
+
+  const [rows] = await db.execute(sql, [userId]);
+
+  return rows[0];
 };
 
 exports.getUserProfileByUserId = async (userId) => {

@@ -69,6 +69,35 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
+exports.getPatientCardProfile = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user"
+      });
+    }
+
+    const result = await userProfileService.getPatientCardProfile(userId);
+
+    if (!result.success) {
+      return res.status(result.statusCode || 404).json(result);
+    }
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error("Get patient card error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
+    });
+  }
+};
+
 exports.updateUserProfile = async (req, res) => {
   try {
     const userId = req.user?.id;

@@ -12,4 +12,9 @@ router.put("/updateProfile", verifyToken, userProfileController.updateUserProfil
 
 router.patch("/updateProfile", verifyToken, userProfileController.updateUserProfile);
 
+router.get("/patient-card",
+  verifyToken,
+  userProfileController.getPatientCardProfile
+);
+
 module.exports = router;

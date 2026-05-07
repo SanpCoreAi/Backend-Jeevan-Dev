@@ -1,5 +1,6 @@
 const userProfileModel = require("../../models/userProfileModel");
 const { validateUserProfile } = require("../../validation/user/userProfile");
+
 const safeParse = (value, defaultValue = []) => {
   if (!value) return defaultValue;
 
@@ -12,7 +13,6 @@ const safeParse = (value, defaultValue = []) => {
 
 exports.createProfile = async (userId, body) => {
   try {
-    // ✅ 1. Validate here (NOT in model)
     const errors = validateUserProfile(body);
 
     if (errors.length > 0) {
@@ -23,7 +23,6 @@ exports.createProfile = async (userId, body) => {
       };
     }
 
-    // ✅ 2. Normalize data
     if (body.language && !Array.isArray(body.language)) {
       body.language = [body.language];
     }
@@ -36,7 +35,6 @@ exports.createProfile = async (userId, body) => {
       body.allergies = [body.allergies];
     }
 
-    // ✅ 3. Call model
     const result = await userProfileModel.createUserProfile(userId, body);
 
     if (!result) {
@@ -66,7 +64,6 @@ exports.createProfile = async (userId, body) => {
 exports.updateUserProfile = async (userId, body) => {
   try {
 
-    // ✅ check profile exists
     const existing = await userProfileModel.getUserProfileByUserId(userId);
 
     if (!existing || !existing.username) {
@@ -77,7 +74,6 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
-    // ✅ normalize JSON fields
     if (body.language && !Array.isArray(body.language)) {
       body.language = [body.language];
     }
@@ -97,18 +93,16 @@ exports.updateUserProfile = async (userId, body) => {
         message: "Address must be an object"
       };
     }
-    if (body.emergency_contact && typeof body.emergency_contact !== "object") {
-  return {
-    success: false,
-    statusCode: 400,
-    message: "Emergency contact must be an object"
-  };
-}
 
-    const updated = await userProfileModel.updateUserProfile(
-      userId,
-      body
-    );
+    if (body.emergency_contact && typeof body.emergency_contact !== "object") {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Emergency contact must be an object"
+      };
+    }
+
+    const updated = await userProfileModel.updateUserProfile(userId, body);
 
     if (!updated) {
       return {
@@ -118,8 +112,8 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
-    // ✅ return updated profile
-    const updatedProfile = await userProfileModel.getUserProfileByUserId(userId);
+    const updatedProfile =
+      await userProfileModel.getUserProfileByUserId(userId);
 
     return {
       success: true,
@@ -130,7 +124,10 @@ exports.updateUserProfile = async (userId, body) => {
         existing_conditions: safeParse(updatedProfile.existing_conditions),
         allergies: safeParse(updatedProfile.allergies),
         address: safeParse(updatedProfile.address, {}),
-         emergency_contact: safeParse(updatedProfile.emergency_contact, {}) 
+        emergency_contact: safeParse(
+          updatedProfile.emergency_contact,
+          {}
+        )
       }
     };
 
@@ -143,7 +140,36 @@ exports.updateUserProfile = async (userId, body) => {
   }
 };
 
+exports.getPatientCardProfile = async (userId) => {
+  try {
+
+    const profile = await userProfileModel.getPatientCardProfile(userId);
+
+    if (!profile) {
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Patient profile not found"
+      };
+    }
+
+    return {
+      success: true,
+      message: "Patient details fetched successfully",
+      data: profile
+    };
+
+  } catch (error) {
+    return {
+      success: false,
+      statusCode: 500,
+      message: error.message
+    };
+  }
+};
+
 exports.getUserProfile = async (userId) => {
+
   const profile = await userProfileModel.getUserProfileByUserId(userId);
 
   if (!profile) return null;
@@ -154,6 +180,6 @@ exports.getUserProfile = async (userId) => {
     existing_conditions: safeParse(profile.existing_conditions),
     allergies: safeParse(profile.allergies),
     address: safeParse(profile.address, {}),
-     emergency_contact: safeParse(profile.emergency_contact, {})
+    emergency_contact: safeParse(profile.emergency_contact, {})
   };
 };
