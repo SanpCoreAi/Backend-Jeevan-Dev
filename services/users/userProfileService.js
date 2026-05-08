@@ -5,14 +5,22 @@ const safeParse = (value, defaultValue = []) => {
   if (!value) return defaultValue;
 
   try {
-    return typeof value === "string" ? JSON.parse(value) : value;
+    return typeof value === "string"
+      ? JSON.parse(value)
+      : value;
   } catch {
     return defaultValue;
   }
 };
 
+
+
+// ================= CREATE PROFILE =================
+
 exports.createProfile = async (userId, body) => {
   try {
+
+    // ✅ validate request body
     const errors = validateUserProfile(body);
 
     if (errors.length > 0) {
@@ -23,11 +31,15 @@ exports.createProfile = async (userId, body) => {
       };
     }
 
+    // ✅ normalize arrays
     if (body.language && !Array.isArray(body.language)) {
       body.language = [body.language];
     }
 
-    if (body.existing_conditions && !Array.isArray(body.existing_conditions)) {
+    if (
+      body.existing_conditions &&
+      !Array.isArray(body.existing_conditions)
+    ) {
       body.existing_conditions = [body.existing_conditions];
     }
 
@@ -35,8 +47,22 @@ exports.createProfile = async (userId, body) => {
       body.allergies = [body.allergies];
     }
 
-    const result = await userProfileModel.createUserProfile(userId, body);
+    // ✅ create profile
+    const result = await userProfileModel.createUserProfile(
+      userId,
+      body
+    );
 
+    // ✅ already exists
+    if (result?.success === false) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: result.message
+      };
+    }
+
+    // ✅ failed
     if (!result) {
       return {
         success: false,
@@ -53,6 +79,7 @@ exports.createProfile = async (userId, body) => {
     };
 
   } catch (error) {
+
     return {
       success: false,
       statusCode: 500,
@@ -61,10 +88,16 @@ exports.createProfile = async (userId, body) => {
   }
 };
 
+
+
+// ================= UPDATE PROFILE =================
+
 exports.updateUserProfile = async (userId, body) => {
   try {
 
-    const existing = await userProfileModel.getUserProfileByUserId(userId);
+    // ✅ check existing profile
+    const existing =
+      await userProfileModel.getUserProfileByUserId(userId);
 
     if (!existing || !existing.username) {
       return {
@@ -74,11 +107,15 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
+    // ✅ normalize arrays
     if (body.language && !Array.isArray(body.language)) {
       body.language = [body.language];
     }
 
-    if (body.existing_conditions && !Array.isArray(body.existing_conditions)) {
+    if (
+      body.existing_conditions &&
+      !Array.isArray(body.existing_conditions)
+    ) {
       body.existing_conditions = [body.existing_conditions];
     }
 
@@ -86,6 +123,7 @@ exports.updateUserProfile = async (userId, body) => {
       body.allergies = [body.allergies];
     }
 
+    // ✅ validate objects
     if (body.address && typeof body.address !== "object") {
       return {
         success: false,
@@ -94,7 +132,10 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
-    if (body.emergency_contact && typeof body.emergency_contact !== "object") {
+    if (
+      body.emergency_contact &&
+      typeof body.emergency_contact !== "object"
+    ) {
       return {
         success: false,
         statusCode: 400,
@@ -102,7 +143,9 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
-    const updated = await userProfileModel.updateUserProfile(userId, body);
+    // ✅ update profile
+    const updated =
+      await userProfileModel.updateUserProfile(userId, body);
 
     if (!updated) {
       return {
@@ -112,6 +155,7 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
+    // ✅ fetch updated profile
     const updatedProfile =
       await userProfileModel.getUserProfileByUserId(userId);
 
@@ -120,10 +164,24 @@ exports.updateUserProfile = async (userId, body) => {
       message: "Profile updated successfully",
       data: {
         ...updatedProfile,
-        language: safeParse(updatedProfile.language),
-        existing_conditions: safeParse(updatedProfile.existing_conditions),
-        allergies: safeParse(updatedProfile.allergies),
-        address: safeParse(updatedProfile.address, {}),
+
+        language: safeParse(
+          updatedProfile.language
+        ),
+
+        existing_conditions: safeParse(
+          updatedProfile.existing_conditions
+        ),
+
+        allergies: safeParse(
+          updatedProfile.allergies
+        ),
+
+        address: safeParse(
+          updatedProfile.address,
+          {}
+        ),
+
         emergency_contact: safeParse(
           updatedProfile.emergency_contact,
           {}
@@ -132,6 +190,7 @@ exports.updateUserProfile = async (userId, body) => {
     };
 
   } catch (err) {
+
     return {
       success: false,
       statusCode: 500,
@@ -140,10 +199,53 @@ exports.updateUserProfile = async (userId, body) => {
   }
 };
 
+
+
+// ================= GET USER PROFILE =================
+
+exports.getUserProfile = async (userId) => {
+
+  const profile =
+    await userProfileModel.getUserProfileByUserId(userId);
+
+  if (!profile) return null;
+
+  return {
+    ...profile,
+
+    language: safeParse(
+      profile.language
+    ),
+
+    existing_conditions: safeParse(
+      profile.existing_conditions
+    ),
+
+    allergies: safeParse(
+      profile.allergies
+    ),
+
+    address: safeParse(
+      profile.address,
+      {}
+    ),
+
+    emergency_contact: safeParse(
+      profile.emergency_contact,
+      {}
+    )
+  };
+};
+
+
+
+// ================= PATIENT CARD PROFILE =================
+
 exports.getPatientCardProfile = async (userId) => {
   try {
 
-    const profile = await userProfileModel.getPatientCardProfile(userId);
+    const profile =
+      await userProfileModel.getPatientCardProfile(userId);
 
     if (!profile) {
       return {
@@ -160,26 +262,11 @@ exports.getPatientCardProfile = async (userId) => {
     };
 
   } catch (error) {
+
     return {
       success: false,
       statusCode: 500,
       message: error.message
     };
   }
-};
-
-exports.getUserProfile = async (userId) => {
-
-  const profile = await userProfileModel.getUserProfileByUserId(userId);
-
-  if (!profile) return null;
-
-  return {
-    ...profile,
-    language: safeParse(profile.language),
-    existing_conditions: safeParse(profile.existing_conditions),
-    allergies: safeParse(profile.allergies),
-    address: safeParse(profile.address, {}),
-    emergency_contact: safeParse(profile.emergency_contact, {})
-  };
 };

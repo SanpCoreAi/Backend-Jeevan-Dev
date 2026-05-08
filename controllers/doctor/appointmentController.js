@@ -48,12 +48,50 @@ exports.create = async (req, res) => {
   }
 };
 
+exports.getDoctorAppointmentsForTable = async (req, res) => {
+
+  try {
+
+    const doctorId = req.user?.id;
+
+    const {
+      page = 1,
+      limit = 30
+    } = req.query;
+
+    if (!doctorId) {
+
+      return res.status(400).json({
+        success: false,
+        message: "Doctor ID missing"
+      });
+
+    }
+
+    const result =
+      await appointmentService.getDoctorAppointmentsForTable(
+        doctorId,
+        Number(page),
+        Number(limit)
+      );
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
+  }
+};
 
 
 exports.getAppointmentById = async (req, res) => {
   try {
     const doctorId = req.user.id;
-    const appointmentId = Number(req.params.appointmentId); // ✅ IMPORTANT
+    const appointmentId = Number(req.params.appointmentId); 
 
     const result = await appointmentService.getAppointmentById(
       doctorId,
@@ -75,41 +113,7 @@ exports.getAppointmentById = async (req, res) => {
 };
 
 
-exports.getDoctorAppointmentsForTable = async (req, res) => {
-  try {
-    const doctorId = req.user?.id;
-    const { hospitalName, page = 1, limit = 30 } = req.query;
 
-    if (!doctorId) {
-      return res.status(400).json({
-        success: false,
-        message: "Doctor ID missing"
-      });
-    }
-
-    if (!hospitalName) {
-      return res.status(400).json({
-        success: false,
-        message: "hospitalName is required"
-      });
-    }
-
-    const data = await appointmentService.getDoctorAppointmentsForTable(
-      doctorId,
-      hospitalName,
-      Number(page),
-      Number(limit)
-    );
-
-    res.json(data);
-
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-};
 
 exports.getAppointmentPublicById = async (req, res) => {
 

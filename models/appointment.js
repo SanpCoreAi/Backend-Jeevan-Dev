@@ -59,43 +59,77 @@ exports.getAppointmentPublicById = async ( patientId) => {
 };
 
 
-exports.getDoctorAppointmentsForTable = async (doctorId, hospitalName, limit, offset) => {
+exports.getDoctorAppointmentsForTable = async (
+  doctorId,
+  limit,
+  offset
+) => {
 
-  // 🔹 Data Query
-  const [rows] = await db.query(
-    `
-    SELECT 
-      COALESCE(u.full_name, 'Unknown') AS name,
-      d.specialization AS diagnostic,
-      DATE_FORMAT(a.slot_date, '%d-%m-%Y') AS date,
-      a.token_number AS appointment_id,
-      a.appointment_type AS mode,
-      a.hospital_name AS hospital_name,
-      'Pending' AS status
+const [rows] = await db.query(
+  `
+  SELECT 
+    a.id AS appointment_id,
+    a.token_number,
 
-    FROM appointments a
-    LEFT JOIN users u ON u.id = a.patient_id
-    LEFT JOIN doctors d ON d.user_id = a.doctor_id
+    DATE_FORMAT(a.slot_date, '%Y-%m-%d') AS slot_date,
 
-    WHERE a.doctor_id = ?
-    AND TRIM(LOWER(a.hospital_name)) = TRIM(LOWER(?))
+    TIME_FORMAT(a.start_time, '%h:%i %p') AS start_time,
+    TIME_FORMAT(a.end_time, '%h:%i %p') AS end_time,
 
-    ORDER BY a.slot_date DESC, a.token_number ASC
+    a.appointment_type AS mode,
+    a.booking_type,
 
-    LIMIT ? OFFSET ?
-    `,
-    [doctorId, hospitalName, limit, offset]
-  );
+    COALESCE(u.full_name, ap.patient_name, 'Unknown') AS patient_name,
 
-  // 🔹 Count Query (IMPORTANT 🔥)
+    COALESCE(up.gender, ap.gender, '') AS gender,
+    COALESCE(up.age, ap.age, '') AS age,
+
+    COALESCE(u.phone_number, ap.patient_phone, '') AS patient_phone,
+    COALESCE(u.email, ap.patient_email, '') AS patient_email,
+
+    d.specialization,
+
+    CASE
+      WHEN CURDATE() > a.slot_date THEN 'Completed'
+      WHEN CURDATE() = a.slot_date THEN 'Pending'
+      ELSE 'Upcoming'
+    END AS status
+
+  FROM appointments a
+
+  LEFT JOIN users u
+    ON u.id = a.patient_id
+
+  LEFT JOIN user_profiles up
+    ON up.user_id = u.id
+
+  LEFT JOIN appointment_patients ap
+    ON ap.appointment_id = a.id
+
+  LEFT JOIN doctors d
+    ON d.user_id = a.doctor_id
+
+  WHERE a.doctor_id = ?
+
+  ORDER BY a.slot_date DESC,
+  a.start_time ASC
+
+  LIMIT ? OFFSET ?
+  `,
+  [
+    doctorId,
+    limit,
+    offset
+  ]
+);
+
   const [[countResult]] = await db.query(
     `
     SELECT COUNT(*) AS total
     FROM appointments a
     WHERE a.doctor_id = ?
-    AND TRIM(LOWER(a.hospital_name)) = TRIM(LOWER(?))
     `,
-    [doctorId, hospitalName]
+    [doctorId]
   );
 
   return {

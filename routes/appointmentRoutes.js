@@ -25,6 +25,8 @@ router.post("/:id/start", verifyToken, ctrl.start);
 router.get("/:id", verifyToken, ctrl.getDetails);
 router.post("/:id/complete", verifyToken, ctrl.complete);
 router.get("/revisit/:patientId/:doctorId", verifyToken, ctrl.revisit);
+router.get( "/doctor/table", verifyToken, appointmentController.getDoctorAppointmentsForTable
+);
 
 
 module.exports = router;

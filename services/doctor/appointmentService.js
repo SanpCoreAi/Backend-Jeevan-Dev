@@ -116,6 +116,36 @@ exports.bookAppointment = async (patientId, patientEmail, doctorId, body) => {
   };
 };
 
+exports.getDoctorAppointmentsForTable = async (
+  doctorId,
+  page,
+  limit
+) => {
+
+  const offset = (page - 1) * limit;
+
+  const { rows, total } =
+    await Appointment.getDoctorAppointmentsForTable(
+      doctorId,
+      limit,
+      offset
+    );
+
+  console.log(rows);
+
+  return {
+    success: true,
+    message: "Appointments fetched successfully",
+
+    total,
+    currentPage: page,
+    totalPages: Math.ceil(total / limit),
+
+    todayAppointments: rows,
+    appointmentRequests: rows
+  };
+};
+
 exports.getAppointmentById = async (doctorId, appointmentId) => {
 
   const rows = await Appointment.getAppointmentById(
@@ -138,36 +168,7 @@ exports.getAppointmentById = async (doctorId, appointmentId) => {
   };
 };
 
-exports.getDoctorAppointmentsForTable = async (doctorId, hospitalName, page, limit) => {
 
-  const offset = (page - 1) * limit;
-
-  const { rows } = await Appointment.getDoctorAppointmentsForTable(
-    doctorId,
-    hospitalName,
-    limit,
-    offset
-  );
-
-  if (!rows || rows.length === 0) {
-    return {
-      success: false,
-      message: `No appointments found for hospital: ${hospitalName}`,
-      offlineAppointments: [],
-      onlineAppointments: []
-    };
-  }
-
-  const offlineAppointments = rows.filter(item => item.mode === "offline");
-  const onlineAppointments = rows.filter(item => item.mode === "online");
-
-  return {
-    success: true,
-    message: "Appointments fetched successfully",
-    offlineAppointments,
-    onlineAppointments
-  };
-};
 
 
 

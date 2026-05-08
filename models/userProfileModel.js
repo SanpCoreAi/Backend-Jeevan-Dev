@@ -3,8 +3,7 @@ const db = require("../config/db");
 
 exports.createUserProfile = async (userId, data) => {
   try {
-
-    const {
+  const {
       username,
       age = null,
       gender = null,
@@ -25,10 +24,6 @@ exports.createUserProfile = async (userId, data) => {
       "SELECT user_id FROM user_profiles WHERE user_id = ?",
       [userId]
     );
-
-    if (existing.length > 0) {
-      return null;
-    }
 
     const sql = `
       INSERT INTO user_profiles (
@@ -71,6 +66,7 @@ exports.createUserProfile = async (userId, data) => {
     const [result] = await db.execute(sql, values);
 
     return {
+      success: true,
       insertId: result.insertId
     };
 
