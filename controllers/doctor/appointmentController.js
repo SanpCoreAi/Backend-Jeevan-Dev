@@ -113,6 +113,8 @@ exports.getAppointmentById = async (req, res) => {
   }
 };
 
+// controllers/appointmentController.js
+
 exports.getTodayAppointments = async (
   req,
   res
@@ -120,20 +122,14 @@ exports.getTodayAppointments = async (
 
   try {
 
+    console.log("\n===== TODAY APPOINTMENTS API =====");
+
     // =====================================
-    // FULL DEBUG
+    // TOKEN DATA
     // =====================================
 
-    console.log("===== TODAY APPOINTMENTS API =====");
-
-    console.log("req.user =>");
+    console.log("REQ.USER =>");
     console.log(req.user);
-
-    console.log("req.query =>");
-    console.log(req.query);
-
-    console.log("req.headers.authorization =>");
-    console.log(req.headers.authorization);
 
     // =====================================
     // DOCTOR ID
@@ -143,7 +139,7 @@ exports.getTodayAppointments = async (
       req.user?.doctor_id ||
       req.user?.id;
 
-    console.log("doctorId =>", doctorId);
+    console.log("DOCTOR ID =>", doctorId);
 
     // =====================================
     // QUERY PARAMS
@@ -154,26 +150,28 @@ exports.getTodayAppointments = async (
       limit = 10
     } = req.query;
 
-    console.log("page =>", page);
-    console.log("limit =>", limit);
+    console.log("PAGE =>", page);
+    console.log("LIMIT =>", limit);
 
     // =====================================
-    // CHECK DOCTOR ID
+    // VALIDATION
     // =====================================
 
     if (!doctorId) {
 
-      console.log("Doctor ID missing");
+      console.log("Doctor ID missing in token");
 
-      return res.status(400).json({
+      return res.status(401).json({
         success: false,
-        message: "Doctor ID not found in token"
+        message: "Unauthorized doctor"
       });
     }
 
     // =====================================
     // SERVICE CALL
     // =====================================
+
+    console.log("Calling service...");
 
     const result =
       await appointmentService.getTodayAppointmentsService(
@@ -182,33 +180,25 @@ exports.getTodayAppointments = async (
         Number(limit)
       );
 
+    // =====================================
+    // SERVICE RESPONSE
+    // =====================================
+
     console.log("SERVICE RESULT =>");
-    console.log(result);
+    console.log(
+      JSON.stringify(result, null, 2)
+    );
 
     // =====================================
-    // NO APPOINTMENTS
-    // =====================================
-
-    if (
-      !result.appointments ||
-      result.appointments.length === 0
-    ) {
-
-      return res.status(400).json({
-        success: false,
-        message: "Appointment not found"
-      });
-    }
-
-    // =====================================
-    // SUCCESS RESPONSE
+    // FINAL RESPONSE
     // =====================================
 
     return res.status(200).json(result);
 
   } catch (error) {
 
-    console.log("===== ERROR =====");
+    console.log("\n===== CONTROLLER ERROR =====");
+
     console.log(error);
 
     return res.status(500).json({
@@ -218,8 +208,6 @@ exports.getTodayAppointments = async (
     });
   }
 };
-
-
 
 exports.getAppointmentPublicById = async (req, res) => {
 

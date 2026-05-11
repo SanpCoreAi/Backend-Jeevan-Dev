@@ -22,11 +22,14 @@ router.get("/getAppointmentPublicById/:patient_id", verifyToken, appointmentCont
 
 router.get("/token/:token", ctrl.verifyToken);
 router.post("/:id/start", verifyToken, ctrl.start);
-router.get("/:id", verifyToken, ctrl.getDetails);
 router.post("/:id/complete", verifyToken, ctrl.complete);
 router.get("/revisit/:patientId/:doctorId", verifyToken, ctrl.revisit);
 router.get( "/doctor/table", verifyToken, appointmentController.getDoctorAppointmentsForTable
 );
+
+
+router.get("/prescription", verifyToken, ctrl.getPrescription);
+router.get("/verify-token/:token", verifyToken, ctrl.verifyToken);
 
 router.get(
   "/today-appointments",

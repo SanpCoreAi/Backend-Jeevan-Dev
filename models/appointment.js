@@ -242,67 +242,169 @@ exports.getTodayAppointments = async (
   offset
 ) => {
 
-  console.log({
-    doctorId,
-    todayDate
-  });
+  try {
 
-  const [rows] = await db.query(
-    `
-    SELECT
+    console.log("\n===== MODEL START =====");
 
-      COALESCE(u.full_name, 'Unknown')
-        AS patient_name,
+    // =====================================
+    // INPUT VALUES
+    // =====================================
 
-      DATE_FORMAT(a.slot_date, '%d-%m-%Y')
-        AS appointment_date,
+    console.log("DOCTOR ID =>", doctorId);
 
-      TIME_FORMAT(a.start_time, '%h:%i %p')
-        AS start_time,
+    console.log("TODAY DATE =>", todayDate);
 
-      a.status
+    console.log("LIMIT =>", limit);
 
-    FROM appointments a
+    console.log("OFFSET =>", offset);
 
-    LEFT JOIN users u
-      ON u.id = a.patient_id
+    // =====================================
+    // MAIN QUERY
+    // =====================================
 
-    WHERE a.doctor_id = ?
+    const query = `
+      SELECT
 
-    AND DATE(a.created_at) = ?
+        a.id AS appointment_id,
 
-    ORDER BY a.created_at DESC
+        a.token_number,
 
-    LIMIT ? OFFSET ?
-    `,
-    [
+        COALESCE(u.full_name, 'Unknown')
+          AS patient_name,
+
+        u.phone_number,
+
+        DATE_FORMAT(
+          a.slot_date,
+          '%d-%m-%Y'
+        ) AS appointment_date,
+
+        TIME_FORMAT(
+          a.start_time,
+          '%h:%i %p'
+        ) AS start_time,
+
+        TIME_FORMAT(
+          a.end_time,
+          '%h:%i %p'
+        ) AS end_time,
+
+        a.status,
+
+        a.created_at
+
+      FROM appointments a
+
+      LEFT JOIN users u
+        ON u.id = a.patient_id
+
+      WHERE a.doctor_id = ?
+
+      AND a.slot_date = ?
+
+      ORDER BY a.start_time ASC
+
+      LIMIT ? OFFSET ?
+    `;
+
+    console.log("\n===== MAIN QUERY =====");
+
+    console.log(query);
+
+    console.log("\n===== QUERY VALUES =====");
+
+    console.log([
       doctorId,
       todayDate,
       Number(limit),
       Number(offset)
-    ]
-  );
+    ]);
 
-  const [[countResult]] = await db.query(
-    `
-    SELECT COUNT(*) AS total
+    // =====================================
+    // EXECUTE QUERY
+    // =====================================
 
-    FROM appointments a
+    const [rows] = await db.query(
+      query,
+      [
+        doctorId,
+        todayDate,
+        Number(limit),
+        Number(offset)
+      ]
+    );
 
-    WHERE a.doctor_id = ?
+    // =====================================
+    // QUERY RESULT
+    // =====================================
 
-    AND DATE(a.created_at) = ?
-    `,
-    [
+    console.log("\n===== QUERY RESULT =====");
+
+    console.log(rows);
+
+    // =====================================
+    // TOTAL COUNT QUERY
+    // =====================================
+
+    const countQuery = `
+      SELECT COUNT(*) AS total
+
+      FROM appointments
+
+      WHERE doctor_id = ?
+
+      AND slot_date = ?
+    `;
+
+    console.log("\n===== COUNT QUERY =====");
+
+    console.log(countQuery);
+
+    console.log("\n===== COUNT VALUES =====");
+
+    console.log([
       doctorId,
       todayDate
-    ]
-  );
+    ]);
 
-  return {
-    rows,
-    total: countResult.total
-  };
+    // =====================================
+    // EXECUTE COUNT QUERY
+    // =====================================
+
+    const [[countResult]] =
+      await db.query(
+        countQuery,
+        [
+          doctorId,
+          todayDate
+        ]
+      );
+
+    // =====================================
+    // COUNT RESULT
+    // =====================================
+
+    console.log("\n===== TOTAL RESULT =====");
+
+    console.log(countResult);
+
+    // =====================================
+    // FINAL RETURN
+    // =====================================
+
+    return {
+      rows,
+      total: countResult.total
+    };
+
+  } catch (error) {
+
+    console.log("\n===== MODEL ERROR =====");
+
+    console.log(error);
+
+    throw error;
+  }
 };
 
 exports.checkUserSameSlot = async (patientId, date, timeSlot) => {

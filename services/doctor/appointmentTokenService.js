@@ -103,8 +103,8 @@ exports.complete = async (id) => {
 
 
 
-exports.getFullPrescription = async (token_number) => {
-  const appointment = await prescriptionModel.getAppointmentFullData(token_number);
+exports.getFullPrescription = async (appointment_id) => {
+ const appointment = await prescriptionModel.getAppointmentFullDataById(appointment_id);
 
   if (!appointment) {
     throw new Error("Appointment not found");

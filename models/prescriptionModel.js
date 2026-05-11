@@ -45,7 +45,7 @@ exports.insertMeta = async (id, remark, followUpDate, conn) => {
 
 
 // ✅ Updated query with prescriptions JOIN
-exports.getAppointmentFullData = async (token_number) => {
+exports.getAppointmentFullDataById = async (appointment_id) => {
   const [rows] = await db.query(`
     SELECT 
       a.id AS appointment_id,
@@ -81,9 +81,9 @@ exports.getAppointmentFullData = async (token_number) => {
     LEFT JOIN users u_pat ON a.patient_id = u_pat.id
     LEFT JOIN user_profiles up ON u_pat.id = up.user_id
 
-    WHERE a.token_number = ?
+     WHERE a.id = ?
     LIMIT 1;
-  `, [token_number]);
+  `, [appointment_id]);
 
   return rows[0];
 };
@@ -101,7 +101,7 @@ exports.getPrescriptionMedicines = async (appointment_id) => {
       remark,
       follow_up_date,
       created_at
-    FROM prescriptions   -- ✅ apna actual table naam yahan lagao
+    FROM prescriptions   
     WHERE appointment_id = ?
   `, [appointment_id]);
 

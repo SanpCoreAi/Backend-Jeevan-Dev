@@ -103,6 +103,31 @@ exports.revisit = async (req, res) => {
   }
 };
 
+exports.getPrescription = async (req, res) => {
+  try {
+    const { appointment_id } = req.query;
+
+if (!appointment_id) {
+  return res.status(400).json({
+    success: false,
+    message: "appointment_id is required"
+  });
+}
+
+const data = await service.getFullPrescription(appointment_id);
+
+    res.json({
+      success: true,
+      data
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
 
 
 exports.getPrescription = async (req, res) => {

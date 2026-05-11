@@ -185,49 +185,98 @@ exports.getAppointmentById = async (doctorId, appointmentId) => {
 };
 
 
+// services/appointmentService.js
+
 exports.getTodayAppointmentsService = async (
   doctorId,
   page,
   limit
 ) => {
 
-  const offset = (page - 1) * limit;
+  try {
 
-  // India timezone date
-  const todayDate = new Date()
-    .toLocaleDateString("en-CA", {
-      timeZone: "Asia/Kolkata"
-    });
+    console.log("\n===== SERVICE START =====");
 
-  console.log(todayDate);
+    console.log("DOCTOR ID =>", doctorId);
 
-  const { rows, total } =
-    await Appointment.getTodayAppointments(
-      doctorId,
-      todayDate,
-      limit,
-      offset
-    );
+    console.log("PAGE =>", page);
 
-  if (!rows || rows.length === 0) {
+    console.log("LIMIT =>", limit);
+
+    // =====================================
+    // OFFSET
+    // =====================================
+
+    const offset = (page - 1) * limit;
+
+    console.log("OFFSET =>", offset);
+
+    // =====================================
+    // INDIA DATE
+    // =====================================
+
+    const todayDate = new Date()
+      .toLocaleDateString("en-CA", {
+        timeZone: "Asia/Kolkata"
+      });
+
+    console.log("TODAY DATE =>", todayDate);
+
+    // =====================================
+    // MODEL CALL
+    // =====================================
+
+    console.log("Calling model...");
+
+    const { rows, total } =
+      await Appointment.getTodayAppointments(
+        doctorId,
+        todayDate,
+        limit,
+        offset
+      );
+
+    // =====================================
+    // MODEL RESPONSE
+    // =====================================
+
+    console.log("ROWS =>");
+
+    console.log(rows);
+
+    console.log("TOTAL =>", total);
+
+    // =====================================
+    // RESPONSE
+    // =====================================
+
+    return {
+      success: true,
+
+      message:
+        "Today's appointments fetched successfully",
+
+      total,
+
+      currentPage: page,
+
+      totalPages:
+        Math.ceil(total / limit),
+
+      appointments: rows || []
+    };
+
+  } catch (error) {
+
+    console.log("\n===== SERVICE ERROR =====");
+
+    console.log(error);
+
     return {
       success: false,
-      message: "Appointment not found"
+      message: error.message
     };
   }
-
-  return {
-    success: true,
-    message: "Today's appointments fetched successfully",
-
-    total,
-
-    currentPage: page,
-
-    totalPages: Math.ceil(total / limit),
-
-    appointments: rows
-  };
 };
 
 
@@ -248,37 +297,47 @@ exports.getAppointmentPublicById = async (appointmentId) => {
   };
 };
 
-exports.getTodayAppointmentsService = async (
-  doctorId,
-  page,
-  limit
+exports.getTodayAppointments = async (
+  req,
+  res
 ) => {
 
-  const offset = (page - 1) * limit;
+  try {
 
-  const todayDate =
-    new Date().toISOString().split("T")[0];
+    const doctorId =
+      req.user?.doctor_id ||
+      req.user?.id;
 
-  const { rows, total } =
-    await Appointment.getTodayAppointments(
-      doctorId,
-      todayDate,
-      limit,
-      offset
-    );
+    const {
+      page = 1,
+      limit = 10
+    } = req.query;
 
-  return {
-    success: true,
-    message: "Today's appointments fetched successfully",
+    if (!doctorId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized doctor"
+      });
+    }
 
-    total,
+    const result =
+      await appointmentService.getTodayAppointmentsService(
+        doctorId,
+        Number(page),
+        Number(limit)
+      );
 
-    currentPage: page,
+    return res.status(200).json(result);
 
-    totalPages: Math.ceil(total / limit),
+  } catch (error) {
 
-    appointments: rows
-  };
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 };
 
 exports.getMyAppointments = async (patientId) => {
