@@ -185,7 +185,50 @@ exports.getAppointmentById = async (doctorId, appointmentId) => {
 };
 
 
+exports.getTodayAppointmentsService = async (
+  doctorId,
+  page,
+  limit
+) => {
 
+  const offset = (page - 1) * limit;
+
+  // India timezone date
+  const todayDate = new Date()
+    .toLocaleDateString("en-CA", {
+      timeZone: "Asia/Kolkata"
+    });
+
+  console.log(todayDate);
+
+  const { rows, total } =
+    await Appointment.getTodayAppointments(
+      doctorId,
+      todayDate,
+      limit,
+      offset
+    );
+
+  if (!rows || rows.length === 0) {
+    return {
+      success: false,
+      message: "Appointment not found"
+    };
+  }
+
+  return {
+    success: true,
+    message: "Today's appointments fetched successfully",
+
+    total,
+
+    currentPage: page,
+
+    totalPages: Math.ceil(total / limit),
+
+    appointments: rows
+  };
+};
 
 
 exports.getAppointmentPublicById = async (appointmentId) => {
@@ -205,7 +248,38 @@ exports.getAppointmentPublicById = async (appointmentId) => {
   };
 };
 
+exports.getTodayAppointmentsService = async (
+  doctorId,
+  page,
+  limit
+) => {
 
+  const offset = (page - 1) * limit;
+
+  const todayDate =
+    new Date().toISOString().split("T")[0];
+
+  const { rows, total } =
+    await Appointment.getTodayAppointments(
+      doctorId,
+      todayDate,
+      limit,
+      offset
+    );
+
+  return {
+    success: true,
+    message: "Today's appointments fetched successfully",
+
+    total,
+
+    currentPage: page,
+
+    totalPages: Math.ceil(total / limit),
+
+    appointments: rows
+  };
+};
 
 exports.getMyAppointments = async (patientId) => {
 

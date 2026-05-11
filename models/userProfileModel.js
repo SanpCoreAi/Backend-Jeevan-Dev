@@ -130,7 +130,33 @@ exports.updateUserProfile = async (userId, data) => {
   return result.affectedRows > 0;
 };
 
-exports.getPatientCardProfile = async (userId) => {
+exports.checkDoctorPatientRelation = async (
+  doctorId,
+  patientId
+) => {
+
+  const sql = `
+    SELECT id
+
+    FROM appointments
+
+    WHERE doctor_id = ?
+    AND patient_id = ?
+
+    LIMIT 1
+  `;
+
+  const [rows] = await db.execute(sql, [
+    doctorId,
+    patientId
+  ]);
+
+  return rows.length > 0;
+};
+
+exports.getPatientCardProfile = async (
+  patientId
+) => {
 
   const sql = `
     SELECT 
@@ -147,7 +173,10 @@ exports.getPatientCardProfile = async (userId) => {
       p.created_at,
 
       (
-        SELECT DATE_FORMAT(a.created_at, '%d-%m-%Y %h:%i %p')
+        SELECT DATE_FORMAT(
+          a.created_at,
+          '%d-%m-%Y %h:%i %p'
+        )
 
         FROM appointments a
 
@@ -160,7 +189,7 @@ exports.getPatientCardProfile = async (userId) => {
 
     FROM users u
 
-    LEFT JOIN user_profiles p 
+    LEFT JOIN user_profiles p
       ON u.id = p.user_id
 
     WHERE u.id = ?
@@ -168,7 +197,9 @@ exports.getPatientCardProfile = async (userId) => {
     LIMIT 1
   `;
 
-  const [rows] = await db.execute(sql, [userId]);
+  const [rows] = await db.execute(sql, [
+    patientId
+  ]);
 
   return rows[0];
 };

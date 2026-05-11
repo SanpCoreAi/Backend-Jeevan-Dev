@@ -238,11 +238,32 @@ exports.getUserProfile = async (userId) => {
 };
 
 
-exports.getPatientCardProfile = async (userId) => {
+exports.getPatientCardProfile = async (
+  doctorId,
+  patientId
+) => {
+
   try {
 
+    // Optional Security Check
+    const isAssigned =
+      await userProfileModel.checkDoctorPatientRelation(
+        doctorId,
+        patientId
+      );
+
+    if (!isAssigned) {
+      return {
+        success: false,
+        statusCode: 403,
+        message: "Access denied for this patient"
+      };
+    }
+
     const profile =
-      await userProfileModel.getPatientCardProfile(userId);
+      await userProfileModel.getPatientCardProfile(
+        patientId
+      );
 
     if (!profile) {
       return {

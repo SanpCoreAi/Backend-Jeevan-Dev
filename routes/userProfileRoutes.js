@@ -12,7 +12,10 @@ router.put("/updateProfile", verifyToken, userProfileController.updateUserProfil
 
 router.patch("/updateProfile", verifyToken, userProfileController.updateUserProfile);
 
-router.get("/patient-card",
+// routes/userProfileRoutes.js
+
+router.get(
+  "/patient-card/:patientId",
   verifyToken,
   userProfileController.getPatientCardProfile
 );

@@ -235,6 +235,76 @@ exports.getAllByPatient = async (patientId) => {
   });
 };
 
+exports.getTodayAppointments = async (
+  doctorId,
+  todayDate,
+  limit,
+  offset
+) => {
+
+  console.log({
+    doctorId,
+    todayDate
+  });
+
+  const [rows] = await db.query(
+    `
+    SELECT
+
+      COALESCE(u.full_name, 'Unknown')
+        AS patient_name,
+
+      DATE_FORMAT(a.slot_date, '%d-%m-%Y')
+        AS appointment_date,
+
+      TIME_FORMAT(a.start_time, '%h:%i %p')
+        AS start_time,
+
+      a.status
+
+    FROM appointments a
+
+    LEFT JOIN users u
+      ON u.id = a.patient_id
+
+    WHERE a.doctor_id = ?
+
+    AND DATE(a.created_at) = ?
+
+    ORDER BY a.created_at DESC
+
+    LIMIT ? OFFSET ?
+    `,
+    [
+      doctorId,
+      todayDate,
+      Number(limit),
+      Number(offset)
+    ]
+  );
+
+  const [[countResult]] = await db.query(
+    `
+    SELECT COUNT(*) AS total
+
+    FROM appointments a
+
+    WHERE a.doctor_id = ?
+
+    AND DATE(a.created_at) = ?
+    `,
+    [
+      doctorId,
+      todayDate
+    ]
+  );
+
+  return {
+    rows,
+    total: countResult.total
+  };
+};
+
 exports.checkUserSameSlot = async (patientId, date, timeSlot) => {
 
   const [start, end] = timeSlot.split(" - ").map(t => parse12to24(t));

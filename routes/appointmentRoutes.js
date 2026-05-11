@@ -28,5 +28,11 @@ router.get("/revisit/:patientId/:doctorId", verifyToken, ctrl.revisit);
 router.get( "/doctor/table", verifyToken, appointmentController.getDoctorAppointmentsForTable
 );
 
+router.get(
+  "/today-appointments",
+  verifyToken,
+  appointmentController.getTodayAppointments
+);
+
 
 module.exports = router;

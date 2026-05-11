@@ -70,25 +70,43 @@ exports.getUserProfile = async (req, res) => {
 };
 
 exports.getPatientCardProfile = async (req, res) => {
-  try {
-    const userId = req.user?.id;
 
-    if (!userId) {
+  try {
+
+    // Doctor ID from token
+    const doctorId = req.user?.id;
+
+    // Patient ID from params
+    const patientId = req.params.patientId;
+
+    if (!doctorId) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized user"
+        message: "Unauthorized doctor"
       });
     }
 
-    const result = await userProfileService.getPatientCardProfile(userId);
+    if (!patientId) {
+      return res.status(400).json({
+        success: false,
+        message: "Patient id is required"
+      });
+    }
+
+    const result =
+      await userProfileService.getPatientCardProfile(
+        doctorId,
+        patientId
+      );
 
     if (!result.success) {
-      return res.status(result.statusCode || 404).json(result);
+      return res.status(result.statusCode).json(result);
     }
 
     return res.status(200).json(result);
 
   } catch (error) {
+
     console.error("Get patient card error:", error);
 
     return res.status(500).json({

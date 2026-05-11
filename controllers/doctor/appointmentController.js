@@ -113,6 +113,111 @@ exports.getAppointmentById = async (req, res) => {
   }
 };
 
+exports.getTodayAppointments = async (
+  req,
+  res
+) => {
+
+  try {
+
+    // =====================================
+    // FULL DEBUG
+    // =====================================
+
+    console.log("===== TODAY APPOINTMENTS API =====");
+
+    console.log("req.user =>");
+    console.log(req.user);
+
+    console.log("req.query =>");
+    console.log(req.query);
+
+    console.log("req.headers.authorization =>");
+    console.log(req.headers.authorization);
+
+    // =====================================
+    // DOCTOR ID
+    // =====================================
+
+    const doctorId =
+      req.user?.doctor_id ||
+      req.user?.id;
+
+    console.log("doctorId =>", doctorId);
+
+    // =====================================
+    // QUERY PARAMS
+    // =====================================
+
+    const {
+      page = 1,
+      limit = 10
+    } = req.query;
+
+    console.log("page =>", page);
+    console.log("limit =>", limit);
+
+    // =====================================
+    // CHECK DOCTOR ID
+    // =====================================
+
+    if (!doctorId) {
+
+      console.log("Doctor ID missing");
+
+      return res.status(400).json({
+        success: false,
+        message: "Doctor ID not found in token"
+      });
+    }
+
+    // =====================================
+    // SERVICE CALL
+    // =====================================
+
+    const result =
+      await appointmentService.getTodayAppointmentsService(
+        doctorId,
+        Number(page),
+        Number(limit)
+      );
+
+    console.log("SERVICE RESULT =>");
+    console.log(result);
+
+    // =====================================
+    // NO APPOINTMENTS
+    // =====================================
+
+    if (
+      !result.appointments ||
+      result.appointments.length === 0
+    ) {
+
+      return res.status(400).json({
+        success: false,
+        message: "Appointment not found"
+      });
+    }
+
+    // =====================================
+    // SUCCESS RESPONSE
+    // =====================================
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+
+    console.log("===== ERROR =====");
+    console.log(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+};
 
 
 
