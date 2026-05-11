@@ -52,25 +52,25 @@ exports.getDoctorAppointmentsForTable = async (req, res) => {
 
   try {
 
-    const doctorId = req.user?.id;
+    const doctorId = req.user.id;
 
     const {
+      hospitalName,
       page = 1,
-      limit = 30
+      limit = 10
     } = req.query;
 
-    if (!doctorId) {
-
+    if (!hospitalName) {
       return res.status(400).json({
         success: false,
-        message: "Doctor ID missing"
+        message: "hospitalName is required"
       });
-
     }
 
     const result =
       await appointmentService.getDoctorAppointmentsForTable(
         doctorId,
+        hospitalName,
         Number(page),
         Number(limit)
       );
@@ -79,11 +79,12 @@ exports.getDoctorAppointmentsForTable = async (req, res) => {
 
   } catch (error) {
 
+    console.log(error);
+
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: "Internal server error"
     });
-
   }
 };
 

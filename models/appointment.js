@@ -58,78 +58,89 @@ exports.getAppointmentPublicById = async ( patientId) => {
   return rows[0];
 };
 
-
 exports.getDoctorAppointmentsForTable = async (
   doctorId,
+  hospitalName,
   limit,
   offset
 ) => {
 
-const [rows] = await db.query(
-  `
-  SELECT 
-    a.id AS appointment_id,
-    a.token_number,
+  const [rows] = await db.query(
+    `
+    SELECT 
+      COALESCE(u.full_name, 'Unknown') AS name,
 
-    DATE_FORMAT(a.slot_date, '%Y-%m-%d') AS slot_date,
+      u.phone_number,
 
-    TIME_FORMAT(a.start_time, '%h:%i %p') AS start_time,
-    TIME_FORMAT(a.end_time, '%h:%i %p') AS end_time,
+      d.specialization AS diagnostic,
 
-    a.appointment_type AS mode,
-    a.booking_type,
+      DATE_FORMAT(a.slot_date, '%d-%m-%Y') AS date,
 
-    COALESCE(u.full_name, ap.patient_name, 'Unknown') AS patient_name,
+      a.id AS appointment_id,
 
-    COALESCE(up.gender, ap.gender, '') AS gender,
-    COALESCE(up.age, ap.age, '') AS age,
+      a.token_number,
 
-    COALESCE(u.phone_number, ap.patient_phone, '') AS patient_phone,
-    COALESCE(u.email, ap.patient_email, '') AS patient_email,
+      a.appointment_type AS mode,
 
-    d.specialization,
+      COALESCE(a.hospital_name, 'Online') AS hospital_name,
 
-    CASE
-      WHEN CURDATE() > a.slot_date THEN 'Completed'
-      WHEN CURDATE() = a.slot_date THEN 'Pending'
-      ELSE 'Upcoming'
-    END AS status
+      a.status,
 
-  FROM appointments a
+      DATE_FORMAT(a.created_at, '%d-%m-%Y %h:%i %p')
+        AS booked_at
 
-  LEFT JOIN users u
-    ON u.id = a.patient_id
+    FROM appointments a
 
-  LEFT JOIN user_profiles up
-    ON up.user_id = u.id
+    LEFT JOIN users u
+      ON u.id = a.patient_id
 
-  LEFT JOIN appointment_patients ap
-    ON ap.appointment_id = a.id
+    LEFT JOIN doctors d
+      ON d.id = a.doctor_id
 
-  LEFT JOIN doctors d
-    ON d.user_id = a.doctor_id
+    WHERE a.doctor_id = ?
 
-  WHERE a.doctor_id = ?
+    AND (
+      LOWER(TRIM(COALESCE(a.hospital_name, '')))
+        = LOWER(TRIM(?))
 
-  ORDER BY a.slot_date DESC,
-  a.start_time ASC
+      OR a.hospital_name IS NULL
+    )
 
-  LIMIT ? OFFSET ?
-  `,
-  [
-    doctorId,
-    limit,
-    offset
-  ]
-);
+    ORDER BY 
+      a.slot_date DESC,
+      a.start_time ASC,
+      a.token_number ASC
 
+    LIMIT ? OFFSET ?
+    `,
+    [
+      doctorId,
+      hospitalName,
+      Number(limit),
+      Number(offset)
+    ]
+  );
+
+  // Total Count Query
   const [[countResult]] = await db.query(
     `
     SELECT COUNT(*) AS total
+
     FROM appointments a
+
     WHERE a.doctor_id = ?
+
+    AND (
+      LOWER(TRIM(COALESCE(a.hospital_name, '')))
+        = LOWER(TRIM(?))
+
+      OR a.hospital_name IS NULL
+    )
     `,
-    [doctorId]
+    [
+      doctorId,
+      hospitalName
+    ]
   );
 
   return {
@@ -137,6 +148,7 @@ const [rows] = await db.query(
     total: countResult.total
   };
 };
+
 
 exports.getAppointmentById = async (doctorId, appointmentId) => {
   const [rows] = await db.query(

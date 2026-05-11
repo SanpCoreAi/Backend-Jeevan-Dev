@@ -238,9 +238,6 @@ exports.getUserProfile = async (userId) => {
 };
 
 
-
-// ================= PATIENT CARD PROFILE =================
-
 exports.getPatientCardProfile = async (userId) => {
   try {
 

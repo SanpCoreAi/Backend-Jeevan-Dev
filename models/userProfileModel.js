@@ -135,13 +135,28 @@ exports.getPatientCardProfile = async (userId) => {
   const sql = `
     SELECT 
       u.id AS patient_id,
+
       u.full_name,
+
+      u.phone_number,
 
       p.gender,
       p.weight,
       p.height,
-      p.dob,
-      p.registration_date
+      p.age,
+      p.created_at,
+
+      (
+        SELECT DATE_FORMAT(a.created_at, '%d-%m-%Y %h:%i %p')
+
+        FROM appointments a
+
+        WHERE a.patient_id = u.id
+
+        ORDER BY a.created_at DESC
+
+        LIMIT 1
+      ) AS last_appointment_booked
 
     FROM users u
 
@@ -149,6 +164,7 @@ exports.getPatientCardProfile = async (userId) => {
       ON u.id = p.user_id
 
     WHERE u.id = ?
+
     LIMIT 1
   `;
 
