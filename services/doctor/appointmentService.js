@@ -95,7 +95,7 @@ exports.bookAppointment = async (patientId, patientEmail, doctorId, body) => {
     schedule_id: schedule.id,
     booking_type,
     mode,
-    hospital_name // ✅ important
+    hospital_name 
   });
 
   await SlotModel.deactivateSlot(slot.id);
@@ -185,9 +185,8 @@ exports.getAppointmentById = async (doctorId, appointmentId) => {
 };
 
 
-// services/appointmentService.js
-
-exports.getTodayAppointmentsService = async (
+exports.getTodayAppointmentsService =
+async (
   doctorId,
   page,
   limit
@@ -195,87 +194,46 @@ exports.getTodayAppointmentsService = async (
 
   try {
 
-    console.log("\n===== SERVICE START =====");
+    const offset =
+      (page - 1) * limit;
 
-    console.log("DOCTOR ID =>", doctorId);
+    const {
+      rows,
+      total
+    } =
+      await Appointment
+        .getAppointments({
 
-    console.log("PAGE =>", page);
+          doctorId,
 
-    console.log("LIMIT =>", limit);
+          limit,
 
-    // =====================================
-    // OFFSET
-    // =====================================
-
-    const offset = (page - 1) * limit;
-
-    console.log("OFFSET =>", offset);
-
-    // =====================================
-    // INDIA DATE
-    // =====================================
-
-    const todayDate = new Date()
-      .toLocaleDateString("en-CA", {
-        timeZone: "Asia/Kolkata"
-      });
-
-    console.log("TODAY DATE =>", todayDate);
-
-    // =====================================
-    // MODEL CALL
-    // =====================================
-
-    console.log("Calling model...");
-
-    const { rows, total } =
-      await Appointment.getTodayAppointments(
-        doctorId,
-        todayDate,
-        limit,
-        offset
-      );
-
-    // =====================================
-    // MODEL RESPONSE
-    // =====================================
-
-    console.log("ROWS =>");
-
-    console.log(rows);
-
-    console.log("TOTAL =>", total);
-
-    // =====================================
-    // RESPONSE
-    // =====================================
+          offset
+        });
 
     return {
+
       success: true,
 
       message:
-        "Today's appointments fetched successfully",
+        "Appointments fetched successfully",
 
       total,
 
       currentPage: page,
 
       totalPages:
-        Math.ceil(total / limit),
+        Math.ceil(
+          total / limit
+        ),
 
-      appointments: rows || []
+      appointments:
+        rows || []
     };
 
   } catch (error) {
 
-    console.log("\n===== SERVICE ERROR =====");
-
-    console.log(error);
-
-    return {
-      success: false,
-      message: error.message
-    };
+    throw error;
   }
 };
 

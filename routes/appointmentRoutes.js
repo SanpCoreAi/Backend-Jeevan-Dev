@@ -31,6 +31,7 @@ router.get( "/doctor/table", verifyToken, appointmentController.getDoctorAppoint
 router.get("/prescription", verifyToken, ctrl.getPrescription);
 router.get("/verify-token/:token", verifyToken, ctrl.verifyToken);
 
+
 router.get(
   "/today-appointments",
   verifyToken,

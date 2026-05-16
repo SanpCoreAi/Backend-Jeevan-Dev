@@ -235,49 +235,42 @@ exports.getAllByPatient = async (patientId) => {
   });
 };
 
-exports.getTodayAppointments = async (
+exports.getAppointments =
+async ({
+
   doctorId,
-  todayDate,
+
   limit,
+
   offset
-) => {
+
+}) => {
 
   try {
 
-    console.log("\n===== MODEL START =====");
-
-    // =====================================
-    // INPUT VALUES
-    // =====================================
-
-    console.log("DOCTOR ID =>", doctorId);
-
-    console.log("TODAY DATE =>", todayDate);
-
-    console.log("LIMIT =>", limit);
-
-    console.log("OFFSET =>", offset);
-
-    // =====================================
-    // MAIN QUERY
-    // =====================================
+    const todayDate =
+      new Date()
+        .toLocaleDateString(
+          "en-CA",
+          {
+            timeZone:
+              "Asia/Kolkata"
+          }
+        );
 
     const query = `
+
       SELECT
 
-        a.id AS appointment_id,
+        a.id
+          AS appointment_id,
 
         a.token_number,
 
-        COALESCE(u.full_name, 'Unknown')
-          AS patient_name,
-
-        u.phone_number,
-
         DATE_FORMAT(
           a.slot_date,
-          '%d-%m-%Y'
-        ) AS appointment_date,
+          '%Y-%m-%d'
+        ) AS slot_date,
 
         TIME_FORMAT(
           a.start_time,
@@ -289,87 +282,110 @@ exports.getTodayAppointments = async (
           '%h:%i %p'
         ) AS end_time,
 
+        a.appointment_type,
+
+        a.booking_type,
+
+        a.hospital_name,
+
         a.status,
 
-        a.created_at
+        a.completed_at,
+
+        a.created_at,
+
+        u.id
+          AS patient_id,
+
+        COALESCE(
+          u.full_name,
+          'Unknown'
+        ) AS patient_name,
+
+        u.phone_number,
+
+        u.email,
+
+        up.age,
+
+        up.gender,
+
+        up.weight,
+
+        up.height,
+
+        up.username,
+
+        up.dob,
+
+        up.blood_group,
+
+        up.language,
+
+        up.address,
+
+        up.existing_conditions,
+
+        up.allergies,
+
+        up.bio,
+
+        up.emergency_contact
 
       FROM appointments a
 
       LEFT JOIN users u
         ON u.id = a.patient_id
 
+      LEFT JOIN user_profiles up
+        ON up.id = (
+
+          SELECT id
+
+          FROM user_profiles
+
+          WHERE user_id = u.id
+
+          ORDER BY id DESC
+
+          LIMIT 1
+        )
+
       WHERE a.doctor_id = ?
 
-      AND a.slot_date = ?
+      AND DATE(a.created_at) = ?
 
-      ORDER BY a.start_time ASC
+      AND a.is_deleted = 0
+
+      ORDER BY a.created_at DESC
 
       LIMIT ? OFFSET ?
     `;
 
-    console.log("\n===== MAIN QUERY =====");
-
-    console.log(query);
-
-    console.log("\n===== QUERY VALUES =====");
-
-    console.log([
-      doctorId,
-      todayDate,
-      Number(limit),
-      Number(offset)
-    ]);
-
-    // =====================================
-    // EXECUTE QUERY
-    // =====================================
-
-    const [rows] = await db.query(
-      query,
-      [
-        doctorId,
-        todayDate,
-        Number(limit),
-        Number(offset)
-      ]
-    );
-
-    // =====================================
-    // QUERY RESULT
-    // =====================================
-
-    console.log("\n===== QUERY RESULT =====");
-
-    console.log(rows);
-
-    // =====================================
-    // TOTAL COUNT QUERY
-    // =====================================
+    const [rows] =
+      await db.query(
+        query,
+        [
+          doctorId,
+          todayDate,
+          Number(limit),
+          Number(offset)
+        ]
+      );
 
     const countQuery = `
-      SELECT COUNT(*) AS total
+
+      SELECT
+        COUNT(*) AS total
 
       FROM appointments
 
       WHERE doctor_id = ?
 
-      AND slot_date = ?
+      AND DATE(created_at) = ?
+
+      AND is_deleted = 0
     `;
-
-    console.log("\n===== COUNT QUERY =====");
-
-    console.log(countQuery);
-
-    console.log("\n===== COUNT VALUES =====");
-
-    console.log([
-      doctorId,
-      todayDate
-    ]);
-
-    // =====================================
-    // EXECUTE COUNT QUERY
-    // =====================================
 
     const [[countResult]] =
       await db.query(
@@ -380,28 +396,15 @@ exports.getTodayAppointments = async (
         ]
       );
 
-    // =====================================
-    // COUNT RESULT
-    // =====================================
-
-    console.log("\n===== TOTAL RESULT =====");
-
-    console.log(countResult);
-
-    // =====================================
-    // FINAL RETURN
-    // =====================================
-
     return {
+
       rows,
-      total: countResult.total
+
+      total:
+        countResult.total
     };
 
   } catch (error) {
-
-    console.log("\n===== MODEL ERROR =====");
-
-    console.log(error);
 
     throw error;
   }

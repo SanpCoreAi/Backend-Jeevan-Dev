@@ -60,7 +60,9 @@ const sql = `
 const getBydoctorId = async (userId) => {
 
   const sql = `
+
     SELECT
+
       d.id,
       d.user_id,
       d.username,
@@ -79,31 +81,85 @@ const getBydoctorId = async (userId) => {
       u.email AS user_email,
       u.phone_number AS user_phone_number,
 
-      -- ✅ Single image key
+      -- =========================
+      -- DOCTOR IMAGE
+      -- =========================
+
       (
         SELECT di.file_key
+
         FROM doctor_image di
+
         WHERE di.doctor_id = d.user_id
+
         AND di.file_key IS NOT NULL
+
+        ORDER BY di.id DESC
+
         LIMIT 1
       ) AS image_key,
 
+      -- =========================
+      -- DOCTOR FILES
+      -- =========================
+
+      COALESCE(
+
+        (
+          SELECT JSON_ARRAYAGG(
+
+            JSON_OBJECT(
+
+              'id', df.id,
+              'fileKey', df.file_key,
+              'folder', df.folder_name,
+              'createdAt', df.created_at
+
+            )
+          )
+
+          FROM doctor_files df
+
+          WHERE df.doctor_id = d.id
+        ),
+
+        JSON_ARRAY()
+
+      ) AS files,
+
+      -- =========================
+      -- AVG RATING
+      -- =========================
+
       IFNULL(
+
         (
           SELECT AVG(f.rating)
+
           FROM feedbacks f
+
           WHERE f.doctor_id = d.id
         ),
+
         0
+
       ) AS avg_rating
 
     FROM doctors d
-    LEFT JOIN users u ON u.id = d.user_id
+
+    LEFT JOIN users u
+      ON u.id = d.user_id
+
     WHERE d.user_id = ?
+
     LIMIT 1
   `;
 
-  const [rows] = await db.execute(sql, [userId]);
+  const [rows] =
+    await db.execute(
+      sql,
+      [userId]
+    );
 
   return rows[0] || null;
 };

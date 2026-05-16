@@ -113,99 +113,62 @@ exports.getAppointmentById = async (req, res) => {
   }
 };
 
-// controllers/appointmentController.js
-
-exports.getTodayAppointments = async (
+exports.getTodayAppointments =
+async (
   req,
   res
 ) => {
 
   try {
 
-    console.log("\n===== TODAY APPOINTMENTS API =====");
-
-    // =====================================
-    // TOKEN DATA
-    // =====================================
-
-    console.log("REQ.USER =>");
-    console.log(req.user);
-
-    // =====================================
-    // DOCTOR ID
-    // =====================================
-
     const doctorId =
       req.user?.doctor_id ||
       req.user?.id;
-
-    console.log("DOCTOR ID =>", doctorId);
-
-    // =====================================
-    // QUERY PARAMS
-    // =====================================
 
     const {
       page = 1,
       limit = 10
     } = req.query;
 
-    console.log("PAGE =>", page);
-    console.log("LIMIT =>", limit);
-
-    // =====================================
-    // VALIDATION
-    // =====================================
-
     if (!doctorId) {
 
-      console.log("Doctor ID missing in token");
+      return res
+        .status(401)
+        .json({
 
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized doctor"
-      });
+          success: false,
+
+          message:
+            "Unauthorized doctor"
+        });
     }
 
-    // =====================================
-    // SERVICE CALL
-    // =====================================
-
-    console.log("Calling service...");
-
     const result =
-      await appointmentService.getTodayAppointmentsService(
-        doctorId,
-        Number(page),
-        Number(limit)
-      );
+      await appointmentService
+        .getTodayAppointmentsService(
+          doctorId,
+          Number(page),
+          Number(limit)
+        );
 
-    // =====================================
-    // SERVICE RESPONSE
-    // =====================================
-
-    console.log("SERVICE RESULT =>");
-    console.log(
-      JSON.stringify(result, null, 2)
-    );
-
-    // =====================================
-    // FINAL RESPONSE
-    // =====================================
-
-    return res.status(200).json(result);
+    return res
+      .status(200)
+      .json(result);
 
   } catch (error) {
 
-    console.log("\n===== CONTROLLER ERROR =====");
+    return res
+      .status(500)
+      .json({
 
-    console.log(error);
+        success: false,
 
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
-    });
+        message:
+          "Internal server error",
+
+        error:
+          error.message
+      });
   }
 };
 
