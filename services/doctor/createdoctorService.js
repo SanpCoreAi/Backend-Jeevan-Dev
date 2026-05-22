@@ -127,36 +127,91 @@ async function getProfile(userId) {
     qrCode = fileName;
   }
 
-  return {
-    success: true,
-    data: {
-      id: d.user_id,
-      username: d.username,
-      specialization: d.specialization,
-      qualification: d.qualification,
-      experience: d.experience,
-      consultationFee: d.consultation_fee,
-      bio: d.bio,
+ return {
+  success: true,
 
-      language: parseJSON(d.language),
-      availability: parseJSON(d.availability),
-      hospitalDetail: parseJSON(d.hospital_detail),
+  data: {
 
-      user: {
-        fullName: d.user_full_name,
-        email: d.user_email,
-        phoneNumber: d.user_phone_number
-      },
+    id: d.user_id,
 
-      imageUrl: d.image_key
-        ? `${S3_BASE_URL}/${d.image_key}`
+    username: d.username,
+
+    specialization: d.specialization,
+
+    qualification: d.qualification,
+
+    experience: d.experience,
+
+    consultationFee: d.consultation_fee,
+
+    bio: d.bio,
+
+    language: parseJSON(d.language),
+
+    availability: parseJSON(d.availability),
+
+    hospitalDetail: parseJSON(d.hospital_detail),
+
+    user: {
+
+      fullName: d.user_full_name,
+
+      email: d.user_email,
+
+      phoneNumber: d.user_phone_number
+    },
+
+    // =========================
+    // PROFILE IMAGE
+    // =========================
+
+    image: d.image_file_key
+
+      ? {
+          fileKey: d.image_file_key,
+
+          folder: d.image_folder_name,
+
+          url:
+            `${S3_BASE_URL}/${encodeURI(d.image_file_key)}`
+        }
+
+      : null,
+
+    // =========================
+    // LICENSE FILE
+    // =========================
+
+    licenseFile:
+
+      parseJSON(d.files)?.length > 0
+
+        ? {
+
+            fileKey:
+              parseJSON(d.files)[0].fileKey,
+
+            folder:
+              parseJSON(d.files)[0].folder,
+
+            url:
+              `${S3_BASE_URL}/${encodeURI(parseJSON(d.files)[0].fileKey)}`
+          }
+
         : null,
 
-      avgRating: Number(d.avg_rating),
+    avgRating:
+      Number(d.avg_rating),
 
-      qr_code: `${BASE_FILE_URL}/qr/${qrCode}`
-    }
-  };
+    qr_code:
+
+      qrCode
+
+        ? `${BASE_FILE_URL}/qr/${qrCode}`
+
+        : null
+  }
+};
 }
 
 async function getDoctorPublicProfileById(userId) {
@@ -227,33 +282,51 @@ async function updateProfile(userId, body) {
 async function getAllDoctors() {
   const doctors = await DoctorModel.findAllWithUser();
 
-  return doctors.map(d => ({
-    doctorId: d.doctor_id,
-    userId: d.user_id,
-    username: d.username,
-    specialization: d.specialization,
-    qualification: d.qualification,
-    experience: d.experience,
-    consultationFee: d.consultation_fee,
+  return doctors.map(d => {
+    // Handle QR code URL formatting
+    let qrUrl = null;
+    if (d.qr_code) {
+      if (d.qr_code.startsWith('data:') || d.qr_code.startsWith('http')) {
+        qrUrl = d.qr_code;
+      } else {
+        qrUrl = `${BASE_FILE_URL}/qr/${d.qr_code}`;
+      }
+    }
 
-    user: {
-      fullName: d.user_full_name,
-      email: d.user_email,
-      phoneNumber: d.user_phone_number
-    },
+    // Format image URLs
+    const images = parseJSON(d.images, []).map(img => ({
+      ...img,
+      url: S3_BASE_URL && S3_BASE_URL !== 'undefined'
+        ? `${S3_BASE_URL}/${encodeURI(img.folder)}/${encodeURI(img.fileKey)}`
+        : `${BASE_FILE_URL}/uploads/${encodeURI(img.folder)}/${encodeURI(img.fileKey)}`
+    }));
 
-    language: parseJSON(d.language),
-    availability: parseJSON(d.availability),
-    hospitalDetail: parseJSON(d.hospital_detail),
+    return {
+      doctorId: d.doctor_id,
+      userId: d.user_id,
+      username: d.username,
+      specialization: d.specialization,
+      qualification: d.qualification,
+      experience: d.experience,
+      consultationFee: d.consultation_fee,
 
-    images: parseJSON(d.images),
+      user: {
+        fullName: d.user_full_name,
+        email: d.user_email,
+        phoneNumber: d.user_phone_number
+      },
 
-    avgRating: Number(d.avg_rating),
+      language: parseJSON(d.language),
+      availability: parseJSON(d.availability),
+      hospitalDetail: parseJSON(d.hospital_detail),
 
-    qr_code: d.qr_code
-      ? `${BASE_FILE_URL}/qr/${d.qr_code}`
-      : null
-  }));
+      images,
+
+      avgRating: Number(d.avg_rating),
+
+      qr_code: qrUrl
+    };
+  });
 }
 
 module.exports = {

@@ -239,9 +239,7 @@ exports.getAppointments =
 async ({
 
   doctorId,
-
   limit,
-
   offset
 
 }) => {
@@ -353,11 +351,12 @@ async ({
 
       WHERE a.doctor_id = ?
 
-      AND DATE(a.created_at) = ?
+      AND a.slot_date = ?
 
       AND a.is_deleted = 0
 
-      ORDER BY a.created_at DESC
+      ORDER BY a.slot_date DESC,
+               a.start_time ASC
 
       LIMIT ? OFFSET ?
     `;
@@ -382,7 +381,7 @@ async ({
 
       WHERE doctor_id = ?
 
-      AND DATE(created_at) = ?
+      AND slot_date = ?
 
       AND is_deleted = 0
     `;

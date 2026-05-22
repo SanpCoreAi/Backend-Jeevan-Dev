@@ -35,6 +35,17 @@ class DoctorRatingService {
       };
     }
 
+    // Handle QR code URL formatting
+    const BASE_FILE_URL = "http://localhost:4000/uploads";
+    let qrUrl = null;
+    if (doctor.qr_code) {
+      if (doctor.qr_code.startsWith('data:') || doctor.qr_code.startsWith('http')) {
+        qrUrl = doctor.qr_code;
+      } else {
+        qrUrl = `${BASE_FILE_URL}/qr/${doctor.qr_code}`;
+      }
+    }
+
     return {
       status: 200,
       success: true,
@@ -51,7 +62,8 @@ class DoctorRatingService {
         availability: this.parseValue(doctor.availability, []),
         hospitalDetail: this.parseValue(doctor.hospital_detail, {}),
         totalRatings: Number(doctor.total_ratings) || 0,
-        averageRating: doctor.avg_rating ? Number(doctor.avg_rating) : 0
+        averageRating: doctor.avg_rating ? Number(doctor.avg_rating) : 0,
+        qr_code: qrUrl
       }
     };
   }

@@ -49,7 +49,17 @@ WHERE u.role_id = 2
     sql += " ORDER BY u.created_at DESC";
 
     const [rows] = await db.query(sql, params);
-    return rows;
+    
+    // Format the photo URL
+    const BASE_FILE_URL = "http://localhost:4000/uploads";
+    return rows.map(row => ({
+      ...row,
+      photo: row.photo 
+        ? (row.photo.startsWith('http') || row.photo.startsWith('data:') 
+            ? row.photo 
+            : `${BASE_FILE_URL}/doctor-images/${row.photo}`)
+        : null
+    }));
 
   } catch (err) {
     console.error("Database Error (findDoctors):", err);

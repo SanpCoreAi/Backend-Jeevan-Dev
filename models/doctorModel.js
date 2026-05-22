@@ -97,7 +97,21 @@ const getBydoctorId = async (userId) => {
         ORDER BY di.id DESC
 
         LIMIT 1
-      ) AS image_key,
+      ) AS image_file_key,
+
+      (
+        SELECT di.folder_name
+
+        FROM doctor_image di
+
+        WHERE di.doctor_id = d.user_id
+
+        AND di.file_key IS NOT NULL
+
+        ORDER BY di.id DESC
+
+        LIMIT 1
+      ) AS image_folder_name,
 
       -- =========================
       -- DOCTOR FILES
@@ -120,7 +134,7 @@ const getBydoctorId = async (userId) => {
 
           FROM doctor_files df
 
-          WHERE df.doctor_id = d.id
+          WHERE df.doctor_id = d.user_id
         ),
 
         JSON_ARRAY()
@@ -163,6 +177,230 @@ const getBydoctorId = async (userId) => {
 
   return rows[0] || null;
 };
+
+
+async function getProfile(userId) {
+
+  const d =
+    await DoctorModel
+      .getBydoctorId(userId);
+
+  if (!d) {
+
+    return {
+
+      success: false,
+
+      message:
+        "Doctor profile not found"
+    };
+  }
+
+  let qrCode =
+    d.qr_code;
+
+  if (!qrCode) {
+
+    const hospitalDetail =
+      parseJSON(
+        d.hospital_detail
+      );
+
+    const hospitals =
+      hospitalDetail.map(h => ({
+
+        hospitalName:
+          h.hospitalName,
+
+        address:
+          buildAddress(h)
+      }));
+
+    const qrData =
+      JSON.stringify({
+
+        doctorId:
+          d.user_id,
+
+        hospitals
+      });
+
+    const fileName =
+      `qr_${d.id}.png`;
+
+    const filePath =
+      path.join(
+        qrFolder,
+        fileName
+      );
+
+    await QRCode.toFile(
+      filePath,
+      qrData
+    );
+
+    await DoctorModel
+      .updateDoctorQr(
+        d.id,
+        fileName
+      );
+
+    qrCode = fileName;
+  }
+
+  return {
+
+    success: true,
+
+    data: {
+
+      id:
+        d.user_id,
+
+      username:
+        d.username,
+
+      specialization:
+        d.specialization,
+
+      qualification:
+        d.qualification,
+
+      experience:
+        d.experience,
+
+      consultationFee:
+        d.consultation_fee,
+
+      bio:
+        d.bio,
+
+      language:
+        parseJSON(d.language),
+
+      availability:
+        parseJSON(d.availability),
+
+      hospitalDetail:
+        parseJSON(
+          d.hospital_detail
+        ),
+
+      user: {
+
+        fullName:
+          d.user_full_name,
+
+        email:
+          d.user_email,
+
+        phoneNumber:
+          d.user_phone_number
+      },
+
+      // =========================
+      // IMAGE URL
+      // =========================
+
+      imageUrl:
+        d.image_file_key
+
+          ? S3_BASE_URL &&
+            S3_BASE_URL !==
+            "undefined"
+
+            ? `${S3_BASE_URL}/${encodeURI(d.image_file_key)}`
+
+            : `${BASE_FILE_URL}/uploads/${encodeURI(d.image_file_key)}`
+
+          : null,
+
+      imageFileKey:
+        d.image_file_key || null,
+
+      imageFolderName:
+        d.image_folder_name || null,
+
+      // =========================
+      // FILES
+      // =========================
+
+      files:
+        parseJSON(d.files),
+
+      // =========================
+      // RATING
+      // =========================
+
+      avgRating:
+        Number(d.avg_rating),
+
+      // =========================
+      // QR CODE
+      // =========================
+
+      qr_code:
+        qrCode
+
+          ? qrCode.startsWith("data:")
+            || qrCode.startsWith("http")
+
+            ? qrCode
+
+            : `${BASE_FILE_URL}/qr/${qrCode}`
+
+          : null
+    }
+  };
+}
+
+
+
+// ===============================
+// CONTROLLER
+// ===============================
+
+async function getDoctorProfile(
+  req,
+  res
+) {
+
+  try {
+
+    const userId =
+      req.user?.id;
+
+    const result =
+      await DoctorService
+        .getProfile(userId);
+
+    if (!result.success) {
+
+      return res
+        .status(404)
+        .json(result);
+    }
+
+    return res
+      .status(200)
+      .json(result);
+
+  } catch (error) {
+
+    return res
+      .status(500)
+      .json({
+
+        success: false,
+
+        message:
+          "Internal server error",
+
+        error:
+          error.message
+      });
+  }
+}
 
 const updateDoctorQr = async (doctorId, qrCode) => {
 
