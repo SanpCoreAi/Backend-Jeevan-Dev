@@ -1,10 +1,12 @@
 const authService = require("../../services/auth/registerService");
 
-const {registerValidation, verifyEmailValidation, getUsersValidation, getUserByDoctorIdValidation,}=require("../../validation/auth/userValidator");
+const { registerValidation, verifyEmailValidation, getUsersValidation,getUserByDoctorIdValidation,
+} = require("../../validation/auth/userValidator");
 
 exports.register = async (req, res) => {
   try {
     const error = registerValidation(req.body);
+
     if (error) {
       return res.status(400).json({
         success: false,
@@ -32,10 +34,10 @@ exports.register = async (req, res) => {
   }
 };
 
-
 exports.verifyEmail = async (req, res) => {
   try {
     const error = verifyEmailValidation(req.query);
+
     if (error) {
       return res.status(400).json({
         success: false,
@@ -63,6 +65,7 @@ exports.verifyEmail = async (req, res) => {
 exports.getUserByDoctorId = async (req, res) => {
   try {
     const error = getUserByDoctorIdValidation(req.params);
+
     if (error) {
       return res.status(400).json({
         success: false,
@@ -70,7 +73,9 @@ exports.getUserByDoctorId = async (req, res) => {
       });
     }
 
-    const result = await authService.getUserByDoctorId(req.params.doctorId);
+    const result = await authService.getUserByDoctorId(
+      req.params.doctorId
+    );
 
     return res.status(result.statusCode).json({
       success: result.statusCode < 400,
@@ -89,9 +94,42 @@ exports.getUserByDoctorId = async (req, res) => {
   }
 };
 
+exports.getUserByDoctorAssistant = async (req, res) => {
+  try {
+
+    // token se doctor_id lena
+    const doctor_id = req.user?.doctor_id || req.user?.id;
+
+    if (!doctor_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Doctor id not found in token",
+      });
+    }
+
+    const result = await authService.getUserByDoctorId(doctor_id);
+
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      count: result.body.results || 0,
+      data: result.body.data || [],
+    });
+
+  } catch (error) {
+    console.error("GetUserByDoctorAssistant Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
 exports.getUsers = async (req, res) => {
   try {
     const error = getUsersValidation(req.query);
+
     if (error) {
       return res.status(400).json({
         success: false,

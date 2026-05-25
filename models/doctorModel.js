@@ -354,12 +354,6 @@ async function getProfile(userId) {
   };
 }
 
-
-
-// ===============================
-// CONTROLLER
-// ===============================
-
 async function getDoctorProfile(
   req,
   res
