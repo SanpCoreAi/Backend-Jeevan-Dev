@@ -52,12 +52,16 @@ WHERE u.role_id = 2
     
     // Format the photo URL
     const BASE_FILE_URL = "http://localhost:4000/uploads";
+    const S3_BASE_URL = process.env.AWS_S3_BUCKET_URL;
+
     return rows.map(row => ({
       ...row,
-      photo: row.photo 
-        ? (row.photo.startsWith('http') || row.photo.startsWith('data:') 
-            ? row.photo 
-            : `${BASE_FILE_URL}/doctor-images/${row.photo}`)
+      photo: row.photo
+        ? (row.photo.startsWith('http') || row.photo.startsWith('data:')
+            ? row.photo
+            : S3_BASE_URL && S3_BASE_URL !== 'undefined'
+              ? `${S3_BASE_URL}/${encodeURI(row.photo)}`
+              : `${BASE_FILE_URL}/doctor-images/${encodeURI(row.photo)}`)
         : null
     }));
 
