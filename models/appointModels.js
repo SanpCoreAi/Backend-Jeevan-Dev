@@ -2,7 +2,10 @@ const db = require("../config/db");
 
 exports.getByToken = async (token) => {
   
-const [rows] = await db.execute(
+
+
+
+ const [rows] = await db.execute(
   `SELECT 
     a.id AS appointment_id,
     a.token_number,

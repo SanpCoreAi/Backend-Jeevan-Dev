@@ -107,3 +107,4 @@ exports.getPrescriptionMedicines = async (appointment_id) => {
 
   return rows;
 };
+

@@ -103,6 +103,8 @@ exports.revisit = async (req, res) => {
   }
 };
 
+
+
 exports.getPrescription = async (req, res) => {
   try {
     const { appointment_id } = req.query;
@@ -115,33 +117,6 @@ if (!appointment_id) {
 }
 
 const data = await service.getFullPrescription(appointment_id);
-
-    res.json({
-      success: true,
-      data
-    });
-
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
-  }
-};
-
-
-exports.getPrescription = async (req, res) => {
-  try {
-    const { token_number } = req.query;
-
-    if (!token_number) {
-      return res.status(400).json({
-        success: false,
-        message: "token_number is required"
-      });
-    }
-
-    const data = await service.getFullPrescription(token_number);
 
     res.json({
       success: true,
