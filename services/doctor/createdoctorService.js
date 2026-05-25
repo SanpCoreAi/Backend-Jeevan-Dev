@@ -168,9 +168,9 @@ async function getProfile(userId) {
     image: d.image_file_key
 
       ? {
-          fileKey: d.image_file_key,
+          // fileKey: d.image_file_key,
 
-          folder: d.image_folder_name,
+          // folder: d.image_folder_name,
 
           url:
             `${S3_BASE_URL}/${encodeURI(d.image_file_key)}`
@@ -188,11 +188,11 @@ async function getProfile(userId) {
 
         ? {
 
-            fileKey:
-              parseJSON(d.files)[0].fileKey,
+            // fileKey:
+            //   parseJSON(d.files)[0].fileKey,
 
-            folder:
-              parseJSON(d.files)[0].folder,
+            // folder:
+            //   parseJSON(d.files)[0].folder,
 
             url:
               `${S3_BASE_URL}/${encodeURI(parseJSON(d.files)[0].fileKey)}`
