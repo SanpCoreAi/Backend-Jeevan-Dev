@@ -7,6 +7,7 @@ const controller = require("../controllers/doctor/qrAppointmentController");
 const { body, param } = require("express-validator");
 const ctrl = require("../controllers/doctor/appointmentTokenController");
 const validate = require("../middlewares/validationMiddleware");
+const appointmentTokenController = require("../controllers/doctor/appointmentTokenController")
 
 router.post("/create/:doctorId", verifyToken, appointmentController.create);
 
