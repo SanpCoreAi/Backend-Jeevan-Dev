@@ -312,8 +312,6 @@ async ({
 
         up.username,
 
-        up.dob,
-
         up.blood_group,
 
         up.language,
