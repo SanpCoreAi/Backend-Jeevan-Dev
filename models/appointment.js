@@ -288,8 +288,6 @@ async ({
 
         a.status,
 
-        a.completed_at,
-
         a.created_at,
 
         u.id
