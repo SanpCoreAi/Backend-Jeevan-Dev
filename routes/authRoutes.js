@@ -1,0 +1,28 @@
+const express = require("express");
+const router = express.Router();
+
+const { register, verifyEmail, getUsers, getUserByDoctorId, getUserByDoctorAssistant,} = require("../controllers/auth/registerController");
+
+const { login } = require("../controllers/auth/loginController");
+
+const { validateRegister, validateLogin,} = require("../middlewares/validationMiddleware");
+
+const { refreshTokenController,} = require("../controllers/auth/refreshController");
+
+const { verifyToken } = require("../middlewares/authMiddleware");
+
+router.post( "/register", validateRegister, register);
+
+router.get( "/verify-email", verifyEmail);
+
+router.post( "/login", validateLogin, login);
+
+router.post( "/refresh", refreshTokenController);
+
+router.get( "/getUsers", verifyToken, getUsers);
+
+router.get( "/getUserByDoctorId/:doctorId", verifyToken, getUserByDoctorId);
+
+router.get( "/getUserByDoctorAssistant", verifyToken, getUserByDoctorAssistant);
+
+module.exports = router;
