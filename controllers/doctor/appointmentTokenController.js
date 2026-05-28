@@ -7,16 +7,9 @@ exports.verifyToken = async (req, res) => {
 
     const data = await service.verifyToken(token);
 
-    if (data.status === "COMPLETED") {
-      return res.status(400).json({
-        success: false,
-        message: "Appointment already completed"
-      });
-    }
-
     res.status(200).json({
       success: true,
-      message: "Token valid",
+      message: "Token valid and appointment completed",
       data
     });
 
@@ -59,6 +52,20 @@ exports.complete = async (req, res, next) => {
       message: result.message
     });
 
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.completeByToken = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const result = await service.completeByToken(token);
+
+    res.status(200).json({
+      success: true,
+      message: result.message
+    });
   } catch (err) {
     next(err);
   }

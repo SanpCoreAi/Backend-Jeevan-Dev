@@ -37,16 +37,11 @@ app.use("/api/likes", likeRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/user", userProfileRoutes);
 app.use("/api/feedback", feedbackRoutes);
-
 app.use("/api/appointments", appointmentRoutes);
-
 app.use("/api/schedules", scheduleRoutes);
-
 app.use("/api/licenseFile", licenseFileRoutes);
-
 app.use("/api/emergency", emergencyRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
-
 app.use(notFound);
 app.use(errorHandler);
 
