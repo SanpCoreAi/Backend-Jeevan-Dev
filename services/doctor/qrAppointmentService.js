@@ -63,7 +63,7 @@ async function scanBook({ user, doctorId, hospitalName, date }) {
   const [appointmentCount] = await db.query(
     `SELECT COUNT(*) AS booked 
      FROM appointments 
-     WHERE doctor_id = ? 
+     WHERE doctor_id = ?  
        AND LOWER(TRIM(hospital_name)) LIKE ?
        AND DATE(slot_date) = ?
        AND appointment_type = 'offline'`,

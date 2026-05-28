@@ -53,7 +53,7 @@ exports.complete = async (id) => {
     `UPDATE appointments
      SET 
        status = 'COMPLETED',
-       completed_at = NOW()
+       created_at = NOW()
 
      WHERE id = ?`,
     [id]
