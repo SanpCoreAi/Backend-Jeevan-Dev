@@ -191,7 +191,72 @@ exports.getAppointmentPublicById = async (req, res) => {
   res.status(200).json(result);
 };
 
+exports.getDashboardCards =
+  async (req, res) => {
+    try {
 
+      
+      const doctorId = req.user.id;
+
+      const data =
+        await appointmentService.getDashboardCards({
+          doctorId,
+        });
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Dashboard cards fetched successfully",
+        data,
+      });
+
+    } catch (error) {
+
+      console.log(error);
+
+      return res.status(500).json({
+        success: false,
+        message: "Something went wrong",
+      });
+
+    }
+  };
+
+
+  exports.getPatientDashboardCards =
+  async (req, res) => {
+
+    try {
+
+      const doctorId =
+        req.user.id;
+
+      const data =
+        await appointmentService
+          .getPatientDashboardCards({
+            doctorId,
+          });
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Patient dashboard cards fetched successfully",
+
+        data,
+      });
+
+    } catch (error) {
+
+      console.log(error);
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Something went wrong",
+      });
+
+    }
+  };
 
 exports.getMyAppointments = async (req, res) => {
 

@@ -292,6 +292,28 @@ async (
   }
 };
 
+exports.getDashboardCards =
+  async ({ doctorId }) => {
+
+    const data =
+      await Appointment.getDashboardCards({
+        doctorId,
+      });
+
+    return data;
+  };
+
+  exports.getPatientDashboardCards =
+  async ({ doctorId }) => {
+
+    const data =
+      await Appointment
+        .getPatientDashboardCards({
+          doctorId,
+        });
+
+    return data;
+  };
 
 exports.getAppointmentPublicById = async (appointmentId) => {
 

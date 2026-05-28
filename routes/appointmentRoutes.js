@@ -40,5 +40,20 @@ router.get(
   appointmentController.getTodayAppointments
 );
 
+router.get(
+  "/dashboard-cards",
+  verifyToken,
+  appointmentController.getDashboardCards
+);
+
+
+
+router.get(
+  "/patient-dashboard-cards",
+  verifyToken,
+  appointmentController
+    .getPatientDashboardCards
+);
+
 
 module.exports = router;

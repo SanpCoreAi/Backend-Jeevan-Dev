@@ -377,6 +377,108 @@ up.address
     }
   };
 
+
+  exports.getDashboardCards =
+  async ({ doctorId }) => {
+
+    const query = `
+
+      SELECT
+
+        COUNT(*) AS total_appointment,
+
+        -- pending = upcoming
+        COUNT(
+          CASE
+            WHEN status = 'pending'
+            THEN 1
+          END
+        ) AS total_upcoming,
+
+        -- completed
+        COUNT(
+          CASE
+            WHEN status = 'completed'
+            THEN 1
+          END
+        ) AS total_completed,
+
+        -- expired
+        COUNT(
+          CASE
+            WHEN status = 'expired'
+            THEN 1
+          END
+        ) AS total_expired
+
+      FROM appointments
+
+      WHERE doctor_id = ?
+
+    `;
+
+    const [rows] =
+      await db.query(query, [doctorId]);
+
+    return rows[0];
+  };
+
+
+
+
+exports.getPatientDashboardCards =
+  async ({ doctorId }) => {
+
+    const query = `
+
+      SELECT
+
+        -- today online
+        COUNT(
+          CASE
+            WHEN appointment_type = 'online'
+            AND DATE(slot_date) = CURDATE()
+            THEN 1
+          END
+        ) AS today_online,
+
+        -- today offline
+        COUNT(
+          CASE
+            WHEN appointment_type = 'offline'
+            AND DATE(slot_date) = CURDATE()
+            THEN 1
+          END
+        ) AS today_offline,
+
+        -- total online
+        COUNT(
+          CASE
+            WHEN appointment_type = 'online'
+            THEN 1
+          END
+        ) AS total_online,
+
+        -- total offline
+        COUNT(
+          CASE
+            WHEN appointment_type = 'offline'
+            THEN 1
+          END
+        ) AS total_offline
+
+      FROM appointments
+
+      WHERE doctor_id = ?
+
+    `;
+
+    const [rows] =
+      await db.query(query, [doctorId]);
+
+    return rows[0];
+  };
+
 exports.checkUserSameSlot = async (patientId, date, timeSlot) => {
 
   const [start, end] = timeSlot.split(" - ").map(t => parse12to24(t));

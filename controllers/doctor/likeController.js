@@ -8,22 +8,35 @@ const {
 const toggleLikeController = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const { doctorId } = req.body;
+
+    // SAFE BODY ACCESS
+    const doctorId = req.body?.doctorId;
 
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      });
     }
 
     if (!doctorId) {
-      return res.status(400).json({ success: false, message: "Doctor ID is required" });
+      return res.status(400).json({
+        success: false,
+        message: "Doctor ID is required"
+      });
     }
 
     const result = await toggleLike(userId, doctorId);
+
     return res.status(200).json(result);
 
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ success: false });
+    console.error("TOGGLE LIKE ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
 
