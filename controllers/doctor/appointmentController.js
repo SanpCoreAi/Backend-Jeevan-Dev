@@ -95,12 +95,12 @@ exports.getDoctorAppointmentsForTable = async (req, res) => {
 };
 
 
-exports.getAppointmentById = async (req, res) => {
+exports.getAppointmentDetails = async (req, res) => {
   try {
     const doctorId = req.user.id;
-    const appointmentId = Number(req.params.appointmentId); 
+    const appointmentId = parseInt(req.params.appointmentId);
 
-    const result = await appointmentService.getAppointmentById(
+    const result = await appointmentService.getAppointmentDetails(
       doctorId,
       appointmentId
     );
@@ -109,8 +109,23 @@ exports.getAppointmentById = async (req, res) => {
       return res.status(404).json(result);
     }
 
-    res.status(200).json(result);
+    return res.status(200).json(result);
 
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+exports.getAppointmentById = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+
+    const result = await appointmentService.getAppointmentById(doctorId);
+
+    res.status(200).json(result);
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -179,16 +194,22 @@ async (
 };
 
 exports.getAppointmentPublicById = async (req, res) => {
+  try {
+    const result = await appointmentService.getAppointmentPublicById(
+      req.params.patient_id
+    );
 
-  const result = await appointmentService.getAppointmentPublicById(
-    req.params.id
-  );
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
 
-  if (!result.success) {
-    return res.status(404).json(result);
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
-
-  res.status(200).json(result);
 };
 
 exports.getDashboardCards =

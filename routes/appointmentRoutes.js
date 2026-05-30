@@ -12,12 +12,20 @@ const appointmentTokenController = require("../controllers/doctor/appointmentTok
 router.post("/create/:doctorId", verifyToken, appointmentController.create);
 
 router.post("/scan-book/:doctorId", verifyToken, controller.scanBook);
-router.get("/appointment/:appointmentId", verifyToken,appointmentController.getAppointmentById);
+router.get(
+  "/appointment/:appointmentId",
+  verifyToken,
+  appointmentController.getAppointmentDetails
+);
 
 router.get("/view-e-visit", verifyToken, appointmentController.getDoctorAppointmentsForTable);
 
 router.get("/getAllappoinment/my", verifyToken, appointmentController.getMyAppointments);
-router.get("/getAppointmentById", verifyToken, appointmentController.getAppointmentById);
+router.get(
+  "/getAppointmentById",
+  verifyToken,
+  appointmentController.getAppointmentById
+);
 router.get("/getAppointmentPublicById/:patient_id", verifyToken, appointmentController.getAppointmentPublicById);
 
 

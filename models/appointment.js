@@ -58,15 +58,15 @@ exports.insertOtherPatient = async (data) => {
 exports.getAppointmentPublicById = async (patientId) => {
   const [rows] = await db.query(
     `
-    SELECT a.*
-    FROM appointments a
-    JOIN appointment_patients ap ON ap.appointment_id = a.id
-    WHERE ap.user_id = ?
+    SELECT *
+    FROM appointments
+    WHERE patient_id = ?
+    ORDER BY id DESC
     `,
     [patientId]
   );
 
-  return rows[0];
+  return rows;
 };
 
 exports.getDoctorAppointmentsForTable = async (
@@ -161,38 +161,53 @@ exports.getDoctorAppointmentsForTable = async (
 };
 
 
-exports.getAppointmentById = async (doctorId, appointmentId) => {
+exports.getAppointmentById = async (doctorId) => {
   const [rows] = await db.query(
     `
-    SELECT 
-      a.id AS appointment_id,
-      COALESCE(u.full_name, 'Unknown') AS name,
-      u.phone_number AS phone,
-      u.email,
-      up.gender AS sex,         
-      up.age,                    
-      up.weight,
-      up.height,
-      up.blood_group,
-      a.token_number,
-      a.appointment_type AS mode,
-      a.hospital_name,
-      DATE_FORMAT(a.slot_date, '%d %b %Y') AS visit_date,
-      d.specialization AS diagnosis,
-      'Paid' AS payment_status,
-      'New' AS visit_type,
-      'Fever' AS diagnosis_text,
-      'Feeling unwell due to fever; resting and monitoring symptoms.' AS note
+   SELECT 
+    a.id AS appointment_id,
+    COALESCE(u.full_name, 'Unknown') AS name,
+    u.phone_number AS phone,
+    u.email,
+    up.gender AS sex,
+    up.age,
+    up.weight,
+    up.height,
+    up.blood_group,
+    a.token_number,
+    a.appointment_type AS mode,
+    a.hospital_name,
+    DATE_FORMAT(a.slot_date, '%d %b %Y') AS visit_date,
+    d.specialization AS diagnosis,
+    'Paid' AS payment_status,
+    'New' AS visit_type,
+    'Fever' AS diagnosis_text,
+    'Feeling unwell due to fever; resting and monitoring symptoms.' AS note
 
-    FROM appointments a
-    LEFT JOIN users u ON u.id = a.patient_id
-    LEFT JOIN user_profiles up ON up.user_id = u.id
-    LEFT JOIN doctors d ON d.id = a.doctor_id
+FROM appointments a
 
-    WHERE a.doctor_id = ?
-    AND a.id = ?
+LEFT JOIN users u 
+    ON u.id = a.patient_id
+
+LEFT JOIN (
+    SELECT up1.*
+    FROM user_profiles up1
+    INNER JOIN (
+        SELECT user_id, MAX(id) AS max_id
+        FROM user_profiles
+        GROUP BY user_id
+    ) latest
+    ON up1.id = latest.max_id
+) up
+    ON up.user_id = u.id
+
+LEFT JOIN doctors d 
+    ON d.id = a.doctor_id
+
+WHERE a.doctor_id = ?
+ORDER BY a.id DESC;
     `,
-    [doctorId, appointmentId]
+    [doctorId]
   );
 
   return rows;
@@ -214,6 +229,53 @@ exports.getByIdAndPatient = async (patientId) => {
   return rows[0];
 };
 
+exports.getAppointmentDetails = async (doctorId, appointmentId) => {
+  const [rows] = await db.query(
+    `
+    SELECT
+      a.id AS appointment_id,
+      a.token_number,
+      a.slot_date,
+      a.start_time,
+      a.end_time,
+      a.appointment_type,
+      a.booking_type,
+      a.hospital_name,
+      a.status,
+
+      u.id AS patient_id,
+      u.full_name AS patient_name,
+      u.phone_number,
+      u.email,
+
+      up.gender,
+      up.age,
+      up.weight,
+      up.height,
+      up.blood_group,
+
+      d.specialization
+
+    FROM appointments a
+
+    LEFT JOIN users u
+      ON u.id = a.patient_id
+
+    LEFT JOIN user_profiles up
+      ON up.user_id = u.id
+
+    LEFT JOIN doctors d
+      ON d.id = a.doctor_id
+
+    WHERE a.doctor_id = ?
+      AND a.id = ?
+    LIMIT 1
+    `,
+    [doctorId, appointmentId]
+  );
+
+  return rows[0] || null;
+};
 
 exports.getAllByPatient = async (userId) => {
 

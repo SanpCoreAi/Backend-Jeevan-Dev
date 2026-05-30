@@ -217,17 +217,33 @@ exports.getDoctorAppointmentsForTable = async (
   };
 };
 
-exports.getAppointmentById = async (doctorId, appointmentId) => {
-
-  const rows = await Appointment.getAppointmentById(
+exports.getAppointmentDetails = async (doctorId, appointmentId) => {
+  const appointment = await Appointment.getAppointmentDetails(
     doctorId,
     appointmentId
   );
 
+  if (!appointment) {
+    return {
+      success: false,
+      message: "Appointment not found"
+    };
+  }
+
+  return {
+    success: true,
+    message: "Appointment details fetched successfully",
+    data: appointment
+  };
+};
+
+exports.getAppointmentById = async (doctorId) => {
+  const rows = await Appointment.getAppointmentById(doctorId);
+
   if (!rows || rows.length === 0) {
     return {
       success: false,
-      message: "Appointment not found",
+      message: "No appointment found",
       data: null
     };
   }
@@ -235,7 +251,7 @@ exports.getAppointmentById = async (doctorId, appointmentId) => {
   return {
     success: true,
     message: "Appointment details fetched successfully",
-    data: rows[0]
+    data: rows
   };
 };
 
@@ -315,11 +331,10 @@ exports.getDashboardCards =
     return data;
   };
 
-exports.getAppointmentPublicById = async (appointmentId) => {
+exports.getAppointmentPublicById = async (patientId) => {
+  const appointments = await Appointment.getAppointmentPublicById(patientId);
 
-  const appointment = await Appointment.getAppointmentPublicById(appointmentId);
-
-  if (!appointment) {
+  if (!appointments || appointments.length === 0) {
     return {
       success: false,
       message: "Appointment not found"
@@ -328,7 +343,8 @@ exports.getAppointmentPublicById = async (appointmentId) => {
 
   return {
     success: true,
-    data: appointment
+    count: appointments.length,
+    data: appointments
   };
 };
 
