@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const { register, verifyEmail, getUsers, getUserByDoctorId, getUserByDoctorAssistant,} = require("../controllers/auth/registerController");
+const { register, verifyEmail, getUsers, getUserByDoctorId, getUserByDoctorAssistant, getAssistantStats} = require("../controllers/auth/registerController");
 
 const { login } = require("../controllers/auth/loginController");
 
@@ -24,5 +24,11 @@ router.get( "/getUsers", verifyToken, getUsers);
 router.get( "/getUserByDoctorId/:doctorId", verifyToken, getUserByDoctorId);
 
 router.get( "/getUserByDoctorAssistant", verifyToken, getUserByDoctorAssistant);
+
+router.get(
+  "/assistant/stats",
+  verifyToken,
+  getAssistantStats
+);
 
 module.exports = router;

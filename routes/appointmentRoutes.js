@@ -55,6 +55,12 @@ router.get(
 );
 
 
+router.get(
+  "/dashboard/stats",
+  verifyToken,
+  appointmentController.getDashboardStats
+);
+
 
 router.get(
   "/patient-dashboard-cards",

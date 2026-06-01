@@ -171,6 +171,10 @@ exports.bookAppointment = async (
   };
 };
 
+exports.getDashboardStats = async (doctorId) => {
+  return await Appointment.getDashboardStats(doctorId);
+};
+
 exports.getDoctorAppointmentsForTable = async (
   doctorId,
   hospitalName,

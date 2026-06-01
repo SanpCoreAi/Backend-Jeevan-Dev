@@ -69,6 +69,50 @@ exports.getAppointmentPublicById = async (patientId) => {
   return rows;
 };
 
+exports.getDashboardStats = async (doctorId) => {
+  const [rows] = await db.query(
+    `
+    SELECT
+    COUNT(
+        CASE
+            WHEN DATE(slot_date) = CURDATE()
+            THEN 1
+        END
+    ) AS todayAppointments,
+
+    COUNT(
+        CASE
+            WHEN DATE(slot_date) = CURDATE()
+            AND created_at IS NOT NULL
+            THEN 1
+        END
+    ) AS todayCompleted,
+
+    COUNT(
+        CASE
+            WHEN DATE(slot_date) = CURDATE()
+            AND status = 'CANCELLED'
+            THEN 1
+        END
+    ) AS todayCancelled,
+
+    COUNT(
+        CASE
+            WHEN DATE(slot_date) > CURDATE()
+            THEN 1
+        END
+    ) AS upcomingAppointments
+
+FROM appointments
+WHERE doctor_id = ?
+AND is_deleted = 0;
+    `,
+    [doctorId]
+  );
+
+  return rows[0];
+};
+
 exports.getDoctorAppointmentsForTable = async (
   doctorId,
   hospitalName,

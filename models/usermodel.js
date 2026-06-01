@@ -194,3 +194,41 @@ exports.findUsers = async (
     throw error;
   }
 };
+
+exports.getAssistantStats = async (doctorId) => {
+  const [rows] = await db.query(
+    `
+    SELECT
+      COUNT(*) AS totalAssistants,
+
+      COUNT(
+        CASE
+          WHEN YEAR(created_at) = YEAR(CURDATE())
+          THEN 1
+        END
+      ) AS yearAssistants,
+
+      COUNT(
+        CASE
+          WHEN YEARWEEK(created_at, 1) = YEARWEEK(CURDATE(), 1)
+          THEN 1
+        END
+      ) AS weekAssistants,
+
+      COUNT(
+        CASE
+          WHEN YEAR(created_at) = YEAR(CURDATE())
+          AND MONTH(created_at) = MONTH(CURDATE())
+          THEN 1
+        END
+      ) AS monthAssistants
+
+    FROM users
+    WHERE doctor_id = ?
+      AND role_id = 3
+    `,
+    [doctorId]
+  );
+
+  return rows[0];
+};

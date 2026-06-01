@@ -95,6 +95,24 @@ exports.getDoctorAppointmentsForTable = async (req, res) => {
 };
 
 
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+
+    const result = await appointmentService.getDashboardStats(doctorId);
+
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 exports.getAppointmentDetails = async (req, res) => {
   try {
     const doctorId = req.user.id;

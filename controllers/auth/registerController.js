@@ -1,5 +1,4 @@
 const authService = require("../../services/auth/registerService");
-
 const { registerValidation, verifyEmailValidation, getUsersValidation,getUserByDoctorIdValidation,
 } = require("../../validation/auth/userValidator");
 
@@ -97,7 +96,6 @@ exports.getUserByDoctorId = async (req, res) => {
 exports.getUserByDoctorAssistant = async (req, res) => {
   try {
 
-    // token se doctor_id lena
     const doctor_id = req.user?.doctor_id || req.user?.id;
 
     if (!doctor_id) {
@@ -161,6 +159,33 @@ exports.getUsers = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getAssistantStats = async (req, res) => {
+  try {
+    const doctorId = req.user?.doctor_id || req.user?.id;
+
+    if (!doctorId) {
+      return res.status(400).json({
+        success: false,
+        message: "Doctor id not found in token",
+      });
+    }
+
+    const result = await authService.getAssistantStats(doctorId);
+
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      data: result.body.data,
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 };

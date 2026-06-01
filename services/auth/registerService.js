@@ -245,3 +245,24 @@ exports.getUsers = async (filters) => {
     };
   }
 };
+
+exports.getAssistantStats = async (doctorId) => {
+  try {
+    const stats = await User.getAssistantStats(doctorId);
+
+    return {
+      statusCode: 200,
+      body: {
+        message: "Assistant status fetched successfully",
+        data: stats,
+      },
+    };
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: {
+        message: error.message,
+      },
+    };
+  }
+};

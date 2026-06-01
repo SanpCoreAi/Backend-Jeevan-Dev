@@ -15,7 +15,8 @@ const emergencyRoutes = require("./routes/emergencyRoutes");
 const likeRoutes = require("./routes/likeRoutes");
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
 const socketHandler = require("./socket/socketHandler");
-const prescriptionRoutes = require("./routes/prescriptionRoutes")
+const prescriptionRoutes = require("./routes/prescriptionRoutes");
+const assistantProfileRoutes = require("./routes/assistant/assistantProfileRoutes");
 
 dotenv.config();
 
@@ -42,6 +43,8 @@ app.use("/api/schedules", scheduleRoutes);
 app.use("/api/licenseFile", licenseFileRoutes);
 app.use("/api/emergency", emergencyRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
+app.use( "/api/assistant", assistantProfileRoutes);
+
 app.use(notFound);
 app.use(errorHandler);
 

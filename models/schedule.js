@@ -94,9 +94,11 @@ async function getScheduleByDoctor(doctorId) {
 
 async function getSlotsByScheduleId(scheduleId) {
   const [rows] = await db.query(
-    `SELECT DISTINCT start_time, end_time, status
+    `SELECT start_time, end_time,
+            CASE WHEN SUM(status = 'active') > 0 THEN 'active' ELSE 'inactive' END AS status
      FROM schedule_slots
      WHERE schedule_id = ?
+     GROUP BY start_time, end_time
      ORDER BY start_time ASC`,
     [scheduleId]
   );
