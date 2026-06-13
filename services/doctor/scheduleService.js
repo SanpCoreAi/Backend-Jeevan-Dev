@@ -181,8 +181,12 @@ async function getScheduleByDoctorId(doctorId) {
     const formattedSlots = slotsFromDB.map(slot => ({
       start: time24To12(slot.start_time),
       end: time24To12(slot.end_time),
-      status: slot.status
+      status: slot.status,
+      date: slot.start_date
     }));
+
+    // determine overall schedule status based on slots stored in DB
+    const scheduleStatus = formattedSlots.some(slot => slot.status === 'active') ? 'active' : 'inactive';
 
     finalData.push({
       scheduleId: s.id,
@@ -200,7 +204,7 @@ async function getScheduleByDoctorId(doctorId) {
         activeDays: s.active_days,
         startDate: s.start_date,
         endDate: s.end_date,
-        status: s.status
+        status: scheduleStatus
       },
 
       slots: formattedSlots

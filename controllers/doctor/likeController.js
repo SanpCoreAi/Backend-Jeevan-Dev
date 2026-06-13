@@ -1,87 +1,48 @@
-const {
-  toggleLike,
-  getLikedDoctorsService,
-  getUserByToken
-} = require("../../services/doctor/likeService");
+const likeService = require("../../services/doctor/likeService");
 
-// 🔥 TOGGLE LIKE
-const toggleLikeController = async (req, res) => {
+exports.toggleLikeController = async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user && req.user.id;
+    const doctorId = req.body.doctorId || req.body.doctor_id || req.query.doctorId;
 
-    // SAFE BODY ACCESS
-    const doctorId = req.body?.doctorId;
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!doctorId) return res.status(400).json({ success: false, message: "doctorId is required" });
 
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized"
-      });
-    }
-
-    if (!doctorId) {
-      return res.status(400).json({
-        success: false,
-        message: "Doctor ID is required"
-      });
-    }
-
-    const result = await toggleLike(userId, doctorId);
-
-    return res.status(200).json(result);
-
+    const result = await likeService.toggleLike(Number(userId), Number(doctorId));
+    res.json(result);
   } catch (err) {
-    console.error("TOGGLE LIKE ERROR:", err);
-
-    return res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    console.error("Like Controller Error:", err);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
 
-// 🔥 GET LIKED DOCTORS
-const getLikedDoctorsController = async (req, res) => {
+exports.getLikedDoctorsController = async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = req.user && req.user.id;
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 10;
 
-    if (!userId) {
-      return res.status(401).json({ success: false });
-    }
+    if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-
-    const result = await getLikedDoctorsService(userId, page, limit);
-    return res.status(200).json(result);
-
+    const result = await likeService.getLikedDoctorsService(Number(userId), page, limit);
+    res.json(result);
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ success: false });
+    console.error("Get Liked Doctors Error:", err);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
 
-// 🔥 GET USER BY TOKEN
-const getUserByTokenController = async (req, res) => {
+exports.getUserByToken = async (req, res) => {
   try {
     const token = req.params.token;
+    if (!token) return res.status(400).json({ success: false, message: "token is required" });
 
-    const user = await getUserByToken(token);
+    const user = await likeService.getUserByToken(token);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: "Invalid token" });
-    }
-
-    return res.status(200).json({ success: true, data: user });
-
+    res.json({ success: true, data: user });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ success: false });
+    console.error("Get User By Token Error:", err);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
-};
-
-module.exports = {
-  toggleLikeController,
-  getLikedDoctorsController,
-  getUserByToken: getUserByTokenController
 };

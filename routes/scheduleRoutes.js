@@ -8,7 +8,8 @@ router.get("/getAllSchedules", verifyToken, ctrl.getAll);
 
 router.get("/getScheduleById", verifyToken, ctrl.getByDoctorId);
 
-router.get("/getSchedulePublicByDoctorId/:doctorId", verifyToken, ctrl.getSchedulePublicByDoctorId);
+// public endpoint - no authentication required
+router.get("/getSchedulePublicByDoctorId/:doctorId", ctrl.getSchedulePublicByDoctorId);
 
 router.get('/getHospitalsName', verifyToken, ctrl.getHospitals);
 

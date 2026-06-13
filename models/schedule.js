@@ -93,13 +93,12 @@ async function getScheduleByDoctor(doctorId) {
 }
 
 async function getSlotsByScheduleId(scheduleId) {
+  // return individual slot instances (per date) so inactive entries are visible
   const [rows] = await db.query(
-    `SELECT start_time, end_time,
-            CASE WHEN SUM(status = 'active') > 0 THEN 'active' ELSE 'inactive' END AS status
+    `SELECT start_time, end_time, start_date, status
      FROM schedule_slots
      WHERE schedule_id = ?
-     GROUP BY start_time, end_time
-     ORDER BY start_time ASC`,
+     ORDER BY start_date ASC, start_time ASC`,
     [scheduleId]
   );
 
