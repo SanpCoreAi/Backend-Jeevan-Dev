@@ -89,6 +89,7 @@ async function getScheduleByDoctor(doctorId) {
     [doctorId]
   );
 
+   console.log(rows); 
   return rows;
 }
 

@@ -74,9 +74,33 @@ async function getNextAvailableSlot(doctorId) {
   return rows[0] || null;
 }
 
+async function getDoctorSlots(doctorId, hospitalName, date) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      ss.id,
+      ss.start_time,
+      ss.end_time,
+      ss.status,
+      s.hospital_name
+    FROM schedule_slots ss
+    INNER JOIN schedules s
+      ON s.id = ss.schedule_id
+    WHERE ss.doctor_id = ?
+      AND s.hospital_name = ?
+      AND ss.start_date = ?
+    ORDER BY ss.start_time ASC
+    `,
+    [doctorId, hospitalName, date]
+  );
+
+  return rows;
+}
+
 module.exports = {
   insertSlots,
   getActiveSlot,
+  getDoctorSlots,
   deactivateSlot,
   getNextAvailableSlot
 };

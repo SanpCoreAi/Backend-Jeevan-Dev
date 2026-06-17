@@ -9,28 +9,35 @@ exports.createAssistantProfile = async (req, res) => {
     let user_id = req.body.user_id;
 
     if (req.user.role_id === 3) {
-      // assistant creating their own profile
       user_id = req.user.id;
     }
 
     if (req.user.role_id === 2 && !user_id) {
-      return res.status(400).json({ success: false, message: "user_id is required when doctor creates assistant profile" });
+      return res.status(400).json({
+        success:false,
+        message:"user_id is required"
+      });
     }
 
-    const result = await assistantProfileService.createAssistantProfile({
-      ...req.body,
-      doctor_id,
-      user_id,
-    });
+
+    const result =
+      await assistantProfileService.createAssistantProfile({
+        ...req.body,
+        doctor_id,
+        user_id
+      });
+
 
     return res.status(201).json(result);
 
-  } catch (error) {
+
+  } catch(error){
 
     return res.status(500).json({
-      success: false,
-      message: error.message
+      success:false,
+      message:error.message
     });
+
   }
 };
 

@@ -37,22 +37,41 @@ exports.create = async (data) => {
   return res.insertId;
 };
 
-exports.insertOtherPatient = async (data) => {
+exports.insertOtherPatient = async ({
+  appointment_id,
+  user_id,
+  name,
+  age,
+  gender,
+  phone,
+  email
+}) => {
+
   const sql = `
     INSERT INTO appointment_patients
-    (appointment_id, user_id, patient_name, age, gender, patient_phone, patient_email)
+    (
+      appointment_id,
+      user_id,
+      patient_name,
+      age,
+      gender,
+      patient_phone,
+      patient_email
+    )
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
-  await db.query(sql, [
-    data.appointment_id,
-    data.user_id,
-    data.name,
-    data.age,
-    data.gender,
-    data.phone,
-    data.email
+  const [result] = await db.query(sql, [
+    appointment_id,
+    user_id,
+    name,
+    age,
+    gender,
+    phone,
+    email
   ]);
+
+  return result.insertId;
 };
 
 exports.getAppointmentPublicById = async (patientId) => {

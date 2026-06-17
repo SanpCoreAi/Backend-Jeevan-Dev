@@ -286,10 +286,6 @@ async function getProfile(userId) {
           d.user_phone_number
       },
 
-      // =========================
-      // IMAGE URL
-      // =========================
-
       imageUrl:
         d.image_file_key
 
@@ -309,23 +305,11 @@ async function getProfile(userId) {
       imageFolderName:
         d.image_folder_name || null,
 
-      // =========================
-      // FILES
-      // =========================
-
       files:
         parseJSON(d.files),
 
-      // =========================
-      // RATING
-      // =========================
-
       avgRating:
         Number(d.avg_rating),
-
-      // =========================
-      // QR CODE
-      // =========================
 
       qr_code:
         qrCode
@@ -414,6 +398,24 @@ const getDoctorPublicProfileById = async (doctorId) => {
       u.full_name AS user_full_name,
       u.email AS user_email,
       u.phone_number AS user_phone_number,
+
+      (
+        SELECT di.file_key
+        FROM doctor_image di
+        WHERE (di.doctor_id = d.user_id OR di.doctor_id = d.id)
+          AND di.file_key IS NOT NULL
+        ORDER BY di.id DESC
+        LIMIT 1
+      ) AS image_file_key,
+
+      (
+        SELECT di.folder_name
+        FROM doctor_image di
+        WHERE (di.doctor_id = d.user_id OR di.doctor_id = d.id)
+          AND di.file_key IS NOT NULL
+        ORDER BY di.id DESC
+        LIMIT 1
+      ) AS image_folder_name,
 
       IFNULL(
         (
@@ -543,12 +545,12 @@ SELECT
     JSON_ARRAY()
   ) AS images,
 
-  ROUND(
-    IFNULL(
-      (SELECT AVG(f.rating) FROM feedbacks f WHERE f.doctor_id = d.id),
-      0
-    ), 1
-  ) AS avg_rating
+ ROUND(
+  IFNULL(
+    (SELECT AVG(f.rating) FROM feedbacks f WHERE f.doctor_id = d.user_id),
+    0
+  ), 1
+) AS avg_rating
 
 FROM doctors d
 LEFT JOIN users u ON u.id = d.user_id;

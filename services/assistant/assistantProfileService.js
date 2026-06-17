@@ -13,17 +13,21 @@ const parseLanguage = (value) => {
   return [];
 };
 
-exports.createAssistantProfile = async (data) => {
+exports.createAssistantProfile = async(data)=>{
 
-  const profileId =
-    await AssistantProfile.createAssistantProfile(data);
 
-  return {
-    success: true,
-    message: "Assistant profile created successfully",
-    profileId
-  };
+ const profileId =
+ await AssistantProfile.createAssistantProfile(data);
+
+
+ return {
+   success:true,
+   message:"Assistant profile created successfully",
+   profileId
+ };
+
 };
+
 
 exports.getAssistantProfile = async (doctorId) => {
 

@@ -240,6 +240,15 @@ async function getDoctorPublicProfileById(userId) {
         phoneNumber: doctor.user_phone_number
       },
 
+      image: doctor.image_file_key
+        ? {
+            url:
+              S3_BASE_URL && S3_BASE_URL !== "undefined"
+                ? `${S3_BASE_URL}/${encodeURI(doctor.image_file_key)}`
+                : `${BASE_FILE_URL}/${encodeURI(doctor.image_file_key)}`
+          }
+        : null,
+ 
       avgRating: Number(doctor.avg_rating)
     }
   };

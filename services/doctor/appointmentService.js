@@ -10,7 +10,6 @@ exports.bookAppointment = async (
   doctorId,
   body
 ) => {
-
   const {
     appointment_date,
     start_time,
@@ -18,7 +17,8 @@ exports.bookAppointment = async (
     reason_for_visit,
     booking_type,
     mode,
-    hospital_name
+    hospital_name,
+    patient
   } = body;
 
   if (
@@ -137,21 +137,36 @@ exports.bookAppointment = async (
   const token =
     Math.floor(1000 + Math.random() * 9000);
 
-  const appointmentId =
-    await Appointment.create({
-      appointment_token: token,
-      appointment_date,
-      start_time: start24,
-      end_time: end24,
-      patient_id: patientId,
-      doctor_id: doctorId,
-      schedule_id: schedule.id,
-      booking_type,
-      mode,
-      hospital_name,
-      reason_for_visit
+  const appointmentId = await Appointment.create({
+  appointment_token: token,
+  appointment_date,
+  start_time: start24,
+  end_time: end24,
+  patient_id: patientId,
+  doctor_id: doctorId,
+  schedule_id: schedule.id,
+  booking_type,
+  mode,
+  hospital_name,
+  reason_for_visit
+});
+
+if (booking_type === "someone_else" && patient) {
+
+
+  const patientInsert =
+    await Appointment.insertOtherPatient({
+      appointment_id: appointmentId,
+      user_id: patientId,
+      name: patient.name,
+      age: patient.age,
+      gender: patient.gender,
+      phone: patient.phone,
+      email: patient.email
     });
 
+  console.log("PATIENT INSERT ID =", patientInsert);
+}
   await SlotModel.deactivateSlot(slot.id);
 
   await sendAppointmentEmail({
@@ -402,5 +417,30 @@ exports.getMyAppointments = async (patientId) => {
   return {
     success: true,
     data: appointments
+  };
+};
+
+exports.getDoctorSlots = async ({
+  doctorId,
+  hospitalName,
+  date,
+}) => {
+
+  const slots = await SlotModel.getDoctorSlots(
+    doctorId,
+    hospitalName,
+    date
+  );
+
+  return {
+    doctorId,
+    hospitalName,
+    date,
+    slots: slots.map(slot => ({
+      slotId: slot.id,
+      start: slot.start_time,
+      end: slot.end_time,
+      status: slot.status
+    }))
   };
 };
