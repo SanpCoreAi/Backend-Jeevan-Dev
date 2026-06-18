@@ -15,10 +15,8 @@ const parseLanguage = (value) => {
 
 exports.createAssistantProfile = async(data)=>{
 
-
  const profileId =
  await AssistantProfile.createAssistantProfile(data);
-
 
  return {
    success:true,

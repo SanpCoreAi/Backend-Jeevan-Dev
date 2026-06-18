@@ -93,6 +93,73 @@ exports.sendEmail = async (to, subject, text) => {
   }
 };
 
+exports.sendAssistantCredentials = async (
+  email,
+  name,
+  password
+) => {
+
+  try {
+
+    const mailOptions = {
+
+      from: `"Hospital Portal" <${process.env.EMAIL_USER}>`,
+
+      to: email,
+
+      subject: "Assistant Account Created - Login Details",
+
+      html: `
+        <div style="font-family:Arial;color:#0a3f3e">
+
+          <h2>Welcome ${name}</h2>
+
+          <p>Your assistant account has been created successfully.</p>
+
+          <p>
+            <b>Login Email:</b> ${email}
+          </p>
+
+          <p>
+            <b>Password:</b> ${password}
+          </p>
+
+          <br/>
+
+          <p>
+            Please login and change your password after first login.
+          </p>
+
+          <p>
+            Hospital Portal Team
+          </p>
+
+        </div>
+      `,
+    };
+
+
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log(
+      `Assistant credentials sent to ${email}: ${info.response}`
+    );
+
+    return true;
+
+
+  } catch(error){
+
+    console.error(
+      "Assistant mail error:",
+      error.message
+    );
+
+    throw error;
+  }
+
+};
+
 
 exports.sendAppointmentEmail = async ({ to, token, date, time }) => {
   try {

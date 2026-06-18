@@ -3,7 +3,7 @@ const crypto = require("crypto");
 
 const User = require("../../models/usermodel");
 
-const { sendVerificationEmail } = require("../../utils/sendEmail");
+const { sendVerificationEmail, sendAssistantCredentials } = require("../../utils/sendEmail");
 
 exports.registerUserOrAssistant = async (data) => {
   try {
@@ -38,33 +38,59 @@ exports.registerUserOrAssistant = async (data) => {
       };
     }
 
-    // assistant create
-    if (doctor_id) {
+// assistant create
+if (doctor_id) {
 
-      const defaultPassword =
-        process.env.DEFAULT_ASSISTANT_PASSWORD || "ChangeMe@123";
 
-      const assistantPassword = password || defaultPassword;
-      const hashedPassword = await bcrypt.hash(assistantPassword, 10);
+ const defaultPassword =
+ process.env.DEFAULT_ASSISTANT_PASSWORD || "ChangeMe@123";
 
-      const userId = await User.createUser({
-        full_name,
-        email,
-        phone_number,
-        password: hashedPassword,
-        doctor_id,
-        role_id: role_id || 3,
-        email_verified: 1,
-      });
 
-      return {
-        statusCode: 201,
-        body: {
-          message: "Assistant created successfully",
-          user_id: userId,
-        },
-      };
-    }
+ const assistantPassword = password || defaultPassword;
+
+
+ const hashedPassword =
+ await bcrypt.hash(assistantPassword,10);
+
+
+
+ const userId = await User.createUser({
+
+   full_name,
+   email,
+   phone_number,
+   password:hashedPassword,
+   doctor_id,
+   role_id: role_id || 3,
+   email_verified:1,
+
+ });
+
+
+
+ // Gmail send
+ await sendAssistantCredentials(
+    email,
+    full_name,
+    assistantPassword
+ );
+
+
+
+ return {
+
+  statusCode:201,
+
+  body:{
+    message:
+    "Assistant created successfully. Credentials sent on email.",
+
+    user_id:userId
+  }
+
+ };
+
+}
 
     // normal user register
     if (!password) {
