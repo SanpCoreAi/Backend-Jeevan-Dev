@@ -31,11 +31,14 @@ exports.loginUser = async ({ email, password }) => {
       };
     }
 
-    const accessToken = jwt.sign(
-      { id: user.id, role_id: user.role_id },
-      process.env.ACCESS_SECRET || "access_secret",
-      { expiresIn: "1d" }
-    );
+  const accessToken = jwt.sign(
+  {
+    id: user.id,
+    role: user.role_id
+  },
+   process.env.ACCESS_SECRET || "access_secret",
+   { expiresIn: "1d" }
+  );
 
     const refreshToken = jwt.sign(
       { id: user.id },

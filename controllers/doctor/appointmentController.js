@@ -139,16 +139,57 @@ exports.getAppointmentDetails = async (req, res) => {
 
 exports.getAppointmentById = async (req, res) => {
   try {
-    const doctorId = req.user.id;
 
-    const result = await appointmentService.getAppointmentById(doctorId);
+    let doctorId;
 
-    res.status(200).json(result);
+    // Doctor token
+    if (req.user.role === 2) {
+
+      doctorId = req.user.id;
+
+    } 
+    // Assistant token
+    else if (req.user.role === 3) {
+
+      const user = await appointmentService.getUserById(req.user.id);
+
+      if (!user || !user.doctor_id) {
+        return res.status(404).json({
+          success: false,
+          message: "Doctor not found for assistant"
+        });
+      }
+
+      doctorId = user.doctor_id;
+
+    } 
+    else {
+
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized role"
+      });
+
+    }
+
+
+    const result = await appointmentService.getAppointmentById(
+      doctorId
+    );
+
+
+    return res.status(200).json(result);
+
+
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
+
+    console.log(error);
+
+    return res.status(500).json({
+      success:false,
+      message:error.message
     });
+
   }
 };
 
@@ -213,20 +254,67 @@ async (
 
 exports.getAppointmentPublicById = async (req, res) => {
   try {
-    const result = await appointmentService.getAppointmentPublicById(
-      req.params.patient_id
-    );
+
+    let patientId = req.params.patient_id;
+
+    // agar doctor/assistant token se access karna hai
+    if (req.user) {
+
+      // Doctor
+      if (req.user.role === 2) {
+
+        patientId = req.params.patient_id;
+
+      }
+
+      // Assistant
+      else if (req.user.role === 3) {
+
+        const user = await appointmentService.getUserById(
+          req.user.id
+        );
+
+        if (!user || !user.doctor_id) {
+          return res.status(404).json({
+            success:false,
+            message:"Doctor not found"
+          });
+        }
+
+        patientId = req.params.patient_id;
+
+      }
+
+      else {
+        return res.status(403).json({
+          success:false,
+          message:"Unauthorized role"
+        });
+      }
+    }
+
+
+    const result =
+      await appointmentService.getAppointmentPublicById(
+        patientId
+      );
+
 
     if (!result.success) {
       return res.status(404).json(result);
     }
 
+
     return res.status(200).json(result);
+
+
   } catch (error) {
+
     return res.status(500).json({
-      success: false,
-      message: error.message
+      success:false,
+      message:error.message
     });
+
   }
 };
 

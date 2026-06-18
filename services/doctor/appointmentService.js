@@ -1,6 +1,7 @@
 const Appointment = require("../../models/appointment");
 const SlotModel = require("../../models/slot");
 const Schedule = require("../../models/schedule");
+const User = require("../../models/usermodel");
 const { parse12to24, time24To12 } = require("../../utils/timeHelper");
 const { sendAppointmentEmail } = require("../../utils/sendEmail");
 
@@ -190,6 +191,40 @@ exports.getDashboardStats = async (doctorId) => {
   return await Appointment.getDashboardStats(doctorId);
 };
 
+exports.getAppointmentPublicById = async (patientId) => {
+
+  const appointments =
+    await Appointment.getAppointmentPublicById(patientId);
+
+
+  if (!appointments || appointments.length === 0) {
+
+    return {
+      success:false,
+      message:"Appointment not found"
+    };
+
+  }
+
+
+  return {
+    success:true,
+    count:appointments.length,
+    data:appointments
+  };
+
+};
+
+
+
+exports.getUserById = async(id)=>{
+
+  const user = await User.findById(id);
+
+  return user;
+
+};
+
 exports.getDoctorAppointmentsForTable = async (
   doctorId,
   hospitalName,
@@ -257,21 +292,41 @@ exports.getAppointmentDetails = async (doctorId, appointmentId) => {
 };
 
 exports.getAppointmentById = async (doctorId) => {
-  const rows = await Appointment.getAppointmentById(doctorId);
+
+  const rows = await Appointment.getAppointmentById(
+    doctorId
+  );
+
 
   if (!rows || rows.length === 0) {
+
     return {
-      success: false,
-      message: "No appointment found",
-      data: null
+      success:false,
+      message:"No appointment found",
+      data:null
     };
+
   }
 
+
   return {
-    success: true,
-    message: "Appointment details fetched successfully",
-    data: rows
+
+    success:true,
+    message:"Appointment details fetched successfully",
+    data:rows
+
   };
+
+};
+
+
+
+exports.getUserById = async (id)=>{
+
+  const user = await User.findById(id);
+
+  return user;
+
 };
 
 
@@ -350,22 +405,7 @@ exports.getDashboardCards =
     return data;
   };
 
-exports.getAppointmentPublicById = async (patientId) => {
-  const appointments = await Appointment.getAppointmentPublicById(patientId);
 
-  if (!appointments || appointments.length === 0) {
-    return {
-      success: false,
-      message: "Appointment not found"
-    };
-  }
-
-  return {
-    success: true,
-    count: appointments.length,
-    data: appointments
-  };
-};
 
 exports.getTodayAppointments = async (
   req,

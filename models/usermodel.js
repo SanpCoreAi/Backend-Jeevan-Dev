@@ -195,6 +195,21 @@ exports.findUsers = async (
   }
 };
 
+exports.findById = async(id)=>{
+
+ const [rows] = await db.query(
+   `
+   SELECT id, doctor_id, role_id
+   FROM users
+   WHERE id=?
+   `,
+   [id]
+ );
+
+ return rows[0];
+
+};
+
 exports.getAssistantStats = async (doctorId) => {
   const [rows] = await db.query(
     `

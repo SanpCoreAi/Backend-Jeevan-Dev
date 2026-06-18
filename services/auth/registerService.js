@@ -44,7 +44,8 @@ exports.registerUserOrAssistant = async (data) => {
       const defaultPassword =
         process.env.DEFAULT_ASSISTANT_PASSWORD || "ChangeMe@123";
 
-      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+      const assistantPassword = password || defaultPassword;
+      const hashedPassword = await bcrypt.hash(assistantPassword, 10);
 
       const userId = await User.createUser({
         full_name,
