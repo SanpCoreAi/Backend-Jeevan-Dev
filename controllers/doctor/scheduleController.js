@@ -54,10 +54,74 @@ exports.getSchedulePublicByDoctorId = async (req, res) => {
 };
 
 exports.getHospitals = async (req, res) => {
-  const result =
-    await ScheduleService.getHospitalNamesByDoctor(req.user.id);
 
-  res.json(result);
+  try {
+
+    let doctorId;
+
+
+    // Doctor token
+    if (req.user.role === 2) {
+
+      doctorId = req.user.id;
+
+    }
+
+
+    // Assistant token
+    else if (req.user.role === 3) {
+
+      const user =
+        await ScheduleService.getUserById(
+          req.user.id
+        );
+
+
+      if (!user || !user.doctor_id) {
+
+        return res.status(404).json({
+          success:false,
+          message:"Doctor not found"
+        });
+
+      }
+
+
+      doctorId = user.doctor_id;
+
+    }
+
+
+    else {
+
+      return res.status(403).json({
+        success:false,
+        message:"Unauthorized role"
+      });
+
+    }
+
+
+
+    const result =
+      await ScheduleService.getHospitalNamesByDoctor(
+        doctorId
+      );
+
+
+    return res.json(result);
+
+
+
+  } catch(error) {
+
+    return res.status(500).json({
+      success:false,
+      message:error.message
+    });
+
+  }
+
 };
 
 exports.update = async (req, res) => {

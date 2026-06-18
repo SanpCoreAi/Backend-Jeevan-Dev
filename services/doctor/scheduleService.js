@@ -1,5 +1,6 @@
 const ScheduleModel = require("../../models/schedule");
 const SlotModel = require("../../models/slot");
+const User = require("../../models/usermodel");
 const db = require("../../config/db");
 const {parse12to24,generateSlots12,time24To12} = require("../../utils/timeHelper");
 
@@ -291,32 +292,81 @@ async function deleteSchedule(id, doctorId) {
 }
 
 
+async function getUserById(id){
+
+  const user =
+    await User.findById(id);
+
+  return user;
+
+}
+
+
 async function getHospitalNamesByDoctor(doctorId) {
+
   const [rows] = await db.query(
-    `SELECT hospital_detail FROM doctors WHERE user_id = ?`,
+    `
+    SELECT hospital_detail 
+    FROM doctors 
+    WHERE user_id = ?
+    `,
     [doctorId]
   );
 
+
   if (!rows.length || !rows[0].hospital_detail) {
-    return { success: true, data: [] };
+
+    return {
+      success:true,
+      data:[]
+    };
+
   }
+
 
   let hospitals;
+
   try {
-    hospitals = JSON.parse(rows[0].hospital_detail);
+
+    hospitals =
+      JSON.parse(
+        rows[0].hospital_detail
+      );
+
   } catch {
-    return { success: true, data: [] };
+
+    return {
+      success:true,
+      data:[]
+    };
+
   }
 
+
+
   return {
-    success: true,
-    data: hospitals.map(h => ({
-      hospitalName: h.hospitalName || "",
-      landmark: h.landmark || "",
-      city: h.city || "",
-      state: h.state || ""
-    }))
+
+    success:true,
+
+    data:
+      hospitals.map(h => ({
+
+        hospitalName:
+          h.hospitalName || "",
+
+        landmark:
+          h.landmark || "",
+
+        city:
+          h.city || "",
+
+        state:
+          h.state || ""
+
+      }))
+
   };
+
 }
 
 module.exports = {
@@ -326,5 +376,6 @@ module.exports = {
   getSchedulePublicByDoctorId,
   updateSchedule,
   deleteSchedule,
+  getUserById,
   getHospitalNamesByDoctor
 };

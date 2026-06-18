@@ -219,7 +219,8 @@ exports.getAppointmentPublicById = async (patientId) => {
 
 exports.getUserById = async(id)=>{
 
-  const user = await User.findById(id);
+  const user =
+    await User.findById(id);
 
   return user;
 
@@ -234,7 +235,11 @@ exports.getDoctorAppointmentsForTable = async (
 
   const offset = (page - 1) * limit;
 
-  const { rows, total } =
+
+  const {
+    rows,
+    total
+  } =
     await Appointment.getDoctorAppointmentsForTable(
       doctorId,
       hospitalName,
@@ -242,34 +247,57 @@ exports.getDoctorAppointmentsForTable = async (
       offset
     );
 
+
+
   if (!rows || rows.length === 0) {
 
     return {
-      success: false,
-      message: `No appointments found for hospital: ${hospitalName}`,
-      offlineAppointments: [],
-      onlineAppointments: []
+      success:false,
+      message:
+       `No appointments found for hospital: ${hospitalName}`,
+      offlineAppointments:[],
+      onlineAppointments:[]
     };
+
   }
 
-  const offlineAppointments = rows.filter(
-    (item) => item.mode === "offline"
-  );
 
-  const onlineAppointments = rows.filter(
-    (item) => item.mode === "online"
-  );
+
+  const offlineAppointments =
+    rows.filter(
+      item => item.mode === "offline"
+    );
+
+
+  const onlineAppointments =
+    rows.filter(
+      item => item.mode === "online"
+    );
+
+
 
   return {
-    success: true,
-    message: "Appointments fetched successfully",
+
+    success:true,
+
+    message:
+      "Appointments fetched successfully",
+
     total,
-    currentPage: page,
-    totalPages: Math.ceil(total / limit),
+
+    currentPage:page,
+
+    totalPages:
+      Math.ceil(total / limit),
+
     offlineAppointments,
+
     onlineAppointments
+
   };
+
 };
+
 
 exports.getAppointmentDetails = async (doctorId, appointmentId) => {
   const appointment = await Appointment.getAppointmentDetails(
@@ -318,8 +346,6 @@ exports.getAppointmentById = async (doctorId) => {
   };
 
 };
-
-
 
 exports.getUserById = async (id)=>{
 
@@ -383,27 +409,44 @@ async (
 };
 
 exports.getDashboardCards =
-  async ({ doctorId }) => {
+async ({ doctorId }) => {
 
-    const data =
-      await Appointment.getDashboardCards({
-        doctorId,
+
+  const data =
+    await Appointment.getDashboardCards({
+      doctorId
+    });
+
+
+  return data;
+
+};
+
+exports.getPatientDashboardCards =
+async ({ doctorId }) => {
+
+
+  const data =
+    await Appointment
+      .getPatientDashboardCards({
+        doctorId
       });
 
-    return data;
-  };
 
-  exports.getPatientDashboardCards =
-  async ({ doctorId }) => {
+  return data;
 
-    const data =
-      await Appointment
-        .getPatientDashboardCards({
-          doctorId,
-        });
+};
 
-    return data;
-  };
+
+
+exports.getUserById = async(id)=>{
+
+  const user =
+    await User.findById(id);
+
+  return user;
+
+};
 
 
 
@@ -450,15 +493,24 @@ exports.getTodayAppointments = async (
   }
 };
 
-exports.getMyAppointments = async (patientId) => {
+exports.getMyAppointments = async (userId) => {
 
-  const appointments = await Appointment.getAllByPatient(patientId);
+  const appointments =
+    await Appointment.getAllByPatient(
+      userId
+    );
+
 
   return {
-    success: true,
-    data: appointments
+
+    success:true,
+
+    data:appointments
+
   };
+
 };
+
 
 exports.getDoctorSlots = async ({
   doctorId,
