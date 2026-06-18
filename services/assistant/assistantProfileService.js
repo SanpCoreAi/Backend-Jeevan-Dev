@@ -27,12 +27,10 @@ exports.createAssistantProfile = async(data)=>{
 };
 
 
-exports.getAssistantProfile = async (doctorId) => {
+exports.getAssistantProfile = async (userId) => {
 
   const profile =
-    await AssistantProfile.getAssistantProfile(
-      doctorId
-    );
+    await AssistantProfile.getAssistantProfile(userId);
 
 
   if (!profile) {
@@ -42,13 +40,35 @@ exports.getAssistantProfile = async (doctorId) => {
     };
   }
 
+
   profile.language = parseLanguage(profile.language);
   profile.address = safeJSON(profile.address, {});
 
+
   return {
     success: true,
-    data: profile
+    data: {
+
+      // Top details
+      user_id: userId,
+      full_name: profile.full_name,
+      email: profile.email,
+      phone_number: profile.phone_number,
+
+      // Profile details
+      gender: profile.gender,
+      age: profile.age,
+      department: profile.department,
+      education: profile.education,
+      experience: profile.experience,
+      language: profile.language,
+      joining_date: profile.joining_date,
+      address: profile.address,
+      doctor_assign: profile.doctor_assign,
+       bio: profile.bio,
+    }
   };
+
 };
 
 exports.getAllAssistantProfiles = async (doctorId) => {

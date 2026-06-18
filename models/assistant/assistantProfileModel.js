@@ -49,29 +49,31 @@ exports.createAssistantProfile = async (data) => {
   return result.insertId;
 };
 
+exports.getAssistantProfile = async (userId) => {
 
-
-exports.getAssistantProfile = async(userId)=>{
-
-
-const [rows] = await db.query(
-
+  const [rows] = await db.query(
 `
 SELECT
 
-ap.id,
 ap.gender,
 ap.age,
 ap.department,
 ap.education,
 ap.experience,
 ap.language,
+
+DATE_FORMAT(ap.created_at, '%d-%m-%Y') AS joining_date,
+
 ap.address,
 ap.bio,
 
+
 u.full_name,
 u.email,
-u.phone_number
+u.phone_number,
+
+
+doctor.full_name AS doctor_assign
 
 
 FROM assistant_profiles ap
@@ -79,6 +81,10 @@ FROM assistant_profiles ap
 
 LEFT JOIN users u
 ON u.id = ap.user_id
+
+
+LEFT JOIN users doctor
+ON doctor.id = u.doctor_id
 
 
 WHERE ap.user_id = ?
@@ -89,9 +95,7 @@ ORDER BY ap.id DESC
 LIMIT 1
 
 `,
-
 [userId]
-
 );
 
 
@@ -99,12 +103,7 @@ return rows[0];
 
 };
 
-
-
-
-
 exports.getAllAssistantProfiles = async(userId)=>{
-
 
 const [rows] = await db.query(
 
