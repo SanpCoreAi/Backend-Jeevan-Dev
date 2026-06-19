@@ -4,7 +4,16 @@ const { registerValidation, verifyEmailValidation, getUsersValidation,getUserByD
 
 exports.register = async (req, res) => {
   try {
+
+
+    // assistant ke liye password remove validation issue
+    if (req.body.role_id == 3 && !req.body.password) {
+      req.body.password = "123456";
+    }
+
+
     const error = registerValidation(req.body);
+
 
     if (error) {
       return res.status(400).json({
@@ -13,7 +22,17 @@ exports.register = async (req, res) => {
       });
     }
 
-    const result = await authService.registerUserOrAssistant(req.body);
+
+    const doctor_id =
+      req.user?.doctor_id || req.user?.id;
+
+
+    const result =
+      await authService.registerUserOrAssistant({
+        ...req.body,
+        doctor_id
+      });
+
 
     return res.status(result.statusCode).json({
       success: result.statusCode < 400,
@@ -23,12 +42,12 @@ exports.register = async (req, res) => {
       },
     });
 
+
   } catch (error) {
-    console.error("Register Error:", error.message);
 
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error",
+      message: error.message,
     });
   }
 };

@@ -41,10 +41,7 @@ exports.registerUserOrAssistant = async (data) => {
 // assistant create
 if (doctor_id) {
 
-
- const defaultPassword =
- process.env.DEFAULT_ASSISTANT_PASSWORD || "ChangeMe@123";
-
+ const defaultPassword = "123456";
 
  const assistantPassword = password || defaultPassword;
 
@@ -53,42 +50,17 @@ if (doctor_id) {
  await bcrypt.hash(assistantPassword,10);
 
 
-
  const userId = await User.createUser({
 
    full_name,
    email,
    phone_number,
-   password:hashedPassword,
+   password: hashedPassword,
    doctor_id,
    role_id: role_id || 3,
    email_verified:1,
 
  });
-
-
-
- // Gmail send
- await sendAssistantCredentials(
-    email,
-    full_name,
-    assistantPassword
- );
-
-
-
- return {
-
-  statusCode:201,
-
-  body:{
-    message:
-    "Assistant created successfully. Credentials sent on email.",
-
-    user_id:userId
-  }
-
- };
 
 }
 

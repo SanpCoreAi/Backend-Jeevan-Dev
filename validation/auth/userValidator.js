@@ -1,27 +1,31 @@
 const Joi = require("joi");
 
 exports.registerValidation = (data) => {
+
   const schema = Joi.object({
-    full_name: Joi.string().min(3).max(50).required(),
+
+    full_name: Joi.string()
+      .required(),
 
     email: Joi.string()
       .email()
       .required(),
 
     phone_number: Joi.string()
-      .pattern(/^[0-9]{10}$/)
       .required(),
-
-    password: Joi.string()
-      .min(6)
-      .optional(),
 
     role_id: Joi.number()
       .optional(),
 
-    doctor_id: Joi.number()
-      .optional(),
+    password: Joi.string()
+      .when("role_id", {
+        is: 3,
+        then: Joi.optional(),
+        otherwise: Joi.required()
+      })
+
   });
+
 
   const { error } = schema.validate(data);
 
