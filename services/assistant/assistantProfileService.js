@@ -71,6 +71,41 @@ exports.getAssistantProfile = async (userId) => {
 
 };
 
+exports.updateAssistantProfile = async (
+  userId,
+  data
+) => {
+
+
+  const result =
+    await AssistantProfile.updateAssistantProfile(
+      userId,
+      data
+    );
+
+
+  if(!result){
+
+    return {
+      success:false,
+      message:"Profile update failed"
+    };
+
+  }
+
+
+
+  return {
+
+    success:true,
+
+    message:
+    "Assistant profile updated successfully"
+
+  };
+
+};
+
 exports.getAllAssistantProfiles = async (doctorId) => {
 
   console.log("[assistantProfileService] getAllAssistantProfiles doctorId=", doctorId);

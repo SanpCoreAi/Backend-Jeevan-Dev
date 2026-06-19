@@ -5,12 +5,10 @@ const { registerValidation, verifyEmailValidation, getUsersValidation,getUserByD
 exports.register = async (req, res) => {
   try {
 
-    // assistant ke liye password optional
     if (req.body.role_id == 3 && !req.body.password) {
       req.body.password =
         process.env.DEFAULT_ASSISTANT_PASSWORD || "123456";
     }
-
 
     const error = registerValidation(req.body);
 

@@ -50,6 +50,32 @@ exports.getAssistantProfile = async (req, res) => {
   }
 };
 
+exports.updateAssistantProfile = async (req, res) => {
+  try {
+
+    const user_id = req.user.id;
+
+
+    const result =
+      await assistantProfileService.updateAssistantProfile(
+        user_id,
+        req.body
+      );
+
+
+    return res.status(200).json(result);
+
+
+  } catch(error){
+
+    return res.status(500).json({
+      success:false,
+      message:error.message
+    });
+
+  }
+};
+
 exports.getAllAssistantProfiles = async (req, res) => {
   try {
 

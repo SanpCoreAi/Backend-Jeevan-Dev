@@ -74,6 +74,8 @@ exports.insertOtherPatient = async ({
   return result.insertId;
 };
 
+
+
 exports.getAppointmentPublicById = async (patientId) => {
   const [rows] = await db.query(
     `
@@ -274,6 +276,31 @@ ORDER BY a.id DESC;
   );
 
   return rows;
+};
+
+exports.countTodayAppointments = async (
+  patientId,
+  appointmentDate
+) => {
+
+  const [rows] = await db.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM appointments
+    WHERE patient_id = ?
+    AND DATE(slot_date) = ?
+    AND appointment_type = 'online'
+    AND status NOT IN ('CANCELLED')
+    `,
+    [
+      patientId,
+      appointmentDate
+    ]
+  );
+
+
+  return Number(rows[0].total);
+
 };
 
 exports.getByIdAndPatient = async (patientId) => {

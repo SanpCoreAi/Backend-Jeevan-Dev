@@ -103,6 +103,71 @@ return rows[0];
 
 };
 
+exports.updateAssistantProfile = async (
+  userId,
+  data
+) => {
+
+
+  const {
+    gender,
+    age,
+    department,
+    education,
+    experience,
+    language,
+    address,
+    bio
+  } = data;
+
+
+
+  const [result] = await db.query(
+
+`
+UPDATE assistant_profiles
+SET
+
+gender = ?,
+age = ?,
+department = ?,
+education = ?,
+experience = ?,
+language = ?,
+address = ?,
+bio = ?
+
+WHERE user_id = ?
+
+`,
+
+[
+
+gender,
+age,
+department,
+education,
+experience,
+
+JSON.stringify(language || []),
+
+JSON.stringify(address || {}),
+
+bio,
+
+userId
+
+]
+
+);
+
+
+
+return result.affectedRows > 0;
+
+
+};
+
 exports.getAllAssistantProfiles = async(userId)=>{
 
 const [rows] = await db.query(

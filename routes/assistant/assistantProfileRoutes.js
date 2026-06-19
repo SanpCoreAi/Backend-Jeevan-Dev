@@ -25,4 +25,10 @@ router.get(
   assistantProfileController.getAllAssistantProfiles
 );
 
+router.put(
+ "/updateAssistantProfile",
+ verifyToken,
+ assistantProfileController.updateAssistantProfile
+);
+
 module.exports = router;
