@@ -4,7 +4,6 @@ const { registerValidation, verifyEmailValidation, getUsersValidation,getUserByD
 
 exports.register = async (req, res) => {
   try {
-
     const error = registerValidation(req.body);
 
     if (error) {
@@ -14,17 +13,7 @@ exports.register = async (req, res) => {
       });
     }
 
-
-    const doctor_id =
-      req.user?.doctor_id || req.user?.id;
-
-
-    const result =
-      await authService.registerUserOrAssistant({
-        ...req.body,
-        doctor_id
-      });
-
+    const result = await authService.registerUserOrAssistant(req.body);
 
     return res.status(result.statusCode).json({
       success: result.statusCode < 400,
@@ -34,9 +23,7 @@ exports.register = async (req, res) => {
       },
     });
 
-
   } catch (error) {
-
     console.error("Register Error:", error.message);
 
     return res.status(500).json({

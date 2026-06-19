@@ -39,12 +39,11 @@ exports.registerUserOrAssistant = async (data) => {
     }
 
 // assistant create
-// assistant create
-if (role_id == 3) {
+if (doctor_id) {
 
 
  const defaultPassword =
- process.env.DEFAULT_ASSISTANT_PASSWORD || "123456";
+ process.env.DEFAULT_ASSISTANT_PASSWORD || "ChangeMe@123";
 
 
  const assistantPassword = password || defaultPassword;
@@ -60,20 +59,22 @@ if (role_id == 3) {
    full_name,
    email,
    phone_number,
-   password: hashedPassword,
+   password:hashedPassword,
    doctor_id,
-   role_id: 3,
+   role_id: role_id || 3,
    email_verified:1,
 
  });
 
 
 
+ // Gmail send
  await sendAssistantCredentials(
     email,
     full_name,
     assistantPassword
  );
+
 
 
  return {
