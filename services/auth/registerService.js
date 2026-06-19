@@ -6,47 +6,57 @@ const User = require("../../models/usermodel");
 const { sendVerificationEmail, sendAssistantCredentials } = require("../../utils/sendEmail");
 
 exports.registerUserOrAssistant = async (data) => {
-  try {
-    const {
-      full_name,
-      email,
-      phone_number,
-      password,
-      role_id,
-      doctor_id,
-    } = data;
 
-    const emailExists = await User.findByEmail(email);
+try {
 
-    if (emailExists) {
-      return {
-        statusCode: 409,
-        body: {
-          message: "Email already exists",
-        },
-      };
-    }
+const {
+ full_name,
+ email,
+ phone_number,
+ password,
+ role_id
+} = data;
 
-    const phoneExists = await User.findByPhone(phone_number);
 
-    if (phoneExists) {
-      return {
-        statusCode: 409,
-        body: {
-          message: "Phone already exists",
-        },
-      };
-    }
+const emailExists = await User.findByEmail(email);
 
-// assistant create
-if (doctor_id) {
+if(emailExists){
+ return {
+  statusCode:409,
+  body:{
+   message:"Email already exists"
+  }
+ };
+}
+
+
+const phoneExists = await User.findByPhone(phone_number);
+
+if(phoneExists){
+ return {
+  statusCode:409,
+  body:{
+   message:"Phone already exists"
+  }
+ };
+}
+
+
+
+// =======================
+// ASSISTANT REGISTER
+// =======================
+
+if(role_id == 3){
 
 
  const defaultPassword =
- process.env.DEFAULT_ASSISTANT_PASSWORD || "ChangeMe@123";
+ process.env.DEFAULT_ASSISTANT_PASSWORD || "123456";
 
 
- const assistantPassword = password || defaultPassword;
+ const assistantPassword =
+ password || defaultPassword;
+
 
 
  const hashedPassword =
@@ -54,27 +64,25 @@ if (doctor_id) {
 
 
 
- const userId = await User.createUser({
+ const userId =
+ await User.createUser({
 
-   full_name,
-   email,
-   phone_number,
-   password:hashedPassword,
-   doctor_id,
-   role_id: role_id || 3,
-   email_verified:1,
+  full_name,
+  email,
+  phone_number,
+  password:hashedPassword,
+  role_id:3,
+  email_verified:1
 
  });
 
 
 
- // Gmail send
  await sendAssistantCredentials(
-    email,
-    full_name,
-    assistantPassword
+   email,
+   full_name,
+   assistantPassword
  );
-
 
 
  return {
@@ -82,84 +90,123 @@ if (doctor_id) {
   statusCode:201,
 
   body:{
-    message:
-    "Assistant created successfully. Credentials sent on email.",
-
-    user_id:userId
+   message:
+   "Assistant created successfully. Credentials sent on email.",
+   user_id:userId
   }
 
  };
 
 }
 
-    // normal user register
-    if (!password) {
-      return {
-        statusCode: 400,
-        body: {
-          message: "Password is required",
-        },
-      };
-    }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const verificationToken = crypto
-      .randomBytes(32)
-      .toString("hex");
+// =======================
+// NORMAL USER REGISTER
+// =======================
 
-    const userId = await User.createUser({
-      full_name,
-      email,
-      phone_number,
-      password: hashedPassword,
-      role_id: role_id || 2,
-      verificationToken,
-      email_verified: 0,
-    });
 
-    try {
+if(!password){
 
-      await sendVerificationEmail(
-        email,
-        verificationToken
-      );
+ return {
 
-      return {
-        statusCode: 201,
-        body: {
-          message:
-            "User registered. Please verify email.",
-          user_id: userId,
-        },
-      };
+ statusCode:400,
 
-    } catch (emailError) {
+ body:{
+  message:"Password is required"
+ }
 
-      console.error(
-        "Verification email send failed:",
-        emailError.message
-      );
+ };
 
-      return {
-        statusCode: 201,
-        body: {
-          message:
-            "User registered, but verification email could not be sent.",
-          user_id: userId,
-        },
-      };
-    }
+}
 
-  } catch (error) {
 
-    return {
-      statusCode: 500,
-      body: {
-        message: "Registration failed: " + error.message,
-      },
-    };
-  }
+
+const hashedPassword =
+await bcrypt.hash(password,10);
+
+
+
+const verificationToken =
+crypto.randomBytes(32).toString("hex");
+
+
+
+const userId =
+await User.createUser({
+
+ full_name,
+ email,
+ phone_number,
+ password:hashedPassword,
+ role_id:role_id || 2,
+ verificationToken,
+ email_verified:0
+
+});
+
+
+
+try{
+
+
+await sendVerificationEmail(
+ email,
+ verificationToken
+);
+
+
+
+return {
+
+statusCode:201,
+
+body:{
+ message:
+ "User registered. Please verify email.",
+ user_id:userId
+}
+
+};
+
+
+
+}catch(error){
+
+
+return {
+
+statusCode:201,
+
+body:{
+ message:
+ "User registered but verification email failed.",
+ user_id:userId
+}
+
+};
+
+
+}
+
+
+
+}catch(error){
+
+
+return {
+
+statusCode:500,
+
+body:{
+ message:error.message
+}
+
+};
+
+
+}
+
 };
 
 exports.verifyEmail = async (token) => {

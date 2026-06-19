@@ -4,6 +4,14 @@ const { registerValidation, verifyEmailValidation, getUsersValidation,getUserByD
 
 exports.register = async (req, res) => {
   try {
+
+    // assistant ke liye password optional
+    if (req.body.role_id == 3 && !req.body.password) {
+      req.body.password =
+        process.env.DEFAULT_ASSISTANT_PASSWORD || "123456";
+    }
+
+
     const error = registerValidation(req.body);
 
     if (error) {
@@ -13,7 +21,10 @@ exports.register = async (req, res) => {
       });
     }
 
-    const result = await authService.registerUserOrAssistant(req.body);
+
+    const result =
+      await authService.registerUserOrAssistant(req.body);
+
 
     return res.status(result.statusCode).json({
       success: result.statusCode < 400,
@@ -23,13 +34,16 @@ exports.register = async (req, res) => {
       },
     });
 
+
   } catch (error) {
+
     console.error("Register Error:", error.message);
 
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
     });
+
   }
 };
 

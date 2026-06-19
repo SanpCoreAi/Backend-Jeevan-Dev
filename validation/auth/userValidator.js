@@ -18,11 +18,7 @@ exports.registerValidation = (data) => {
       .optional(),
 
     password: Joi.string()
-      .when("role_id", {
-        is: 3,
-        then: Joi.optional(),
-        otherwise: Joi.required()
-      })
+      .optional()
 
   });
 
