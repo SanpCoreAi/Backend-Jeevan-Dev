@@ -39,15 +39,20 @@ exports.registerUserOrAssistant = async (data) => {
     }
 
 // assistant create
-if (doctor_id) {
+// assistant create
+if (role_id == 3) {
 
- const defaultPassword = "123456";
+
+ const defaultPassword =
+ process.env.DEFAULT_ASSISTANT_PASSWORD || "123456";
+
 
  const assistantPassword = password || defaultPassword;
 
 
  const hashedPassword =
  await bcrypt.hash(assistantPassword,10);
+
 
 
  const userId = await User.createUser({
@@ -57,10 +62,32 @@ if (doctor_id) {
    phone_number,
    password: hashedPassword,
    doctor_id,
-   role_id: role_id || 3,
+   role_id: 3,
    email_verified:1,
 
  });
+
+
+
+ await sendAssistantCredentials(
+    email,
+    full_name,
+    assistantPassword
+ );
+
+
+ return {
+
+  statusCode:201,
+
+  body:{
+    message:
+    "Assistant created successfully. Credentials sent on email.",
+
+    user_id:userId
+  }
+
+ };
 
 }
 
