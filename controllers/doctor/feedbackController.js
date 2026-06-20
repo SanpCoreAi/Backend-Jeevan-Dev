@@ -1,160 +1,116 @@
-const FeedbackService = require("../../services/doctor/feedbackService");
+const FeedbackService=require("../../services/doctor/feedbackService");
+const {createFeedbackValidation}=require("../../validation/doctor/feedbackValidator");
 
 
-exports.createFeedback = async (req, res) => {
+exports.createFeedback=async(req,res)=>{
+try{
 
-  try {
-
-    const userId = req.user?.id;
-
-    const doctorId = Number(req.params.doctorId);
-
-
-    const result =
-      await FeedbackService.createFeedback(
-        userId,
-        doctorId,
-        req.body
-      );
+const error=createFeedbackValidation(req.body);
+if(error)
+return res.status(400).json({success:false,message:error});
 
 
-    return res
-      .status(result.success ? 201 : 400)
-      .json(result);
+const userId=req.user?.id;
+const doctorId=Number(req.params.doctorId);
 
 
-  } catch(error){
-
-    return res.status(500).json({
-      success:false,
-      message:error.message
-    });
-
-  }
-
-};
-
-exports.getDoctorFeedbacks = async(req,res)=>{
-
- try{
-
-  const doctorId =
-    Number(req.params.doctor_id);
+const result=await FeedbackService.createFeedback(
+userId,
+doctorId,
+req.body
+);
 
 
-  const result =
-    await FeedbackService.getDoctorFeedbacks(
-      doctorId
-    );
+return res.status(result.statusCode).json({
+success:result.statusCode<400,
+message:result.body.message,
+data:result.body.data||{}
+});
 
 
-  return res
-   .status(result.success ? 200 : 404)
-   .json(result);
+}catch(error){
 
+return res.status(500).json({
+success:false,
+message:"Internal Server Error"
+});
 
- }catch(error){
-
-  return res.status(500).json({
-    success:false,
-    message:error.message
-  });
-
- }
-
-};
-
-exports.getAllFeedbacks = async(req,res)=>{
-
- try{
-
-  const result =
-    await FeedbackService.getAllFeedbacks();
-
-
-  return res
-   .status(result.success ? 200 : 404)
-   .json(result);
-
-
- }catch(error){
-
-  return res.status(500).json({
-    success:false,
-    message:error.message
-  });
-
- }
-
+}
 };
 
 
-exports.getAllDoctorsRatings = async(req,res)=>{
+exports.getDoctorFeedbacks=async(req,res)=>{
+try{
 
- try{
-
-
-  const result =
-   await FeedbackService.getAllDoctorsRatings();
+const doctorId=Number(req.params.doctor_id);
 
 
-  return res
-   .status(result.success ? 200 : 404)
-   .json(result);
+const result=
+await FeedbackService.getDoctorFeedbacks(doctorId);
 
 
+return res.status(result.statusCode).json({
+success:result.statusCode<400,
+message:result.body.message,
+summary:result.body.summary||{},
+data:result.body.data||[]
+});
 
- }catch(error){
 
-  return res.status(500).json({
-    success:false,
-    message:error.message
-  });
+}catch(error){
 
- }
+return res.status(500).json({
+success:false,
+message:"Internal Server Error"
+});
 
+}
 };
 
+exports.getAllFeedbacks=async(req,res)=>{
+try{
+
+const result=
+await FeedbackService.getAllFeedbacks();
 
 
-
-// exports.createDoctorReply = async(req,res)=>{
-
-//  try{
-
-
-//   const doctorId =
-//     req.user.id;
+return res.status(result.statusCode).json({
+success:result.statusCode<400,
+message:result.body.message,
+data:result.body.data||[]
+});
 
 
-//   const result =
-//     await FeedbackService.createDoctorReply(
-//       doctorId,
-//       req.body
-//     );
+}catch(error){
+
+return res.status(500).json({
+success:false,
+message:"Internal Server Error"
+});
+
+}
+};
+
+exports.getAllDoctorsRatings=async(req,res)=>{
+try{
+
+const result=
+await FeedbackService.getAllDoctorsRatings();
 
 
-//   return res
-//    .status(result.success ? 201 : 400)
-//    .json(result);
+return res.status(result.statusCode).json({
+success:result.statusCode<400,
+message:result.body.message,
+data:result.body.data||[]
+});
 
 
+}catch(error){
 
-//  }catch(error){
+return res.status(500).json({
+success:false,
+message:"Internal Server Error"
+});
 
-//   return res.status(500).json({
-//     success:false,
-//     message:error.message
-//   });
-
-//  }
-
-// };
-
-module.exports = {
-  createFeedback: exports.createFeedback,
-  getAllFeedbacks: exports.getAllFeedbacks,
-  getDoctorFeedbacks: exports.getDoctorFeedbacks,
-  getAllDoctorsRatings: exports.getAllDoctorsRatings,
-  createDoctorReply: exports.createDoctorReply,
+}
 };

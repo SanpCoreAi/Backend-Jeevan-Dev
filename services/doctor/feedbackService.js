@@ -1,419 +1,264 @@
-const FeedbackModel = require("../../models/feedbackModel");
-
-exports.createFeedback = async(
- userId,
- doctorId,
- body
-)=>{
+const FeedbackModel=require("../../models/feedbackModel");
+const xss=require("xss");
 
 
- const {
-  feedback_text,
-  rating
- } = body;
+exports.createFeedback=async(userId,doctorId,body)=>{
+
+try{
+
+if(!userId)
+return {
+statusCode:401,
+body:{message:"User not authenticated"}
+};
 
 
-
- if(!userId){
-
-  return {
-   success:false,
-   message:"User not authenticated"
-  };
-
- }
+if(!doctorId)
+return {
+statusCode:400,
+body:{message:"doctor_id required"}
+};
 
 
- if(!doctorId){
-
-  return {
-   success:false,
-   message:"doctor_id required"
-  };
-
- }
+let {
+feedback_text,
+rating
+}=body;
 
 
+feedback_text=xss(feedback_text.trim());
+rating=rating?Number(rating):null;
 
- if(!feedback_text){
 
-  return {
-   success:false,
-   message:"feedback_text required"
-  };
-
- }
+if(rating && (rating<1||rating>5))
+return {
+statusCode:400,
+body:{message:"Rating must be between 1-5"}
+};
 
 
 
- if(
-  rating &&
-  (rating < 1 || rating > 5)
- ){
-
-  return {
-   success:false,
-   message:"Rating must be between 1-5"
-  };
-
- }
+const exists=
+await FeedbackModel.checkUserFeedback(
+userId,
+doctorId
+);
 
 
+if(exists)
+return {
+statusCode:409,
+body:{message:"Feedback already submitted"}
+};
 
- await FeedbackModel.createFeedback(
 
+
+await FeedbackModel.createFeedback(
+userId,
+doctorId,
+feedback_text,
+rating
+);
+
+
+
+const feedbacks=
+await FeedbackModel.getDoctorFeedbacks(
+doctorId
+);
+
+
+
+const ratings=
+feedbacks.filter(
+f=>f.rating!==null
+);
+
+
+
+const avg_rating=
+ratings.length
+?
+(
+ratings.reduce(
+(sum,f)=>sum+Number(f.rating),
+0
+)/ratings.length
+).toFixed(1)
+:0;
+
+
+
+await FeedbackModel.saveDoctorRatingSummary(
+doctorId,
+feedbacks.length,
+ratings.length,
+avg_rating
+);
+
+
+
+return {
+
+statusCode:201,
+
+body:{
+
+message:"Feedback created successfully",
+
+data:{
+ feedback_id: await FeedbackModel.createFeedback(
   userId,
   doctorId,
   feedback_text,
-  rating || null
-
- );
-
-
-
- const feedbacks =
- await FeedbackModel.getDoctorFeedbacks(
-  doctorId
- );
-
-
-
- const total_feedbacks =
- feedbacks.length;
-
-
- const ratings =
- feedbacks.filter(
-  item => item.rating != null
- );
-
-
- const total_ratings =
- ratings.length;
-
-
-
- const avg_rating =
- total_ratings
-
- ?
- (
-  ratings.reduce(
-   (sum,item)=>
-   sum + Number(item.rating),
-   0
-  )
-  /
-  total_ratings
- ).toFixed(1)
-
- :
- 0;
-
-
-
- await FeedbackModel.saveDoctorRatingSummary(
-  doctorId,
-  total_feedbacks,
-  total_ratings,
-  avg_rating
- );
-
-
-
- return {
-
-  success:true,
-
-  message:
-  "Feedback created successfully"
-
- };
-
-};
-
-
-
-
-exports.getDoctorFeedbacks = async(
- doctorId
-)=>{
-
-
- if(!doctorId){
-
-  return {
-   success:false,
-   message:"doctor_id required"
-  };
-
- }
-
-
-
- const feedbacks =
- await FeedbackModel.getDoctorFeedbacks(
-  doctorId
- );
-
-
-
- if(!feedbacks.length){
-
-  return {
-   success:false,
-   message:"No feedback found"
-  };
-
- }
-
-
-
- return {
-
-  success:true,
-
-  data:feedbacks
-
- };
-
-};
-
-exports.getAllFeedbacks = async()=>{
-
-
- const data =
- await FeedbackModel.getAllFeedbacks();
-
-
-
- if(!data.length){
-
-  return {
-   success:false,
-   message:"No feedback found"
-  };
-
- }
-
-
- return {
-
-  success:true,
-
-  data
-
- };
-
-};
-
-
-
-
-
-exports.getDoctorFeedbacks = async(doctorId)=>{
-
-
- if(!doctorId){
-
-  return {
-
-   success:false,
-
-   message:"doctor_id required"
-
-  };
-
- }
-
-
-
- const feedbacks =
- await FeedbackModel.getDoctorFeedbacks(
-  doctorId
- );
-
-
-
- if(!feedbacks.length){
-
-  return {
-
-   success:false,
-
-   message:"No feedback found"
-
-  };
-
- }
-
-
-
- const ratings =
- feedbacks.filter(
-  f =>
-  f.rating !== null
- );
-
-
-
- const total_feedbacks =
- feedbacks.length;
-
-
-
- const total_ratings =
- ratings.length;
-
-
-
- const avg_rating =
- total_ratings
-
- ?
-
- (
- ratings.reduce(
-  (sum,f)=>
-   sum + Number(f.rating),
-  0
+  rating
  )
- /
- total_ratings
+}
 
- ).toFixed(1)
-
- :
-
- 0;
-
-
-
-
- return {
-
-  success:true,
-
-  summary:{
-
-   total_feedbacks,
-
-   total_ratings,
-
-   avg_rating
-
-  },
-
-  feedbacks
-
- };
+}
 
 };
 
 
 
+}catch(error){
 
+return {
+statusCode:500,
+body:{message:error.message}
+};
 
-
-exports.getAllDoctorsRatings = async()=>{
-
-
- const data =
- await FeedbackModel
- .getAllDoctorsRatingSummary();
-
-
-
- if(!data.length){
-
-  return {
-
-   success:false,
-
-   message:"No ratings found"
-
-  };
-
- }
-
-
-
- return {
-
-  success:true,
-
-  data
-
- };
+}
 
 };
 
 
+exports.getDoctorFeedbacks=async(doctorId)=>{
+
+try{
+
+
+if(!doctorId)
+return {
+statusCode:400,
+body:{message:"doctor_id required"}
+};
 
 
 
-
-// exports.createDoctorReply = async(
-//  doctorId,
-//  body
-// )=>{
-
-
-//  const {
-//   feedback_id,
-//   reply_text
-//  } = body;
+const feedbacks=
+await FeedbackModel.getDoctorFeedbacks(
+doctorId
+);
 
 
 
-//  if(!doctorId){
-
-//   return {
-
-//    success:false,
-
-//    message:"Doctor not authenticated"
-
-//   };
-
-//  }
+if(!feedbacks.length)
+return {
+statusCode:404,
+body:{message:"No feedback found"}
+};
 
 
 
-//  if(!feedback_id || !reply_text){
-
-//   return {
-
-//    success:false,
-
-//    message:
-//    "feedback_id and reply_text required"
-
-//   };
-
-//  }
+const ratings=
+feedbacks.filter(
+f=>f.rating!==null
+);
 
 
 
-//  await FeedbackModel.createDoctorReply(
+const avg_rating=
+ratings.length
+?
+(
+ratings.reduce(
+(sum,f)=>sum+Number(f.rating),
+0
+)/ratings.length
+).toFixed(1)
+:0;
 
-//   feedback_id,
-
-//   doctorId,
-
-//   reply_text
-
-//  );
 
 
+return {
+statusCode:200,
+body:{
+message:"Feedback fetched successfully",
+summary:{
+total_feedbacks:feedbacks.length,
+total_ratings:ratings.length,
+avg_rating
+},
+data:feedbacks
+}
+};
 
-//  return {
 
-//   success:true,
 
-//   message:
-//   "Reply added successfully"
+}catch(error){
 
-//  };
+return {
+statusCode:500,
+body:{message:error.message}
+};
 
-// };
+}
+
+};
+
+exports.getAllFeedbacks=async()=>{
+
+try{
+
+const data=
+await FeedbackModel.getAllFeedbacks();
+
+
+return {
+statusCode:200,
+body:{
+message:"All feedback fetched successfully",
+data
+}
+};
+
+
+}catch(error){
+
+return {
+statusCode:500,
+body:{message:error.message}
+};
+
+}
+
+};
+
+exports.getAllDoctorsRatings=async()=>{
+
+try{
+
+const data=
+await FeedbackModel.getAllDoctorsRatingSummary();
+
+
+return {
+statusCode:200,
+body:{
+message:"Doctor ratings fetched successfully",
+data
+}
+};
+
+
+}catch(error){
+
+return {
+statusCode:500,
+body:{message:error.message}
+};
+
+}
+
+};

@@ -10,6 +10,27 @@ async function createFeedback(user_id, doctor_id, feedback_text, rating = null) 
   return result.insertId;
 }
 
+async function checkUserFeedback(user_id, doctor_id) {
+
+  const [rows] = await db.query(
+    `
+    SELECT id
+    FROM feedbacks
+    WHERE user_id = ?
+    AND doctor_id = ?
+    LIMIT 1
+    `,
+    [
+      user_id,
+      doctor_id
+    ]
+  );
+
+
+  return rows.length > 0;
+
+}
+
 async function getAllFeedbacks() {
   const [rows] = await db.query(`
     SELECT 
@@ -119,6 +140,7 @@ module.exports = {
   getDoctorFeedbacks,
   getAllDoctorsRatingSummary,
   saveDoctorRatingSummary,
+  checkUserFeedback,
   // createDoctorReply,
   getFeedbackReplies
 };

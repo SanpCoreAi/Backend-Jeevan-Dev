@@ -23,6 +23,8 @@ router.post( "/refresh", refreshTokenController);
 
 router.get( "/getUsers", verifyToken, getUsers);
 
+// router.get( "/users", verifyToken, allowRoles(1), getUsers);
+
 router.get( "/getUserByDoctorId/:doctorId", verifyToken, getUserByDoctorId);
 
 router.get( "/getUserByDoctorAssistant", verifyToken, getUserByDoctorAssistant);
