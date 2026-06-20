@@ -124,6 +124,36 @@ exports.markEmailVerified = async (id) => {
   );
 };
 
+exports.saveResetToken=async(
+userId,
+tokenHash,
+expiry
+)=>{
+
+
+const [result]=await db.query(
+
+`
+UPDATE users
+SET 
+reset_token_hash=?,
+reset_token_expiry=?
+WHERE id=?
+`,
+
+[
+tokenHash,
+expiry,
+userId
+]
+
+);
+
+
+return result;
+
+};
+
 exports.findUsers = async (
   filters = {},
   limit = 10,
@@ -207,6 +237,77 @@ exports.findById = async(id)=>{
  );
 
  return rows[0];
+
+};
+
+exports.findUserByResetToken=
+async(token)=>{
+
+
+const [rows]=await db.query(
+
+`
+SELECT 
+id,
+reset_token_expiry
+FROM users
+WHERE reset_token_hash=?
+LIMIT 1
+`,
+
+[token]
+
+);
+
+
+return rows[0];
+
+};
+
+exports.updatePassword=
+async(userId,password)=>{
+
+
+const [result]=await db.query(
+
+`
+UPDATE users
+SET password=?
+WHERE id=?
+`,
+
+[
+password,
+userId
+]
+
+);
+
+
+return result;
+
+};
+
+exports.clearResetToken=
+async(userId)=>{
+
+
+const [result]=await db.query(
+
+`
+UPDATE users
+SET
+reset_token_hash=NULL,
+reset_token_expiry=NULL
+WHERE id=?
+`,
+
+[userId]
+
+);
+
+
+return result;
 
 };
 

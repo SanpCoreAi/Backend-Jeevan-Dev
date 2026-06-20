@@ -4,6 +4,8 @@ const router = express.Router();
 const { register, verifyEmail, getUsers, getUserByDoctorId, getUserByDoctorAssistant, getAssistantStats} = require("../controllers/auth/registerController");
 
 const { login } = require("../controllers/auth/loginController");
+const {forgotPassword}=require("../controllers/auth/forgotPasswordController");
+const {resetPassword}=require("../controllers/auth/resetPasswordController");
 
 const { validateRegister, validateLogin,} = require("../middlewares/validationMiddleware");
 
@@ -34,5 +36,18 @@ router.get(
   verifyToken,
   getAssistantStats
 );
+
+
+router.post(
+"/forgot-password",
+forgotPassword
+);
+
+router.post(
+"/reset-password",
+resetPassword
+);
+
+
 
 module.exports = router;

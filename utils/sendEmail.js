@@ -160,6 +160,73 @@ exports.sendAssistantCredentials = async (
 
 };
 
+exports.sendResetPasswordEmail=
+async(email,token)=>{
+
+
+const link=
+`${process.env.FRONTEND_URL}/reset-password/${token}`;
+
+
+await transporter.sendMail({
+
+from:process.env.EMAIL_USER,
+
+to:email,
+
+subject:"Reset Password",
+
+html:
+`
+<h3>Password Reset</h3>
+
+<a href="${link}">
+Reset Password
+</a>
+
+<p>Link expires in 15 minutes</p>
+`
+
+});
+
+
+};
+
+
+exports.resetPasswordValidation=(data)=>{
+
+
+const schema=Joi.object({
+
+token:
+Joi.string()
+.required(),
+
+
+password:
+Joi.string()
+.min(8)
+.pattern(
+new RegExp(
+"^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])"
+)
+)
+.required()
+
+});
+
+
+const {error}=
+schema.validate(data);
+
+
+return error
+?
+error.details[0].message
+:
+null;
+
+};
 
 exports.sendAppointmentEmail = async ({ to, token, date, time }) => {
   try {
