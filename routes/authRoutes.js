@@ -7,15 +7,17 @@ const { login } = require("../controllers/auth/loginController");
 
 const { validateRegister, validateLogin,} = require("../middlewares/validationMiddleware");
 
+const {allowRoles}=require("../middlewares/role");
+
 const { refreshTokenController,} = require("../controllers/auth/refreshController");
 
 const { verifyToken } = require("../middlewares/authMiddleware");
 
-router.post( "/register", validateRegister, register);
+router.post("/register", validateRegister, register);
 
-router.get( "/verify-email", verifyEmail);
+router.get("/verify-email", verifyEmail);
 
-router.post( "/login", validateLogin, login);
+router.post("/login", validateLogin, login);
 
 router.post( "/refresh", refreshTokenController);
 

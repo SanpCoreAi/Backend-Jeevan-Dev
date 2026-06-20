@@ -34,14 +34,12 @@ exports.createFeedback = async (req, res) => {
 
 };
 
-
-
 exports.getDoctorFeedbacks = async(req,res)=>{
 
  try{
 
   const doctorId =
-    Number(req.params.doctorId);
+    Number(req.params.doctor_id);
 
 
   const result =
@@ -65,8 +63,6 @@ exports.getDoctorFeedbacks = async(req,res)=>{
  }
 
 };
-
-
 
 exports.getAllFeedbacks = async(req,res)=>{
 
@@ -122,40 +118,38 @@ exports.getAllDoctorsRatings = async(req,res)=>{
 
 
 
-exports.createDoctorReply = async(req,res)=>{
+// exports.createDoctorReply = async(req,res)=>{
 
- try{
-
-
-  const doctorId =
-    req.user.id;
+//  try{
 
 
-  const result =
-    await FeedbackService.createDoctorReply(
-      doctorId,
-      req.body
-    );
+//   const doctorId =
+//     req.user.id;
 
 
-  return res
-   .status(result.success ? 201 : 400)
-   .json(result);
+//   const result =
+//     await FeedbackService.createDoctorReply(
+//       doctorId,
+//       req.body
+//     );
+
+
+//   return res
+//    .status(result.success ? 201 : 400)
+//    .json(result);
 
 
 
- }catch(error){
+//  }catch(error){
 
-  return res.status(500).json({
-    success:false,
-    message:error.message
-  });
+//   return res.status(500).json({
+//     success:false,
+//     message:error.message
+//   });
 
- }
+//  }
 
-};
-
-
+// };
 
 module.exports = {
   createFeedback: exports.createFeedback,

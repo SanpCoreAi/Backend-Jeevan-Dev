@@ -353,67 +353,67 @@ exports.getAllDoctorsRatings = async()=>{
 
 
 
-exports.createDoctorReply = async(
- doctorId,
- body
-)=>{
+// exports.createDoctorReply = async(
+//  doctorId,
+//  body
+// )=>{
 
 
- const {
-  feedback_id,
-  reply_text
- } = body;
-
-
-
- if(!doctorId){
-
-  return {
-
-   success:false,
-
-   message:"Doctor not authenticated"
-
-  };
-
- }
+//  const {
+//   feedback_id,
+//   reply_text
+//  } = body;
 
 
 
- if(!feedback_id || !reply_text){
+//  if(!doctorId){
 
-  return {
+//   return {
 
-   success:false,
+//    success:false,
 
-   message:
-   "feedback_id and reply_text required"
+//    message:"Doctor not authenticated"
 
-  };
+//   };
 
- }
-
-
-
- await FeedbackModel.createDoctorReply(
-
-  feedback_id,
-
-  doctorId,
-
-  reply_text
-
- );
+//  }
 
 
 
- return {
+//  if(!feedback_id || !reply_text){
 
-  success:true,
+//   return {
 
-  message:
-  "Reply added successfully"
+//    success:false,
 
- };
+//    message:
+//    "feedback_id and reply_text required"
 
-};
+//   };
+
+//  }
+
+
+
+//  await FeedbackModel.createDoctorReply(
+
+//   feedback_id,
+
+//   doctorId,
+
+//   reply_text
+
+//  );
+
+
+
+//  return {
+
+//   success:true,
+
+//   message:
+//   "Reply added successfully"
+
+//  };
+
+// };

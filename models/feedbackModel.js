@@ -87,15 +87,15 @@ async function saveDoctorRatingSummary(
   return result;
 }
 
-async function createDoctorReply(feedback_id, doctor_id, reply_text) {
-  const [result] = await db.query(
-    `INSERT INTO feedback_replies (feedback_id, doctor_id, reply_text)
-     VALUES (?, ?, ?)`,
-    [feedback_id, doctor_id, reply_text]
-  );
+// async function createDoctorReply(feedback_id, doctor_id, reply_text) {
+//   const [result] = await db.query(
+//     `INSERT INTO feedback_replies (feedback_id, doctor_id, reply_text)
+//      VALUES (?, ?, ?)`,
+//     [feedback_id, doctor_id, reply_text]
+//   );
 
-  return result.insertId;
-}
+//   return result.insertId;
+// }
 
 async function getFeedbackReplies(feedback_id) {
   const [rows] = await db.query(
@@ -119,6 +119,6 @@ module.exports = {
   getDoctorFeedbacks,
   getAllDoctorsRatingSummary,
   saveDoctorRatingSummary,
-  createDoctorReply,
+  // createDoctorReply,
   getFeedbackReplies
 };

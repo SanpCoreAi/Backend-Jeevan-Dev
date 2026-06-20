@@ -1,127 +1,176 @@
-const AssistantProfile = require("../../models/assistant/assistantProfileModel");
-const { safeJSON } = require("../../utils/safeJson");
+const AssistantProfile=require("../../models/assistant/assistantProfileModel");
+const xss=require("xss");
 
-const parseLanguage = (value) => {
-  if (Array.isArray(value)) return value;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    const jsonParsed = safeJSON(trimmed, null);
-    if (jsonParsed !== null) return jsonParsed;
-    if (trimmed.length === 0) return [];
-    return trimmed.split(",").map((item) => item.trim()).filter(Boolean);
-  }
-  return [];
-};
 
-exports.createAssistantProfile = async(data)=>{
-
- const profileId =
- await AssistantProfile.createAssistantProfile(data);
-
- return {
-   success:true,
-   message:"Assistant profile created successfully",
-   profileId
- };
-
+const sanitize=(data)=>{
+Object.keys(data).forEach(key=>{
+if(typeof data[key]=="string")
+data[key]=xss(data[key].trim());
+});
+return data;
 };
 
 
-exports.getAssistantProfile = async (userId) => {
 
-  const profile =
-    await AssistantProfile.getAssistantProfile(userId);
+exports.createAssistantProfile=async(data)=>{
+try{
 
+const {user_id}=data;
 
-  if (!profile) {
-    return {
-      success: false,
-      message: "Profile not found"
-    };
-  }
-
-
-  profile.language = parseLanguage(profile.language);
-  profile.address = safeJSON(profile.address, {});
-
-
-  return {
-    success: true,
-    data: {
-
-      // Top details
-      user_id: userId,
-      full_name: profile.full_name,
-      email: profile.email,
-      phone_number: profile.phone_number,
-
-      // Profile details
-      gender: profile.gender,
-      age: profile.age,
-      department: profile.department,
-      education: profile.education,
-      experience: profile.experience,
-      language: profile.language,
-      joining_date: profile.joining_date,
-      address: profile.address,
-      doctor_assign: profile.doctor_assign,
-       bio: profile.bio,
-    }
-  };
-
+if(!user_id)
+return {
+statusCode:401,
+body:{message:"Unauthorized"}
 };
 
-exports.updateAssistantProfile = async (
-  userId,
-  data
-) => {
 
+const exists=await AssistantProfile.getAssistantProfile(user_id);
 
-  const result =
-    await AssistantProfile.updateAssistantProfile(
-      userId,
-      data
-    );
-
-
-  if(!result){
-
-    return {
-      success:false,
-      message:"Profile update failed"
-    };
-
-  }
-
-
-
-  return {
-
-    success:true,
-
-    message:
-    "Assistant profile updated successfully"
-
-  };
-
+if(exists)
+return {
+statusCode:409,
+body:{message:"Assistant profile already exists"}
 };
 
-exports.getAllAssistantProfiles = async (doctorId) => {
 
-  console.log("[assistantProfileService] getAllAssistantProfiles doctorId=", doctorId);
+data=sanitize(data);
 
-  const profiles = await AssistantProfile.getAllAssistantProfiles(doctorId);
 
-  console.log("[assistantProfileService] raw profiles count=", profiles?.length || 0);
+const profileId=
+await AssistantProfile.createAssistantProfile(data);
 
-  profiles.forEach((item) => {
-    item.language = parseLanguage(item.language);
-    item.address = safeJSON(item.address, {});
-  });
 
-  return {
-    success: true,
-    count: profiles.length,
-    data: profiles
-  };
+return {
+statusCode:201,
+body:{
+message:"Assistant profile created successfully",
+profileId
+}
+};
+
+
+}catch(error){
+
+return {
+statusCode:500,
+body:{message:error.message}
+};
+
+}
+};
+
+
+
+
+exports.getAssistantProfile=async(userId)=>{
+try{
+
+if(!userId)
+return {
+statusCode:401,
+body:{message:"Unauthorized"}
+};
+
+
+const profile=
+await AssistantProfile.getAssistantProfile(userId);
+
+
+if(!profile)
+return {
+statusCode:404,
+body:{message:"Profile not found"}
+};
+
+
+return {
+statusCode:200,
+body:{
+message:"Assistant profile fetched successfully",
+data:profile
+}
+};
+
+
+}catch(error){
+
+return {
+statusCode:500,
+body:{message:error.message}
+};
+
+}
+};
+
+
+
+
+exports.updateAssistantProfile=async(userId,data)=>{
+try{
+
+data=sanitize(data);
+
+
+const updated=
+await AssistantProfile.updateAssistantProfile(
+userId,
+data
+);
+
+
+if(!updated)
+return {
+statusCode:400,
+body:{message:"Profile update failed"}
+};
+
+
+return {
+statusCode:200,
+body:{
+message:"Assistant profile updated successfully"
+}
+};
+
+
+}catch(error){
+
+return {
+statusCode:500,
+body:{message:error.message}
+};
+
+}
+};
+
+
+
+
+exports.getAllAssistantProfiles=async(doctorId)=>{
+try{
+
+const profiles=
+await AssistantProfile.getAllAssistantProfiles(
+doctorId
+);
+
+
+return {
+statusCode:200,
+body:{
+message:"Assistant profiles fetched successfully",
+results:profiles.length,
+data:profiles
+}
+};
+
+
+}catch(error){
+
+return {
+statusCode:500,
+body:{message:error.message}
+};
+
+}
 };

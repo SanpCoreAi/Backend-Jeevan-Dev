@@ -1,99 +1,128 @@
-const assistantProfileService =
-require("../../services/assistant/assistantProfileService");
+const assistantProfileService=require("../../services/assistant/assistantProfileService");
+const {
+createAssistantProfileValidation,
+updateAssistantProfileValidation
+}=require("../../validation/assistant/assistantProfileValidator");
 
-exports.createAssistantProfile = async (req, res) => {
-  try {
 
-    const user_id = req.user.id; // token id
+exports.createAssistantProfile=async(req,res)=>{
+try{
 
-    const result =
-      await assistantProfileService.createAssistantProfile({
-        ...req.body,
-        user_id
-      });
+const error=createAssistantProfileValidation(req.body);
+if(error)
+return res.status(400).json({success:false,message:error});
 
-    return res.status(201).json(result);
+const user_id=req.user?.id;
 
-  } catch(error){
+if(!user_id)
+return res.status(401).json({success:false,message:"Unauthorized"});
 
-    return res.status(500).json({
-      success:false,
-      message:error.message
-    });
 
-  }
+const result=await assistantProfileService.createAssistantProfile({
+...req.body,
+user_id
+});
+
+return res.status(result.statusCode).json({
+success:result.statusCode<400,
+message:result.body.message,
+data:{profile_id:result.body.profileId||null}
+});
+
+}catch(error){
+return res.status(500).json({
+success:false,
+message:"Internal Server Error"
+});
+}
 };
 
-exports.getAssistantProfile = async (req, res) => {
-  try {
 
-    const doctor_id =
-      req.user.doctor_id || req.user.id;
 
-    const result =
-      await assistantProfileService.getAssistantProfile(
-        doctor_id
-      );
+exports.getAssistantProfile=async(req,res)=>{
+try{
 
-    if (!result.success) {
-      return res.status(404).json(result);
-    }
+const doctor_id=req.user?.doctor_id||req.user?.id;
 
-    return res.status(200).json(result);
+if(!doctor_id)
+return res.status(401).json({success:false,message:"Unauthorized"});
 
-  } catch (error) {
 
-    return res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
+const result=await assistantProfileService.getAssistantProfile(doctor_id);
+
+return res.status(result.statusCode).json({
+success:result.statusCode<400,
+message:result.body.message,
+data:result.body.data||{}
+});
+
+}catch(error){
+return res.status(500).json({
+success:false,
+message:"Internal Server Error"
+});
+}
 };
 
-exports.updateAssistantProfile = async (req, res) => {
-  try {
-
-    const user_id = req.user.id;
 
 
-    const result =
-      await assistantProfileService.updateAssistantProfile(
-        user_id,
-        req.body
-      );
+
+exports.updateAssistantProfile=async(req,res)=>{
+try{
+
+const error=updateAssistantProfileValidation(req.body);
+
+if(error)
+return res.status(400).json({
+success:false,
+message:error
+});
 
 
-    return res.status(200).json(result);
+const result=await assistantProfileService.updateAssistantProfile(
+req.user.id,
+req.body
+);
 
 
-  } catch(error){
+return res.status(result.statusCode).json({
+success:result.statusCode<400,
+message:result.body.message
+});
 
-    return res.status(500).json({
-      success:false,
-      message:error.message
-    });
 
-  }
+}catch(error){
+return res.status(500).json({
+success:false,
+message:"Internal Server Error"
+});
+}
 };
 
-exports.getAllAssistantProfiles = async (req, res) => {
-  try {
 
-    const doctor_id =
-      req.user.doctor_id || req.user.id;
 
-    const result =
-      await assistantProfileService.getAllAssistantProfiles(
-        doctor_id
-      );
 
-    res.status(200).json(result);
+exports.getAllAssistantProfiles=async(req,res)=>{
+try{
 
-  } catch (error) {
+const doctor_id=req.user?.doctor_id||req.user?.id;
 
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
+const result=await assistantProfileService.getAllAssistantProfiles(
+doctor_id
+);
+
+return res.status(result.statusCode).json({
+success:result.statusCode<400,
+message:result.body.message,
+count:result.body.results||0,
+data:result.body.data||[]
+});
+
+
+}catch(error){
+return res.status(500).json({
+success:false,
+message:"Internal Server Error"
+});
+}
 };

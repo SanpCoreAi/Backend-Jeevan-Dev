@@ -17,7 +17,6 @@ exports.refreshToken = async (refreshToken) => {
       };
     }
 
-    // 2. Check token in DB
     const [rows] = await db.query(
       "SELECT id, role_id FROM users WHERE id = ? AND refresh_token = ?",
       [decoded.id, refreshToken]
