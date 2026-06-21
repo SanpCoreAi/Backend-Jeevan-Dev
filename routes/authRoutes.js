@@ -6,6 +6,7 @@ const { register, verifyEmail, getUsers, getUserByDoctorId, getUserByDoctorAssis
 const { login } = require("../controllers/auth/loginController");
 const {forgotPassword}=require("../controllers/auth/forgotPasswordController");
 const {resetPassword}=require("../controllers/auth/resetPasswordController");
+const {changePassword}=require("../controllers/auth/changePasswordController");
 
 const { validateRegister, validateLogin,} = require("../middlewares/validationMiddleware");
 
@@ -48,6 +49,10 @@ router.post(
 resetPassword
 );
 
-
+router.post(
+"/change-password",
+verifyToken,
+changePassword
+);
 
 module.exports = router;

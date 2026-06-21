@@ -96,6 +96,53 @@ exports.findByDoctorId = async (doctor_id) => {
   return rows;
 };
 
+exports.findById=async(id)=>{
+
+
+const [rows]=await db.query(
+
+`
+SELECT
+id,
+password
+FROM users
+WHERE id=?
+LIMIT 1
+`,
+
+[id]
+
+);
+
+
+return rows[0];
+
+};
+
+exports.updatePassword=
+async(userId,password)=>{
+
+
+const [result]=await db.query(
+
+`
+UPDATE users
+SET password=?
+WHERE id=?
+`,
+
+[
+password,
+userId
+]
+
+);
+
+
+return result.affectedRows;
+
+};
+
 exports.verifyUserByToken = async (token) => {
 
   const [rows] = await db.query(
@@ -229,7 +276,7 @@ exports.findById = async(id)=>{
 
  const [rows] = await db.query(
    `
-   SELECT id, doctor_id, role_id
+   SELECT id, doctor_id, role_id, password
    FROM users
    WHERE id=?
    `,
