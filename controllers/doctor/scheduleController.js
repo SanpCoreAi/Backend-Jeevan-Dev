@@ -60,8 +60,10 @@ exports.getHospitals = async (req, res) => {
     let doctorId;
 
 
+    const userRole = req.user.role || req.user.role_id;
+
     // Doctor token
-    if (req.user.role === 2) {
+    if (Number(userRole) === 2) {
 
       doctorId = req.user.id;
 
@@ -69,7 +71,7 @@ exports.getHospitals = async (req, res) => {
 
 
     // Assistant token
-    else if (req.user.role === 3) {
+    else if (Number(userRole) === 3) {
 
       const user =
         await ScheduleService.getUserById(

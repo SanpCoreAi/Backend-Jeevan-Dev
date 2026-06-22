@@ -28,7 +28,11 @@ const verifyToken = (req, res, next) => {
       process.env.ACCESS_SECRET || "access_secret"
     );
 
-    req.user = decoded; // user data store
+    req.user = {
+      ...decoded,
+      role: decoded.role || decoded.role_id,
+      role_id: decoded.role_id || decoded.role,
+    };
     next();
 
   } catch (error) {
