@@ -47,27 +47,27 @@ router.get("/verify-token/:token", verifyToken, appointmentTokenController.verif
 
 router.get(
   "/today-appointments",
-  verifyToken,
+  verifyToken,allowRoles(2,3),
   appointmentController.getTodayAppointments
 );
 
 router.get(
   "/dashboard-cards",
-  verifyToken,
+  verifyToken,allowRoles(2,3),
   appointmentController.getDashboardCards
 );
 
 
 router.get(
   "/dashboard/stats",
-  verifyToken,
+  verifyToken,allowRoles(2,3),
   appointmentController.getDashboardStats
 );
 
 
 router.get(
   "/patient-dashboard-cards",
-  verifyToken,
+  verifyToken,allowRoles(2,3),
   appointmentController
     .getPatientDashboardCards
 );
