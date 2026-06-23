@@ -85,7 +85,7 @@ exports.loginUser = async ({ email, password}) => {
         process.env.ACCESS_SECRET,
         
         {
-          expiresIn:"15m"
+          expiresIn:"1day"
         }
 
       );
