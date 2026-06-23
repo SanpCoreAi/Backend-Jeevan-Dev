@@ -51,7 +51,7 @@ if(role_id == 3){
 
 
  const defaultPassword =
- process.env.DEFAULT_ASSISTANT_PASSWORD || "123456";
+ process.env.DEFAULT_ASSISTANT_PASSWORD || "12345678";
 
 
  const assistantPassword =
