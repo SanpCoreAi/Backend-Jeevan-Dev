@@ -7,7 +7,9 @@ const controller = require("../controllers/doctor/qrAppointmentController");
 const { body, param } = require("express-validator");
 const ctrl = require("../controllers/doctor/appointmentTokenController");
 const validate = require("../middlewares/validationMiddleware");
-const appointmentTokenController = require("../controllers/doctor/appointmentTokenController")
+const appointmentTokenController = require("../controllers/doctor/appointmentTokenController");
+const {allowRoles}=require("../middlewares/role");
+
 
 router.post("/create/:doctorId", verifyToken, appointmentController.create);
 
@@ -18,7 +20,7 @@ router.get(
   appointmentController.getAppointmentDetails
 );
 
-router.get("/view-e-visit", verifyToken, appointmentController.getDoctorAppointmentsForTable);
+router.get("/view-e-visit", verifyToken,allowRoles(2,3), appointmentController.getDoctorAppointmentsForTable);
 
 router.get("/getAllappoinment/my", verifyToken, appointmentController.getMyAppointments);
 router.get(
