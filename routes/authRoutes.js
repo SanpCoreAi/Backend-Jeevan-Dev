@@ -32,7 +32,7 @@ router.get( "/getUsers", verifyToken, getUsers);
 
 router.get( "/getUserByDoctorId/:doctorId", verifyToken, getUserByDoctorId);
 
-router.get( "/getUserByDoctorAssistant",allowRoles(2), verifyToken, getUserByDoctorAssistant);
+router.get( "/getUserByDoctorAssistant", verifyToken, allowRoles(2), getUserByDoctorAssistant);
 
 router.get(
   "/assistant/stats",
