@@ -171,6 +171,19 @@ exports.markEmailVerified = async (id) => {
   );
 };
 
+exports.updateVerificationToken = async (id, token) => {
+
+  await db.query(
+    `
+    UPDATE users
+    SET
+      verificationToken = ?
+    WHERE id = ?
+    `,
+    [token, id]
+  );
+};
+
 exports.saveResetToken=async(
 userId,
 tokenHash,

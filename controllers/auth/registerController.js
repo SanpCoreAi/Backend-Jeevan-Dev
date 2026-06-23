@@ -201,3 +201,31 @@ exports.getAssistantStats = async (req, res) => {
     });
   }
 };
+
+exports.resendVerificationEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required",
+      });
+    }
+
+    const result = await authService.resendVerificationEmail(email);
+
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+    });
+
+  } catch (error) {
+    console.error("Resend Verification Email Error:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};

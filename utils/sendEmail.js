@@ -38,6 +38,8 @@ const transporter = nodemailer.createTransport(transporterOptions);
 transporter.verify((err, success) => {
   if (err) {
     console.error("SMTP connection error:", err.message || err);
+  } else {
+    console.log("✅ SMTP connection verified successfully");
   }
 });
 
@@ -49,30 +51,114 @@ exports.sendVerificationEmail = async (email, token) => {
     const mailOptions = {
       from: `"Hospital Portal" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: "Verify Your Email - Hospital Portal",
+      subject: "Verify Your Email - Hospital Portal 🏥",
+      replyTo: process.env.EMAIL_USER,
+      headers: {
+        'X-Priority': '3',
+        'X-Mailer': 'Hospital Portal System',
+      },
       html: `
-        <div style="font-family: Arial, sans-serif; color: #0a3f3e;">
-          <h2>Welcome to Hospital Portal</h2>
-          <p>Thank you for registering. Please verify your email by clicking the link below:</p>
-          
-          <a href="${verificationLink}" 
-             style="display:inline-block;padding:10px 20px;background-color:#007bff;color:white;
-                    text-decoration:none;border-radius:5px;margin-top:10px;"
-             target="_blank">
-             Verify Email
-          </a>
+        <!DOCTYPE html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Verify Your Email - Hospital Portal</title>
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; }
+              .wrapper { background: #f5f5f5; padding: 20px; }
+              .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+              .header { background: linear-gradient(135deg, #0a3f3e 0%, #16626d 100%); color: white; padding: 40px 20px; text-align: center; }
+              .header h1 { font-size: 28px; margin-bottom: 8px; font-weight: 600; }
+              .header p { font-size: 14px; opacity: 0.9; }
+              .content { padding: 40px 30px; }
+              .content h2 { color: #0a3f3e; font-size: 20px; margin-bottom: 20px; }
+              .content p { margin-bottom: 15px; font-size: 15px; line-height: 1.7; color: #333; }
+              .button-wrapper { text-align: center; margin: 30px 0; }
+              .button { background: #007bff; color: white; padding: 14px 40px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: 600; font-size: 16px; transition: background 0.3s ease; }
+              .button:hover { background: #0056b3; }
+              .link-section { background: #f9f9f9; padding: 20px; border-radius: 5px; margin: 25px 0; }
+              .link-section p { font-size: 13px; color: #666; margin-bottom: 10px; }
+              .link-section a { color: #0056b3; text-decoration: none; word-break: break-all; font-size: 12px; }
+              .link-section a:hover { text-decoration: underline; }
+              .security-notice { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 3px; margin: 25px 0; }
+              .security-notice p { font-size: 13px; color: #856404; margin: 8px 0; }
+              .divider { border-top: 1px solid #ddd; margin: 25px 0; }
+              .footer { background: #f9f9f9; padding: 30px; text-align: center; border-top: 1px solid #ddd; }
+              .footer p { font-size: 12px; color: #999; margin: 8px 0; }
+              .footer-links a { color: #0056b3; text-decoration: none; font-size: 12px; margin: 0 10px; }
+            </style>
+          </head>
+          <body>
+            <div class="wrapper">
+              <div class="container">
+                <div class="header">
+                  <h1>Welcome to Hospital Portal</h1>
+                  <p>Email Verification Required</p>
+                </div>
 
-          <p>If you didn’t create an account, you can safely ignore this email.</p>
-        </div>
+                <div class="content">
+                  <h2>Verify Your Email Address</h2>
+                  
+                  <p>Thank you for registering with Hospital Portal. We're excited to have you on board!</p>
+                  
+                  <p>To complete your registration and activate your account, please verify your email address by clicking the button below:</p>
+
+                  <div class="button-wrapper">
+                    <a href="${verificationLink}" class="button">Verify Email Address</a>
+                  </div>
+
+                  <p style="text-align: center; font-size: 14px; color: #666;">or copy and paste this link in your browser:</p>
+
+                  <div class="link-section">
+                    <a href="${verificationLink}">${verificationLink}</a>
+                  </div>
+
+                  <div class="security-notice">
+                    <p><strong>⚠️ Security Notice:</strong></p>
+                    <p>If you did not create this account, please ignore this email or contact our support team immediately.</p>
+                    <p>Your email address will not be activated unless you click the verification link.</p>
+                  </div>
+
+                  <p style="font-size: 13px; color: #999; margin-top: 25px;">
+                    This verification link will expire in <strong>24 hours</strong> for security reasons.
+                  </p>
+                </div>
+
+                <div class="footer">
+                  <p><strong>Hospital Portal</strong></p>
+                  <p>© 2024 All rights reserved</p>
+                  <p style="margin-top: 15px; font-size: 11px;">This is an automated email, please do not reply directly</p>
+                  <p style="margin-top: 10px;">
+                    <a href="mailto:support@hospitalportal.com">Contact Support</a>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
       `,
+      text: `Welcome to Hospital Portal\n\nThank you for registering. Your account has been created successfully.\n\nTo activate your account, please verify your email by clicking this link:\n\n${verificationLink}\n\nIf you did not create this account, please ignore this email and contact our support team.\n\nThis link will expire in 24 hours.\n\nHospital Portal Team\nSupport: support@hospitalportal.com`,
     };
 
+    console.log(`\n📧 [${new Date().toISOString()}] Sending verification email...`);
+    console.log(`   To: ${email}`);
+    console.log(`   Subject: ${mailOptions.subject}`);
+    
     const info = await transporter.sendMail(mailOptions);
-    console.log(` Verification email sent to ${email}: ${info.response}`);
+    
+    console.log(`✅ Verification email sent successfully`);
+    console.log(`   Message ID: ${info.messageId}`);
+    console.log(`   Response: ${info.response}`);
+    console.log(`   Link: ${verificationLink}\n`);
+    
     return true;
 
   } catch (error) {
-    console.error(" Error sending verification email:", error.message);
+    console.error(`\n❌ [${new Date().toISOString()}] Error sending verification email to ${email}`);
+    console.error(`   Error: ${error.message}`);
+    console.error(`   Details:`, error);
     throw new Error("Failed to send verification email: " + error.message);
   }
 };
@@ -110,28 +196,22 @@ exports.sendAssistantCredentials = async (
       subject: "Assistant Account Created - Login Details",
 
       html: `
-        <div style="font-family:Arial;color:#0a3f3e">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0a3f3e; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9; border-radius: 8px;">
 
-          <h2>Welcome ${name}</h2>
+          <h2 style="color: #0a3f3e; margin-bottom: 20px;">Welcome ${name}! 👋</h2>
 
-          <p>Your assistant account has been created successfully.</p>
+          <p style="margin-bottom: 15px;">Your assistant account has been created successfully.</p>
 
-          <p>
-            <b>Login Email:</b> ${email}
-          </p>
+          <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #007bff;">
+            <p style="margin: 10px 0;"><strong>Login Email:</strong> ${email}</p>
+            <p style="margin: 10px 0;"><strong>Temporary Password:</strong> <code style="background: #f0f0f0; padding: 5px 10px; border-radius: 3px; font-family: monospace;">${password}</code></p>
+          </div>
 
-          <p>
-            <b>Password:</b> ${password}
-          </p>
+          <p style="margin-bottom: 15px; color: #666;"><strong>Important:</strong> Please login and change your password immediately after first login for security reasons.</p>
 
-          <br/>
-
-          <p>
-            Please login and change your password after first login.
-          </p>
-
-          <p>
-            Hospital Portal Team
+          <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 12px;">
+            Hospital Portal Team<br>
+            This is an automated email, please do not reply
           </p>
 
         </div>
@@ -142,7 +222,7 @@ exports.sendAssistantCredentials = async (
     const info = await transporter.sendMail(mailOptions);
 
     console.log(
-      `Assistant credentials sent to ${email}: ${info.response}`
+      `✅ Assistant credentials sent to ${email}: ${info.response}`
     );
 
     return true;
@@ -151,7 +231,7 @@ exports.sendAssistantCredentials = async (
   } catch(error){
 
     console.error(
-      "Assistant mail error:",
+      "❌ Assistant mail error:",
       error.message
     );
 
@@ -174,17 +254,20 @@ from:process.env.EMAIL_USER,
 
 to:email,
 
-subject:"Reset Password",
+subject:"Reset Your Password - Hospital Portal",
 
 html:
 `
-<h3>Password Reset</h3>
-
-<a href="${link}">
-Reset Password
-</a>
-
-<p>Link expires in 15 minutes</p>
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h2 style="color: #0a3f3e;">Password Reset Request</h2>
+  <p>We received a request to reset your password. Click the button below to proceed:</p>
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="${link}" style="background: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">Reset Password</a>
+  </div>
+  <p style="font-size: 13px; color: #666;">Or copy this link: <a href="${link}" style="color: #0056b3;">${link}</a></p>
+  <p style="font-size: 13px; color: #999;">This link expires in 15 minutes for security reasons.</p>
+  <p style="font-size: 13px; color: #999; margin-top: 30px;">If you did not request this reset, please ignore this email.</p>
+</div>
 `
 
 });
@@ -235,21 +318,25 @@ exports.sendAppointmentEmail = async ({ to, token, date, time }) => {
       to,
       subject: "Appointment Confirmed ✅",
       html: `
-        <h2>Appointment Booked Successfully 🎉</h2>
-        
-        <p><strong>Appointment Token:</strong> ${token}</p>
-        <p><strong>Date:</strong> ${date}</p>
-        <p><strong>Time:</strong> ${time}</p>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #0a3f3e;">Appointment Booked Successfully 🎉</h2>
+          
+          <div style="background: #f0f8ff; border-left: 4px solid #007bff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <p style="margin: 10px 0;"><strong>Appointment Token:</strong> <code style="background: white; padding: 5px 10px; border-radius: 3px; font-family: monospace; color: #0056b3;">${token}</code></p>
+            <p style="margin: 10px 0;"><strong>Date:</strong> ${date}</p>
+            <p style="margin: 10px 0;"><strong>Time:</strong> ${time}</p>
+          </div>
 
-        <br/>
-
-        <p>Please keep your token safe for future reference.</p>
+          <p style="margin-top: 20px; color: #666;">Please keep your appointment token safe. You'll need it when checking in.</p>
+          
+          <p style="font-size: 13px; color: #999; margin-top: 30px;">Hospital Portal Team</p>
+        </div>
       `
     });
 
-    console.log("Appointment email sent to:", to);
+    console.log(`✅ Appointment email sent to: ${to}`);
 
   } catch (error) {
-    console.error("Email failed:", error);
+    console.error(`❌ Appointment email failed for ${to}:`, error.message);
   }
 };

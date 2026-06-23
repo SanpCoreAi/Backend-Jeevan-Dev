@@ -340,3 +340,63 @@ exports.getAssistantStats = async (doctorId) => {
     };
   }
 };
+
+exports.resendVerificationEmail = async (email) => {
+  try {
+    // Check if user exists
+    const user = await User.findByEmail(email);
+    
+    if (!user) {
+      return {
+        statusCode: 404,
+        body: {
+          message: "User not found with this email address",
+        },
+      };
+    }
+
+    // Check if email is already verified
+    if (user.email_verified === 1) {
+      return {
+        statusCode: 400,
+        body: {
+          message: "Email is already verified. Please login to continue.",
+        },
+      };
+    }
+
+    // Generate a new verification token
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+
+    // Update user with new verification token
+    await User.updateVerificationToken(user.id, verificationToken);
+
+    try {
+      // Send verification email
+      await sendVerificationEmail(email, verificationToken);
+
+      return {
+        statusCode: 200,
+        body: {
+          message: "Verification email sent successfully. Please check your inbox.",
+        },
+      };
+
+    } catch (emailError) {
+      return {
+        statusCode: 500,
+        body: {
+          message: "Failed to send verification email: " + emailError.message,
+        },
+      };
+    }
+
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: {
+        message: "Error: " + error.message,
+      },
+    };
+  }
+};
