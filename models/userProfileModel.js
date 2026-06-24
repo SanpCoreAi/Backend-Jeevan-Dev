@@ -7,8 +7,8 @@ exports.createUserProfile = async (userId, data) => {
       username,
       age = null,
       gender = null,
-      dob = null,
-      registration_date = null,
+    
+
       language = [],
       address = {},
       blood_group = null,
@@ -31,8 +31,8 @@ exports.createUserProfile = async (userId, data) => {
         username,
         age,
         gender,
-        dob,
-        registration_date,
+
+
         language,
         address,
         blood_group,
@@ -42,7 +42,7 @@ exports.createUserProfile = async (userId, data) => {
         allergies,
         bio,
         emergency_contact
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?,   ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -50,8 +50,8 @@ exports.createUserProfile = async (userId, data) => {
       username,
       age,
       gender,
-      dob,
-      registration_date,
+    
+
       JSON.stringify(language),
       JSON.stringify(address),
       blood_group,

@@ -52,35 +52,31 @@ return error
 
 };
 
-exports.changePasswordValidation=(data)=>{
+exports.changePasswordValidation = (data) => {
 
 
-const schema=Joi.object({
+  const schema = Joi.object({
 
-oldPassword:
-Joi.string()
-.required(),
-
-
-newPassword:
-Joi.string()
-.min(8)
-.pattern(
-new RegExp(
-"^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])"
-)
-)
-.required()
-
-});
+    oldPassword:
+      Joi.string()
+        .required(),
 
 
-const {error}=schema.validate(data);
+    newPassword:
+      Joi.string()
+        .min(8)
+       
+        .required()
+
+  });
 
 
-return error
-?
-error.details[0].message
-:null;
+  const { error } = schema.validate(data);
+
+
+  return error
+    ?
+    error.details[0].message
+    : null;
 
 };
