@@ -3,7 +3,6 @@ const prescriptionModel = require("../../models/prescriptionModel");
 const db = require("../../config/db");
 
 
-// VERIFY TOKEN
 exports.verifyToken = async (token) => {
 
   const data = await model.getByToken(token);
@@ -12,22 +11,47 @@ exports.verifyToken = async (token) => {
     throw new Error("Invalid token");
   }
 
-  if (data.status === "COMPLETED") {
-    throw new Error("Appointment already completed");
+  if (data.status === "PENDING") {
+
+    const result = await model.start(
+      data.appointment_id
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error(
+        "Failed to start appointment"
+      );
+    }
+
+    data.status = "IN_PROGRESS";
+
+  } else if (
+    data.status === "IN_PROGRESS"
+  ) {
+
+    const result = await model.complete(
+      data.appointment_id
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error(
+        "Failed to complete appointment"
+      );
+    }
+
+    data.status = "COMPLETED";
+
+  } else if (
+    data.status === "COMPLETED"
+  ) {
+
+    throw new Error(
+      "Appointment already completed"
+    );
   }
-
-  // automatically complete appointment when token is verified
-  const result = await model.complete(data.appointment_id);
-
-  if (result.affectedRows === 0) {
-    throw new Error("Failed to complete appointment");
-  }
-
-  data.status = "COMPLETED";
 
   return data;
 };
-
 
 // START APPOINTMENT
 exports.start = async (id) => {

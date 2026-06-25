@@ -12,8 +12,6 @@ router.put("/updateProfile", verifyToken, userProfileController.updateUserProfil
 
 router.patch("/updateProfile", verifyToken, userProfileController.updateUserProfile);
 
-// routes/userProfileRoutes.js
-
 router.get(
   "/patient-card/:patientId",
   verifyToken,
