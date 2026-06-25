@@ -20,6 +20,10 @@ router.get(
   userProfileController.getPatientCardProfile
 );
 
-
+router.get(
+  "/getPatientDetails",
+  verifyToken,
+  userProfileController.getPatientDetails
+);
 
 module.exports = router;

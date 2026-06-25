@@ -237,3 +237,54 @@ exports.getUserProfileByUserId = async (userId) => {
   const [rows] = await db.execute(sql, [userId]);
   return rows[0];
 };
+
+
+exports.getPatientDetails = async (userId) => {
+ const [rows] = await db.query(
+  `
+  SELECT
+      u.id AS user_id,
+      u.full_name,
+      u.phone_number,
+      u.email,
+
+      up.age,
+      up.gender,
+      up.weight,
+      up.height,
+      up.blood_group,
+      up.created_at,
+
+      a.id AS appointment_id,
+      a.slot_date,
+      a.appointment_type,
+      a.status,
+      a.reason_for_visit,
+      a.hospital_name
+
+  FROM users u
+
+  LEFT JOIN user_profiles up
+      ON up.user_id = u.id
+
+  LEFT JOIN appointments a
+      ON a.id = (
+          SELECT a2.id
+          FROM appointments a2
+          WHERE a2.patient_id = u.id
+          ORDER BY a2.created_at DESC
+          LIMIT 1
+      )
+
+  WHERE u.id = ?
+  LIMIT 1
+  `,
+  [userId]
+);
+
+  if (!rows.length) {
+    return null;
+  }
+
+  return rows[0];
+};

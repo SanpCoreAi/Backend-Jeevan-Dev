@@ -288,3 +288,32 @@ exports.getPatientCardProfile = async (
     };
   }
 };
+
+exports.getPatientDetails = async (userId) => {
+  try {
+    const patient = await userProfileModel.getPatientDetails(userId);
+
+    if (!patient) {
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Patient not found",
+      };
+    }
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Patient details fetched successfully",
+      data: patient,
+    };
+  } catch (error) {
+    console.error(error);
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Something went wrong",
+    };
+  }
+};
