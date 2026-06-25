@@ -664,27 +664,37 @@ exports.getMyAppointments = async (req, res) => {
 
 exports.getDoctorSlots = async (req, res) => {
   try {
-    const { doctorId, hospitalName, date } = req.query;
+    let { doctorId, hospitalName, date } = req.query;
+
+    const roleId = req.user.role_id;
+
+    // Doctor login
+    if (roleId === 2) {
+      doctorId = req.user.id;
+    }
 
     if (!doctorId || !hospitalName || !date) {
       return res.status(400).json({
         success: false,
-        message: "doctorId, hospitalName and date are required",
+        message:
+          "doctorId, hospitalName and date are required",
       });
     }
 
-    const data = await appointmentService.getDoctorSlots({
-      doctorId,
-      hospitalName,
-      date,
-    });
+    const data =
+      await appointmentService.getDoctorSlots({
+        doctorId,
+        hospitalName,
+        date,
+      });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       ...data,
     });
+
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: error.message,
     });

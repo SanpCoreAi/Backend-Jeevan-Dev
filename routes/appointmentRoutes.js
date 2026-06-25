@@ -30,7 +30,7 @@ router.get(
 );
 router.get("/getAppointmentPublicById/:patient_id", verifyToken, appointmentController.getAppointmentPublicById);
 
-router.get("/doctor-slots", appointmentController.getDoctorSlots);
+router.get("/doctor-slots",verifyToken, appointmentController.getDoctorSlots);
 
 router.get("/token/:token", ctrl.verifyToken);
 router.post("/:id/start", verifyToken, ctrl.start);

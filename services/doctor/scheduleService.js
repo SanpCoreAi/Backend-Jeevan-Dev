@@ -193,6 +193,7 @@ async function getScheduleByDoctorId(doctorId) {
       scheduleId: s.id,
       doctorId: s.doctor_id,
       hospitalName: s.hospital_name,
+      offlinepatient_number: s.offlinepatient_number,
 
       timing: {
         start: time24To12(s.start_time),

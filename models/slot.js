@@ -75,6 +75,12 @@ async function getNextAvailableSlot(doctorId) {
 }
 
 async function getDoctorSlots(doctorId, hospitalName, date) {
+  console.log({
+    doctorId,
+    hospitalName,
+    date
+  });
+
   const [rows] = await db.query(
     `
     SELECT
@@ -93,6 +99,8 @@ async function getDoctorSlots(doctorId, hospitalName, date) {
     `,
     [doctorId, hospitalName, date]
   );
+
+  console.log(rows);
 
   return rows;
 }
