@@ -147,39 +147,16 @@ exports.updateUserProfile = async (req, res) => {
   }
 };
 
-// exports.getPatientDetails = async (req, res) => {
-//   try {
-//     const patientId = Number(req.params.patientId);
-
-//     if (!patientId) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "patient_id required",
-//       });
-//     }
-
-//     const result = await userProfileService.getPatientDetails(patientId);
-
-//     return res.status(result.statusCode).json({
-//       success: result.success,
-//       message: result.message,
-//       data: result.data || null,
-//     });
-//   } catch (error) {
-//     console.error("Get Patient Details Error:", error);
-
-//     return res.status(500).json({
-//       success: false,
-//       message: "Internal server error",
-//     });
-//   }
-// };
 
 exports.getPatientDetails = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const doctorId = req.user.id;
+    const { appointmentId } = req.params;
 
-    const result = await userProfileService.getPatientDetails(userId);
+    const result = await userProfileService.getPatientDetails(
+      doctorId,
+      appointmentId
+    );
 
     return res.status(result.statusCode).json({
       success: result.success,

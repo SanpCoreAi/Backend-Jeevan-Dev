@@ -19,7 +19,7 @@ router.get(
 );
 
 router.get(
-  "/getPatientDetails",
+  "/getPatientDetails/:appointmentId",
   verifyToken,
   userProfileController.getPatientDetails
 );

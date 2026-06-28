@@ -289,15 +289,18 @@ exports.getPatientCardProfile = async (
   }
 };
 
-exports.getPatientDetails = async (userId) => {
+exports.getPatientDetails = async (doctorId, appointmentId) => {
   try {
-    const patient = await userProfileModel.getPatientDetails(userId);
+    const patient = await userProfileModel.getPatientDetails(
+      doctorId,
+      appointmentId
+    );
 
     if (!patient) {
       return {
         success: false,
         statusCode: 404,
-        message: "Patient not found",
+        message: "Appointment not found",
       };
     }
 
