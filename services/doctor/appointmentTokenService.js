@@ -3,52 +3,39 @@ const prescriptionModel = require("../../models/prescriptionModel");
 const db = require("../../config/db");
 
 
-exports.verifyToken = async (token) => {
+exports.verifyToken = async ({
+  doctorId,
+  appointmentId,
+  token,
+}) => {
 
-  const data = await model.getByToken(token);
+  const data = await model.getByToken({
+    doctorId,
+    appointmentId,
+    token,
+  });
 
   if (!data) {
-    throw new Error("Invalid token");
+    throw new Error("Invalid appointment or token");
   }
 
-  if (data.status === "PENDING") {
-
-    const result = await model.start(
-      data.appointment_id
-    );
-
-    if (result.affectedRows === 0) {
-      throw new Error(
-        "Failed to start appointment"
-      );
-    }
-
-    data.status = "IN_PROGRESS";
-
-  } else if (
-    data.status === "IN_PROGRESS"
-  ) {
-
-    const result = await model.complete(
-      data.appointment_id
-    );
-
-    if (result.affectedRows === 0) {
-      throw new Error(
-        "Failed to complete appointment"
-      );
-    }
-
-    data.status = "COMPLETED";
-
-  } else if (
-    data.status === "COMPLETED"
-  ) {
-
+  if (data.status !== "PENDING") {
     throw new Error(
-      "Appointment already completed"
+      "Appointment already started or completed"
     );
   }
+
+  const result = await model.start(
+    appointmentId
+  );
+
+  if (result.affectedRows === 0) {
+    throw new Error(
+      "Failed to start appointment"
+    );
+  }
+
+  data.status = "IN_PROGRESS";
 
   return data;
 };

@@ -1,27 +1,30 @@
 const db = require("../config/db");
 
-exports.getByToken = async (token) => {
+exports.getByToken = async ({
+  doctorId,
+  appointmentId,
+  token,
+}) => {
 
   const [rows] = await db.execute(
-    `SELECT 
+    `
+    SELECT
       a.id AS appointment_id,
+      a.doctor_id,
       a.token_number,
-      a.status,
-      u.full_name AS patient_name
-
-     FROM appointments a
-
-     LEFT JOIN users u 
-     ON a.patient_id = u.id
-
-     WHERE a.token_number = ?
-     LIMIT 1`,
-    [token]
+      a.status
+    FROM appointments a
+    WHERE a.id = ?
+      AND a.token_number = ?
+      AND a.doctor_id = ?
+    `,
+    [appointmentId, token, doctorId]
   );
+
+  console.log(rows);
 
   return rows[0];
 };
-
 
 exports.getById = async (id) => {
 

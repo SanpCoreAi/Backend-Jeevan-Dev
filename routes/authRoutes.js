@@ -3,7 +3,7 @@ const router = express.Router();
 
 const { register, verifyEmail, getUsers, getUserByDoctorId, getUserByDoctorAssistant, getAssistantStats, resendVerificationEmail } = require("../controllers/auth/registerController");
 
-const { login } = require("../controllers/auth/loginController");
+const {login} = require("../controllers/auth/loginController");
 const {forgotPassword}=require("../controllers/auth/forgotPasswordController");
 const {resetPassword}=require("../controllers/auth/resetPasswordController");
 const {changePassword}=require("../controllers/auth/changePasswordController");

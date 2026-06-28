@@ -32,7 +32,11 @@ router.get("/getAppointmentPublicById/:patient_id", verifyToken, appointmentCont
 
 router.get("/doctor-slots",verifyToken, appointmentController.getDoctorSlots);
 
-router.get("/token/:token", ctrl.verifyToken);
+router.get(
+  "/:appointmentId/token/:token",
+  verifyToken,
+  ctrl.verifyToken
+);
 router.post("/:id/start", verifyToken, ctrl.start);
 // router.get("/:id", verifyToken, ctrl.getDetails);
 router.post("/:id/complete", verifyToken, ctrl.complete);

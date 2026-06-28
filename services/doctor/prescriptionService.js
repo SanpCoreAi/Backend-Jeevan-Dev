@@ -24,6 +24,19 @@ exports.save = async (
     throw new AppError("Appointment not found", 404);
   }
 
+  // Appointment already completed
+  if (appointment.status === "COMPLETED") {
+    throw new AppError("Appointment already completed", 400);
+  }
+
+  // Prescription sirf IN_PROGRESS appointment par hi save hogi
+  if (appointment.status !== "IN_PROGRESS") {
+    throw new AppError(
+      "Appointment must be in progress before saving prescription",
+      400
+    );
+  }
+
   const conn = await db.getConnection();
 
   try {
@@ -44,7 +57,27 @@ exports.save = async (
       );
     }
 
+    // Appointment Complete
+    const [result] = await conn.execute(
+      `
+      UPDATE appointments
+      SET
+        status = 'COMPLETED',
+        updated_at = NOW()
+      WHERE id = ?
+      `,
+      [appointmentId]
+    );
+
+    if (result.affectedRows === 0) {
+      throw new AppError(
+        "Failed to complete appointment",
+        500
+      );
+    }
+
     await conn.commit();
+
   } catch (err) {
     await conn.rollback();
     throw err;

@@ -3,23 +3,29 @@ const service = require("../../services/doctor/appointmentTokenService");
 
 exports.verifyToken = async (req, res) => {
   try {
-    const { token } = req.params;
+    const doctorId = req.user.id;
+    const { appointmentId, token } = req.params;
 
-    const data = await service.verifyToken(token);
+    const data = await service.verifyToken({
+      doctorId,
+      appointmentId,
+      token,
+    });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "Token valid and appointment completed",
-      data
+      message: "Appointment started successfully",
+      data,
     });
 
   } catch (err) {
-    res.status(400).json({
+    return res.status(400).json({
       success: false,
-      message: err.message
+      message: err.message,
     });
   }
 };
+
 exports.start = async (req, res, next) => {
   try {
     const result = await service.start(req.params.id);
