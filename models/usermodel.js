@@ -18,7 +18,6 @@ exports.createUser = async (data) => {
     const values = [];
 
     allowedFields.forEach((key) => {
-
       if (
         data[key] !== undefined &&
         data[key] !== null
@@ -26,12 +25,7 @@ exports.createUser = async (data) => {
         fields.push(key);
         values.push(data[key]);
       }
-
     });
-
-    if (fields.length === 0) {
-      throw new Error("No valid fields provided");
-    }
 
     const placeholders = fields
       .map(() => "?")
@@ -42,18 +36,17 @@ exports.createUser = async (data) => {
       VALUES (${placeholders})
     `;
 
-    const [result] = await db.query(sql, values);
+    const [result] =
+      await db.query(sql, values);
 
     return result.insertId;
 
   } catch (error) {
 
-    console.error(
-      "DB Error (createUser):",
-      error.message
-    );
+    console.error(error);
 
     throw error;
+
   }
 };
 

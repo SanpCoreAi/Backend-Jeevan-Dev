@@ -23,8 +23,6 @@ exports.bookAppointment = async (
     patient
   } = body;
 
-
-
   if (
     !appointment_date ||
     !start_time ||
@@ -32,150 +30,98 @@ exports.bookAppointment = async (
     !hospital_name
   ) {
     return {
-      success:false,
-      message:"Required fields missing"
+      success: false,
+      message: "Required fields missing"
     };
   }
 
-if(mode === "online") {
-
+  // Maximum 2 appointments per patient per selected date
   const totalAppointments =
     await Appointment.countTodayAppointments(
       patientId,
       appointment_date
     );
 
-
-  if(totalAppointments >= 2){
-
+  if (totalAppointments >= 2) {
     return {
-      success:false,
+      success: false,
       message:
-      "You can book maximum 2 online appointments in a day"
+        "You can book maximum 2 appointments for the selected date."
     };
-
   }
-
-}
 
   const schedules =
     await Schedule.getScheduleByDoctor(
       doctorId
     );
 
-
-  if(!schedules.length){
-
+  if (!schedules.length) {
     return {
-      success:false,
-      message:"No schedule found"
+      success: false,
+      message: "No schedule found"
     };
-
   }
-
-
 
   const weekday =
     new Date(appointment_date)
-    .toLocaleDateString(
-      "en-US",
-      {
-        weekday:"short"
-      }
-    );
+      .toLocaleDateString("en-US", {
+        weekday: "short"
+      });
 
-
-
-  const start24 =
-    parse12to24(start_time);
-
-
-  const end24 =
-    parse12to24(end_time);
-
-
+  const start24 = parse12to24(start_time);
+  const end24 = parse12to24(end_time);
 
   let schedule = null;
   let slot = null;
 
-
-
-
-  for(const s of schedules){
-
+  for (const s of schedules) {
 
     let days = s.active_days;
 
-
-    if(typeof days === "string"){
-
+    if (typeof days === "string") {
       try {
-
         days = JSON.parse(days);
-
       } catch {
-
         days = [];
-
       }
-
     }
 
-
-
-    if(
+    if (
       String(s.hospital_name)
-      .toLowerCase()
-      .trim()
-      !==
+        .toLowerCase()
+        .trim() !==
       hospital_name
-      .toLowerCase()
-      .trim()
-    ){
+        .toLowerCase()
+        .trim()
+    ) {
       continue;
     }
-
-
-
 
     const apptDate =
       new Date(appointment_date)
-      .toISOString()
-      .split("T")[0];
-
-
+        .toISOString()
+        .split("T")[0];
 
     const startDate =
       new Date(s.start_date)
-      .toISOString()
-      .split("T")[0];
-
-
+        .toISOString()
+        .split("T")[0];
 
     const endDate =
       new Date(s.end_date)
-      .toISOString()
-      .split("T")[0];
+        .toISOString()
+        .split("T")[0];
 
-
-
-
-    if(
+    if (
       apptDate < startDate ||
       apptDate > endDate
-    ){
+    ) {
       continue;
     }
 
-
-
-
-    if(!days.includes(weekday)) {
+    if (!days.includes(weekday)) {
       continue;
     }
-
-
-
 
     const candidate =
       await SlotModel.getActiveSlot(
@@ -185,154 +131,105 @@ if(mode === "online") {
         start24
       );
 
-
-
-    if(candidate){
-
+    if (candidate) {
       schedule = s;
       slot = candidate;
-
       break;
-
     }
-
   }
 
-
-
-
-
-  if(!schedule){
-
+  if (!schedule) {
     return {
-      success:false,
-      message:
-      "Doctor not available for this hospital/date"
+      success: false,
+      message: "Doctor not available for this hospital/date"
     };
-
   }
 
-
-
-
-  if(!slot){
-
+  if (!slot) {
     return {
-      success:false,
-      message:"Slot not available"
+      success: false,
+      message: "Slot not available"
     };
-
   }
-
-
-
-
 
   const token =
-  Math.floor(
-    1000 + Math.random()*9000
-  );
-
-
-
-
+    Math.floor(1000 + Math.random() * 9000);
 
   const appointmentId =
-  await Appointment.create({
+    await Appointment.create({
 
-    appointment_token:token,
+      appointment_token: token,
 
-    appointment_date,
+      appointment_date,
 
-    start_time:start24,
+      start_time: start24,
 
-    end_time:end24,
+      end_time: end24,
 
-    patient_id:patientId,
+      patient_id: patientId,
 
-    doctor_id:doctorId,
+      doctor_id: doctorId,
 
-    schedule_id:schedule.id,
+      schedule_id: schedule.id,
 
-    booking_type,
+      booking_type,
 
-    mode,
+      mode,
 
-    hospital_name,
+      hospital_name,
 
-    reason_for_visit
+      reason_for_visit
 
-  });
+    });
 
-
-
-
-
-
-  if(
-    booking_type === "someone_else"
-    &&
+  if (
+    booking_type === "someone_else" &&
     patient
-  ){
+  ) {
 
     await Appointment.insertOtherPatient({
 
-      appointment_id:appointmentId,
+      appointment_id: appointmentId,
 
-      user_id:patientId,
+      user_id: patientId,
 
-      name:patient.name,
+      name: patient.name,
 
-      age:patient.age,
+      age: patient.age,
 
-      gender:patient.gender,
+      gender: patient.gender,
 
-      phone:patient.phone,
+      phone: patient.phone,
 
-      email:patient.email
+      email: patient.email
 
     });
 
   }
 
-
-
-
-
-  await SlotModel.deactivateSlot(
-    slot.id
-  );
-
-
-
-
+  await SlotModel.deactivateSlot(slot.id);
 
   await sendAppointmentEmail({
 
-    to:patientEmail,
+    to: patientEmail,
 
     token,
 
-    date:appointment_date,
+    date: appointment_date,
 
-    time:
-    `${time24To12(start24)} - ${time24To12(end24)}`
+    time: `${time24To12(start24)} - ${time24To12(end24)}`
 
   });
 
-
-
-
-
   return {
 
-    success:true,
+    success: true,
 
-    data:{
+    data: {
 
       appointmentId,
 
-      appointmentToken:token
+      appointmentToken: token
 
     }
 

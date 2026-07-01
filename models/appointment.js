@@ -288,19 +288,13 @@ exports.countTodayAppointments = async (
     SELECT COUNT(*) AS total
     FROM appointments
     WHERE patient_id = ?
-    AND DATE(slot_date) = ?
-    AND appointment_type = 'online'
-    AND status NOT IN ('CANCELLED')
+      AND DATE(slot_date) = ?
+      AND status != 'CANCELLED'
     `,
-    [
-      patientId,
-      appointmentDate
-    ]
+    [patientId, appointmentDate]
   );
 
-
   return Number(rows[0].total);
-
 };
 
 exports.getByIdAndPatient = async (patientId) => {
