@@ -4,24 +4,19 @@ exports.registerValidation = (data) => {
 
   const schema = Joi.object({
 
-    full_name: Joi.string()
-      .required(),
+    full_name: Joi.string().required(),
 
-    email: Joi.string()
-      .email()
-      .required(),
+    email: Joi.string().email().required(),
 
-    phone_number: Joi.string()
-      .required(),
+    phone_number: Joi.string().required(),
 
-    role_id: Joi.number()
-      .optional(),
+    role_id: Joi.number().optional(),
 
-    password: Joi.string()
-      .optional()
+    password: Joi.string().optional(),
+
+    doctor_id: Joi.number().optional()   // <-- Add this
 
   });
-
 
   const { error } = schema.validate(data);
 

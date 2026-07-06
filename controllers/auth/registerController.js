@@ -4,12 +4,34 @@ const { registerValidation, verifyEmailValidation, getUsersValidation,getUserByD
 
 exports.register = async (req, res) => {
   try {
+    // ==========================
+    // Assistant Register
+    // ==========================
+    if (req.body.role_id == 3) {
 
-    if (req.body.role_id == 3 && !req.body.password) {
-      req.body.password =
-        process.env.DEFAULT_ASSISTANT_PASSWORD || "123456";
+      // Doctor login hona chahiye
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({
+          success: false,
+          message: "Doctor token required",
+        });
+      }
+
+      // Sirf doctor assistant bana sakta hai
+      if (req.user.role_id != 2) {
+        return res.status(403).json({
+          success: false,
+          message: "Only doctor can create assistant",
+        });
+      }
+
+      // Doctor ID service ko bhej do
+      req.body.doctor_id = req.user.id;
     }
 
+    // ==========================
+    // Validation
+    // ==========================
     const error = registerValidation(req.body);
 
     if (error) {
@@ -19,10 +41,10 @@ exports.register = async (req, res) => {
       });
     }
 
-
-    const result =
-      await authService.registerUserOrAssistant(req.body);
-
+    // ==========================
+    // Service Call
+    // ==========================
+    const result = await authService.registerUserOrAssistant(req.body);
 
     return res.status(result.statusCode).json({
       success: result.statusCode < 400,
@@ -32,10 +54,9 @@ exports.register = async (req, res) => {
       },
     });
 
-
   } catch (error) {
 
-    console.error("Register Error:", error.message);
+    console.error("Register Error:", error);
 
     return res.status(500).json({
       success: false,

@@ -18,6 +18,16 @@ exports.createUser = async (data) => {
     const values = [];
 
     allowedFields.forEach((key) => {
+
+      // doctor_id ko sirf assistant ke liye store karo
+      if (key === "doctor_id") {
+        if (data.doctor_id) {
+          fields.push("doctor_id");
+          values.push(data.doctor_id);
+        }
+        return;
+      }
+
       if (
         data[key] !== undefined &&
         data[key] !== null
@@ -25,6 +35,7 @@ exports.createUser = async (data) => {
         fields.push(key);
         values.push(data[key]);
       }
+
     });
 
     const placeholders = fields
@@ -36,15 +47,13 @@ exports.createUser = async (data) => {
       VALUES (${placeholders})
     `;
 
-    const [result] =
-      await db.query(sql, values);
+    const [result] = await db.query(sql, values);
 
     return result.insertId;
 
   } catch (error) {
 
-    console.error(error);
-
+    console.error("Create User Error:", error);
     throw error;
 
   }
