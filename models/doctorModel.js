@@ -1,10 +1,24 @@
 const db = require("../config/db");
+
 const createDoctor = async (params) => {
   const sql = `
     INSERT INTO doctors
-    (user_id, username, specialization, qualification, experience, language,
-     consultation_fee, medical_license_no, bio, availability, hospital_detail)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (
+      user_id,
+      username,
+      specialization,
+      qualification,
+      experience,
+      language,
+      consultation_fee,
+      medical_license_no,
+      bio,
+      age,
+      gender,
+      availability,
+      hospital_detail
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const [result] = await db.execute(sql, params);
@@ -71,6 +85,8 @@ const getBydoctorId = async (userId) => {
       d.experience,
       d.consultation_fee,
       d.medical_license_no,
+      d.age,
+      d.gender,
       d.bio,
       d.language,
       d.availability,

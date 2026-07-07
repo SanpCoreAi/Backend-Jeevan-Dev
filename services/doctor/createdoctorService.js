@@ -49,19 +49,21 @@ async function createProfile(userId, body) {
     };
   }
 
-  const params = [
-    userId ?? null,
-    body.username ?? null,
-    body.specialization ?? null,
-    body.qualification ?? null,
-    body.experience ?? 0,
-    JSON.stringify(body.language ?? []),
-    body.consultationFee ?? 0,
-    body.medicalLicenseNo ?? null,
-    body.bio ?? null,
-    JSON.stringify(body.availability ?? []),
-    JSON.stringify(body.hospitalDetail ?? [])
-  ];
+const params = [
+  userId ?? null,
+  body.username ?? null,
+  body.specialization ?? null,
+  body.qualification ?? null,
+  body.experience ?? 0,
+  JSON.stringify(body.language ?? []),
+  body.consultationFee ?? 0,
+  body.medicalLicenseNo ?? null,
+  body.bio ?? null,
+  body.age ?? null,          // NEW
+  body.gender ?? null,       // NEW
+  JSON.stringify(body.availability ?? []),
+  JSON.stringify(body.hospitalDetail ?? [])
+];
 
   const doctorId = await DoctorModel.createDoctor(params);
 
@@ -145,6 +147,10 @@ async function getProfile(userId) {
     consultationFee: d.consultation_fee,
 
     bio: d.bio,
+
+     age: d.age,
+
+    gender: d.gender,
 
     language: parseJSON(d.language),
 
