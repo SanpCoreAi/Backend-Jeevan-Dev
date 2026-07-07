@@ -173,3 +173,28 @@ body:{message:error.message}
 
 }
 };
+
+exports.getAllAssistantProfiles = async (doctorId) => {
+  try {
+
+    const profiles =
+      await AssistantProfile.getAllAssistantProfiles(doctorId);
+
+    return {
+      statusCode: 200,
+      body: {
+        message: "Assistant profiles fetched successfully",
+        results: profiles.length,
+        data: profiles
+      }
+    };
+
+  } catch (error) {
+
+    return {
+      statusCode: 500,
+      body: { message: error.message }
+    };
+
+  }
+};

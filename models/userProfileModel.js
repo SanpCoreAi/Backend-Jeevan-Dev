@@ -280,3 +280,40 @@ exports.getPatientDetails = async (doctorId, appointmentId) => {
 
   return rows[0] || null;
 };
+
+exports.getAllUsers = async () => {
+  const sql = `
+    SELECT
+      u.id AS user_id,
+      u.full_name,
+      u.email,
+      u.phone_number,
+      u.role_id,
+
+      p.username,
+      p.age,
+      p.gender,
+      p.language,
+      p.address,
+      p.blood_group,
+      p.weight,
+      p.height,
+      p.existing_conditions,
+      p.allergies,
+      p.bio,
+      p.emergency_contact
+
+    FROM users u
+
+    LEFT JOIN user_profiles p
+      ON u.id = p.user_id
+
+    WHERE u.role_id = 1
+
+    ORDER BY u.id DESC
+  `;
+
+  const [rows] = await db.execute(sql);
+
+  return rows;
+};

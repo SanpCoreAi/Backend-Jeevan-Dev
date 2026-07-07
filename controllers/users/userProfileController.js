@@ -172,3 +172,18 @@ exports.getPatientDetails = async (req, res) => {
     });
   }
 };
+
+exports.getAllUsers = async (req, res) => {
+  try {
+    const result = await userProfileService.getAllUsers();
+
+    return res.status(result.statusCode).json(result);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

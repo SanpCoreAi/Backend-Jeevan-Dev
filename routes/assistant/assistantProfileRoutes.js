@@ -31,4 +31,10 @@ router.put(
  assistantProfileController.updateAssistantProfile
 );
 
+router.get(
+  "/getAllAssistantProfiles/:doctorId",
+  verifyToken,
+  assistantProfileController.getAllAssistantProfiles
+);
+
 module.exports = router;

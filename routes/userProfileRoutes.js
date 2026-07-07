@@ -24,4 +24,10 @@ router.get(
   userProfileController.getPatientDetails
 );
 
+router.get(
+  "/getAllUsers",
+  verifyToken,
+  userProfileController.getAllUsers
+);
+
 module.exports = router;

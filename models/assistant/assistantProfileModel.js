@@ -192,46 +192,40 @@ return result.affectedRows > 0;
 
 };
 
-exports.getAllAssistantProfiles = async(userId)=>{
+exports.getAllAssistantProfiles = async (doctorId) => {
 
-const [rows] = await db.query(
+  const [rows] = await db.query(
+    `
+    SELECT
+    u.id,
+    u.full_name,
+    u.email,
+    u.phone_number,
+    u.doctor_id,
+    ap.id AS profile_id,
+    ap.gender,
+    ap.age,
+    ap.department,
+    ap.education,
+    ap.experience,
+    ap.language,
+    ap.address,
+    ap.bio
 
-`
-SELECT
+FROM users u
 
-ap.*,
+LEFT JOIN assistant_profiles ap
+    ON ap.user_id = u.id
 
-u.full_name,
-u.email,
-u.phone_number
+WHERE u.doctor_id = ?
 
+ORDER BY u.id DESC;
+    `,
+    [doctorId]
+  );
 
-FROM assistant_profiles ap
-
-
-LEFT JOIN users u
-ON u.id = ap.user_id
-
-
-WHERE ap.user_id = ?
-
-
-ORDER BY ap.id DESC
-
-`,
-
-[userId]
-
-);
-
-
-return rows;
-
+  return rows;
 };
-
-
-
-
 
 exports.getOrphanProfileByUser = async (userId) => {
 

@@ -320,3 +320,30 @@ exports.getPatientDetails = async (doctorId, appointmentId) => {
     };
   }
 };
+
+exports.getAllUsers = async () => {
+  try {
+    const users = await userProfileModel.getAllUsers();
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Users fetched successfully",
+      count: users.length,
+      data: users.map((user) => ({
+        ...user,
+        language: safeParse(user.language),
+        address: safeParse(user.address, {}),
+        existing_conditions: safeParse(user.existing_conditions),
+        allergies: safeParse(user.allergies),
+        emergency_contact: safeParse(user.emergency_contact, {}),
+      })),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      statusCode: 500,
+      message: error.message,
+    };
+  }
+};

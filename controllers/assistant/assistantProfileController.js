@@ -99,30 +99,33 @@ message:"Internal Server Error"
 }
 };
 
+exports.getAllAssistantProfiles = async (req, res) => {
+  try {
+console.log("doctorId:", req.params.doctorId);
+    const { doctorId } = req.params;
 
+    if (!doctorId) {
+      return res.status(400).json({
+        success: false,
+        message: "Doctor ID is required"
+      });
+    }
 
+    const result = await assistantProfileService.getAllAssistantProfiles(
+      doctorId
+    );
 
-exports.getAllAssistantProfiles=async(req,res)=>{
-try{
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      count: result.body.results || 0,
+      data: result.body.data || []
+    });
 
-const doctor_id=req.user?.doctor_id||req.user?.id;
-
-const result=await assistantProfileService.getAllAssistantProfiles(
-doctor_id
-);
-
-return res.status(result.statusCode).json({
-success:result.statusCode<400,
-message:result.body.message,
-count:result.body.results||0,
-data:result.body.data||[]
-});
-
-
-}catch(error){
-return res.status(500).json({
-success:false,
-message:"Internal Server Error"
-});
-}
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
 };
