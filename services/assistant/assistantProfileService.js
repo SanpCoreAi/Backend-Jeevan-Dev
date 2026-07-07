@@ -62,47 +62,46 @@ body:{message:error.message}
 
 
 
-exports.getAssistantProfile=async(userId)=>{
-try{
+exports.getAssistantProfile = async (userId) => {
+  try {
 
-if(!userId)
-return {
-statusCode:401,
-body:{message:"Unauthorized"}
+    if (!userId) {
+      return {
+        statusCode: 401,
+        body: {
+          message: "Unauthorized"
+        }
+      };
+    }
+
+    const profile = await AssistantProfile.getAssistantProfile(userId);
+
+    if (!profile) {
+      return {
+        statusCode: 404,
+        body: {
+          message: "Assistant not found"
+        }
+      };
+    }
+
+    return {
+      statusCode: 200,
+      body: {
+        message: "Assistant profile fetched successfully",
+        data: profile
+      }
+    };
+
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: {
+        message: error.message
+      }
+    };
+  }
 };
-
-
-const profile=
-await AssistantProfile.getAssistantProfile(userId);
-
-
-if(!profile)
-return {
-statusCode:404,
-body:{message:"Profile not found"}
-};
-
-
-return {
-statusCode:200,
-body:{
-message:"Assistant profile fetched successfully",
-data:profile
-}
-};
-
-
-}catch(error){
-
-return {
-statusCode:500,
-body:{message:error.message}
-};
-
-}
-};
-
-
 
 
 exports.updateAssistantProfile=async(userId,data)=>{

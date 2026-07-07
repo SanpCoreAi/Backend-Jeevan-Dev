@@ -645,3 +645,27 @@ exports.checkUserSameSlot = async (patientId, date, timeSlot) => {
 
   return rows.length > 0;
 };
+
+exports.getNextTokenNumber = async (
+  doctorId,
+  appointmentDate,
+  hospitalName
+) => {
+
+  const [rows] = await db.query(
+    `
+    SELECT COALESCE(MAX(token_number), 0) + 1 AS nextToken
+    FROM appointments
+    WHERE doctor_id = ?
+      AND slot_date = ?
+      AND LOWER(TRIM(hospital_name)) = LOWER(TRIM(?))
+    `,
+    [
+      doctorId,
+      appointmentDate,
+      hospitalName
+    ]
+  );
+
+  return rows[0].nextToken;
+};

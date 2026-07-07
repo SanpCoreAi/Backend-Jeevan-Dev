@@ -54,6 +54,31 @@ exports.create = async (req, res) => {
   }
 };
 
+exports.bookAppointmentByAssistant = async (req, res) => {
+  try {
+
+    const result =
+      await appointmentService.bookAppointmentByAssistant({
+        user: req.user,
+        body: req.body
+      });
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    return res.status(201).json(result);
+
+  } catch (error) {
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
+  }
+};
+
 exports.getDoctorAppointmentsForTable = async (req, res) => {
 
   try {

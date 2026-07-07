@@ -55,6 +55,12 @@ router.get(
   appointmentController.getTodayAppointments
 );
 
+router.post(
+  "/bookAppointmentByAssistant",
+  verifyToken,
+  appointmentController.bookAppointmentByAssistant
+);
+
 router.get(
   "/dashboard-cards",
   verifyToken,allowRoles(2,3),

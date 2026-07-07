@@ -16,10 +16,6 @@ exports.registerUserOrAssistant = async (data) => {
       doctor_id,
     } = data;
 
-    // =======================
-    // CHECK EMAIL
-    // =======================
-
     const emailExists = await User.findByEmail(email);
 
     if (emailExists) {
@@ -30,10 +26,6 @@ exports.registerUserOrAssistant = async (data) => {
         },
       };
     }
-
-    // =======================
-    // CHECK PHONE
-    // =======================
 
     const phoneExists = await User.findByPhone(phone_number);
 
@@ -46,9 +38,6 @@ exports.registerUserOrAssistant = async (data) => {
       };
     }
 
-    // =======================
-    // ASSISTANT REGISTER
-    // =======================
 
     if (role_id == 3) {
 
@@ -61,7 +50,6 @@ exports.registerUserOrAssistant = async (data) => {
         };
       }
 
-      // Random Password (10 Characters)
       const assistantPassword =
         crypto.randomBytes(5).toString("hex");
 
@@ -100,10 +88,6 @@ exports.registerUserOrAssistant = async (data) => {
         },
       };
     }
-
-    // =======================
-    // NORMAL USER REGISTER
-    // =======================
 
     if (!password) {
       return {
@@ -319,7 +303,6 @@ exports.resendVerificationEmail = async (email) => {
       };
     }
 
-    // Check if email is already verified
     if (user.email_verified === 1) {
       return {
         statusCode: 400,
@@ -329,14 +312,12 @@ exports.resendVerificationEmail = async (email) => {
       };
     }
 
-    // Generate a new verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
-    // Update user with new verification token
     await User.updateVerificationToken(user.id, verificationToken);
 
     try {
-      // Send verification email
+
       await sendVerificationEmail(email, verificationToken);
 
       return {

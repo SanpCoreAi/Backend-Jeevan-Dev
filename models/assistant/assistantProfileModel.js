@@ -51,56 +51,80 @@ exports.createAssistantProfile = async (data) => {
 
 exports.getAssistantProfile = async (userId) => {
 
+  // Assistant profile check
   const [rows] = await db.query(
-`
-SELECT
+    `
+    SELECT
+      ap.gender,
+      ap.age,
+      ap.department,
+      ap.education,
+      ap.experience,
+      ap.language,
+      DATE_FORMAT(ap.created_at,'%d-%m-%Y') AS joining_date,
+      ap.address,
+      ap.bio,
 
-ap.gender,
-ap.age,
-ap.department,
-ap.education,
-ap.experience,
-ap.language,
+      u.full_name,
+      u.email,
+      u.phone_number,
 
-DATE_FORMAT(ap.created_at, '%d-%m-%Y') AS joining_date,
+      doctor.full_name AS doctor_assign
 
-ap.address,
-ap.bio,
+    FROM assistant_profiles ap
 
+    LEFT JOIN users u
+      ON u.id = ap.user_id
 
-u.full_name,
-u.email,
-u.phone_number,
+    LEFT JOIN users doctor
+      ON doctor.id = u.doctor_id
 
+    WHERE ap.user_id = ?
 
-doctor.full_name AS doctor_assign
+    LIMIT 1
+    `,
+    [userId]
+  );
 
+  // Profile exists
+  if (rows.length > 0) {
+    return rows[0];
+  }
 
-FROM assistant_profiles ap
+  // Profile doesn't exist -> fetch users table
+  const [userRows] = await db.query(
+    `
+    SELECT
+      full_name,
+      email,
+      phone_number
+    FROM users
+    WHERE id = ?
+    LIMIT 1
+    `,
+    [userId]
+  );
 
+  if (userRows.length === 0) {
+    return null;
+  }
 
-LEFT JOIN users u
-ON u.id = ap.user_id
+  return {
+    full_name: userRows[0].full_name,
+    email: userRows[0].email,
+    phone_number: userRows[0].phone_number,
 
-
-LEFT JOIN users doctor
-ON doctor.id = u.doctor_id
-
-
-WHERE ap.user_id = ?
-
-
-ORDER BY ap.id DESC
-
-LIMIT 1
-
-`,
-[userId]
-);
-
-
-return rows[0];
-
+    gender: null,
+    age: null,
+    department: null,
+    education: null,
+    experience: null,
+    language: null,
+    joining_date: null,
+    address: null,
+    bio: null,
+    doctor_assign: null
+  };
 };
 
 exports.updateAssistantProfile = async (

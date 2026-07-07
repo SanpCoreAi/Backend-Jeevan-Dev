@@ -237,6 +237,118 @@ exports.bookAppointment = async (
 
 };
 
+async function bookAppointmentByAssistant({
+  user,
+  body
+}) {
+
+  const assistant = await User.findById(user.id);
+
+  if (!assistant) {
+    return {
+      success: false,
+      message: "Assistant not found"
+    };
+  }
+
+  if (!assistant.doctor_id) {
+    return {
+      success: false,
+      message: "Doctor not mapped with assistant"
+    };
+  }
+
+  const doctorId = assistant.doctor_id;
+
+  const {
+    appointment_date,
+    hospital_name,
+    mode,
+    booking_type,
+    reason_for_visit,
+    patient
+  } = body;
+
+  const token =
+    await Appointment.getNextTokenNumber(
+      doctorId,
+      appointment_date,
+      hospital_name
+    );
+
+  const appointmentId =
+    await Appointment.create({
+
+      appointment_token: token,
+
+      appointment_date,
+
+      start_time: null,
+
+      end_time: null,
+
+      patient_id: null,
+
+      doctor_id: doctorId,
+
+      schedule_id: null,
+
+      booking_type,
+
+      mode,
+
+      hospital_name,
+
+      reason_for_visit
+
+    });
+
+  await Appointment.insertOtherPatient({
+
+    appointment_id: appointmentId,
+
+    user_id: user.id,
+
+    name: patient.name,
+
+    age: patient.age,
+
+    gender: patient.gender,
+
+    phone: patient.phone,
+
+    email: patient.email
+
+  });
+
+  return {
+
+    success: true,
+
+    message: "Appointment booked successfully",
+
+    data: {
+
+      appointment_id: appointmentId,
+
+      doctor_id: doctorId,
+
+      token_number: token,
+
+      appointment_date,
+
+      hospital_name
+
+    }
+
+  };
+
+}
+
+module.exports = {
+  bookAppointmentByAssistant
+};
+
 exports.getDashboardStats = async (doctorId) => {
   return await Appointment.getDashboardStats(doctorId);
 };
