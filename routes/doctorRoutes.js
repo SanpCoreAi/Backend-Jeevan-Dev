@@ -17,7 +17,7 @@ router.get("/getDoctorPublicProfileById/:userId", verifyToken, doctorController.
 
 router.put("/getAlldoctor", verifyToken, doctorController.getAllDoctors);
 
-router.get("/getDoctors", allowRoles(2,3), getDoctors);
+router.get("/getDoctors", getDoctors);
 
 router.get("/doctor/search", DoctorSearchController.searchDoctors);
 
