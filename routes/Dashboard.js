@@ -16,5 +16,11 @@ router.get(
   verifyToken,allowRoles(2,3),
   dashboardController.todayAppointmentStats
 );
+router.get(
+  "/admin/cardNumber",
+  verifyToken,
+  allowRoles(4),
+  dashboardController.cardNumber
+);
 
 module.exports = router;

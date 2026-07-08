@@ -7,8 +7,6 @@ exports.createUserProfile = async (userId, data) => {
       username,
       age = null,
       gender = null,
-    
-
       language = [],
       address = {},
       blood_group = null,

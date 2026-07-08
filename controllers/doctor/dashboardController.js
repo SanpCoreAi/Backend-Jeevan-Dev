@@ -1,5 +1,30 @@
 const dashboardService = require('../../services/doctor/dashboardService');
 
+
+
+exports.cardNumber = async (req, res) => {
+  try {
+    const { filter, startDate, endDate } = req.query;
+
+    const result = await dashboardService.cardNumber({
+      filter,
+      startDate,
+      endDate,
+    });
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+
 exports.appointmentGraph = async (req, res) => {
   try {
 

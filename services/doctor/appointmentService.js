@@ -345,9 +345,7 @@ async function bookAppointmentByAssistant({
 
 }
 
-module.exports = {
-  bookAppointmentByAssistant
-};
+exports.bookAppointmentByAssistant = bookAppointmentByAssistant;
 
 exports.getDashboardStats = async (doctorId) => {
   return await Appointment.getDashboardStats(doctorId);
@@ -379,14 +377,6 @@ exports.getAppointmentPublicById = async (patientId) => {
 
 
 
-exports.getUserById = async(id)=>{
-
-  const user =
-    await User.findById(id);
-
-  return user;
-
-};
 
 exports.getDoctorAppointmentsForTable = async (
   doctorId,
@@ -411,17 +401,14 @@ exports.getDoctorAppointmentsForTable = async (
 
 
 
-  if (!rows || rows.length === 0) {
-
-    return {
-      success:false,
-      message:
-       `No appointments found for hospital: ${hospitalName}`,
-      offlineAppointments:[],
-      onlineAppointments:[]
-    };
-
-  }
+if (!rows || rows.length === 0) {
+  return {
+    success: false,
+    message: `No appointments found for hospital: ${hospitalName}`,
+    offlineAppointments: [],
+    onlineAppointments: []
+  };
+}
 
 
 
@@ -509,13 +496,7 @@ exports.getAppointmentById = async (doctorId) => {
 
 };
 
-exports.getUserById = async (id)=>{
 
-  const user = await User.findById(id);
-
-  return user;
-
-};
 
 
 exports.getTodayAppointmentsService =

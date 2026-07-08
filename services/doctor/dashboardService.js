@@ -1,6 +1,40 @@
 const appointmentModel = require('../../models/dashboardModel');
 const User = require("../../models/usermodel");
 
+
+const cardNumber = async (params) => {
+ const [
+  patients,
+  doctors,
+  assistants,
+  completedAppointments,
+  upcomingAppointments,
+  pastAppointments,
+] = await Promise.all([
+  appointmentModel.getPatientsCount(params),
+  appointmentModel.getDoctorsCount(params),
+  appointmentModel.getAssistantsCount(params),
+  appointmentModel.getCompletedAppointmentsCount(params),
+  appointmentModel.getUpcomingAppointmentsCount(params),
+  appointmentModel.getPastAppointmentsCount(params),
+]);
+
+  return {
+    patients,
+    doctors,
+    assistants,
+     completedAppointments,
+    upcomingAppointments,
+    pastAppointments,
+  };
+};
+
+
+
+
+
+
+
 const getAppointmentGraph = async (doctorId) => {
 
   const rows =
@@ -128,8 +162,8 @@ const getUserById = async(id)=>{
 
 };
 
-
 module.exports = {
+  cardNumber,
   getAppointmentGraph,
   getTodayStats,
   getUserById
