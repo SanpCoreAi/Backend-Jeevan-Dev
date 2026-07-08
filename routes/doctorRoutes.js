@@ -15,7 +15,7 @@ router.put("/update-profile", verifyToken,allowRoles(2), doctorController.update
 router.get("/getDoctorProfileById", verifyToken, doctorController.getDoctorProfile);
 router.get("/getDoctorPublicProfileById/:userId", verifyToken, doctorController.getDoctorPublicProfileById);
 
-router.put("/getAlldoctor", verifyToken, doctorController.getAllDoctors);
+router.get("/getAlldoctor",  doctorController.getAllDoctors);
 
 router.get("/getDoctors", getDoctors);
 

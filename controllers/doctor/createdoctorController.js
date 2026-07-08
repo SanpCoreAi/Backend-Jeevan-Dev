@@ -89,8 +89,12 @@ async function updateDoctorProfile(req, res) {
 }
 
 async function getAllDoctors(req, res) {
+  console.log("getAllDoctors Controller Called");
+
   try {
     const data = await DoctorService.getAllDoctors();
+
+    console.log(data);
 
     return res.status(200).json({
       success: true,
@@ -99,11 +103,11 @@ async function getAllDoctors(req, res) {
     });
 
   } catch (err) {
-    console.error("Get All Doctors Error:", err);
-
+    console.error("Error fetching doctors:", err);
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Error fetching doctors",
+      error: err.message
     });
   }
 }
