@@ -4,12 +4,28 @@ const { registerValidation, verifyEmailValidation, getUsersValidation,getUserByD
 
 exports.register = async (req, res) => {
   try {
-    // ==========================
-    // Assistant Register
-    // ==========================
+
+    // Doctor Registration (Only Admin)
+    if (req.body.role_id == 2) {
+
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({
+          success: false,
+          message: "Admin token required",
+        });
+      }
+
+      if (req.user.role_id != 4) {
+        return res.status(403).json({
+          success: false,
+          message: "Only admin can create doctor",
+        });
+      }
+    }
+
+    // Assistant Registration (Only Doctor)
     if (req.body.role_id == 3) {
 
-      // Doctor login hona chahiye
       if (!req.user || !req.user.id) {
         return res.status(401).json({
           success: false,
@@ -17,7 +33,6 @@ exports.register = async (req, res) => {
         });
       }
 
-      // Sirf doctor assistant bana sakta hai
       if (req.user.role_id != 2) {
         return res.status(403).json({
           success: false,
@@ -25,13 +40,22 @@ exports.register = async (req, res) => {
         });
       }
 
-      // Doctor ID service ko bhej do
       req.body.doctor_id = req.user.id;
     }
 
-    // ==========================
-    // Validation
-    // ==========================
+    // Admin Registration Not Allowed
+    if (req.body.role_id == 4) {
+      return res.status(403).json({
+        success: false,
+        message: "Admin cannot be registered from this API",
+      });
+    }
+
+    // Default Role = User
+    if (!req.body.role_id) {
+      req.body.role_id = 1;
+    }
+
     const error = registerValidation(req.body);
 
     if (error) {
@@ -41,9 +65,6 @@ exports.register = async (req, res) => {
       });
     }
 
-    // ==========================
-    // Service Call
-    // ==========================
     const result = await authService.registerUserOrAssistant(req.body);
 
     return res.status(result.statusCode).json({
@@ -62,7 +83,6 @@ exports.register = async (req, res) => {
       success: false,
       message: "Internal Server Error",
     });
-
   }
 };
 

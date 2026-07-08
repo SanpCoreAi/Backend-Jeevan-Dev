@@ -3,10 +3,11 @@ const crypto = require("crypto");
 
 const User = require("../../models/usermodel");
 
-const { sendVerificationEmail, sendAssistantCredentials } = require("../../utils/sendEmail");
+const { sendVerificationEmail, sendAssistantCredentials, sendDoctorCredentials } = require("../../utils/sendEmail");
 
 exports.registerUserOrAssistant = async (data) => {
   try {
+
     const {
       full_name,
       email,
@@ -38,7 +39,50 @@ exports.registerUserOrAssistant = async (data) => {
       };
     }
 
+    // ===========================
+    // Doctor Registration
+    // ===========================
+    if (role_id == 2) {
 
+      const doctorPassword = crypto.randomBytes(5).toString("hex");
+
+      const hashedPassword = await bcrypt.hash(doctorPassword, 10);
+
+      const userId = await User.createUser({
+        full_name,
+        email,
+        phone_number,
+        password: hashedPassword,
+        role_id: 2,
+        email_verified: 1,
+      });
+
+      try {
+
+        await sendDoctorCredentials(
+          email,
+          full_name,
+          doctorPassword
+        );
+
+      } catch (err) {
+
+        console.log("Doctor Email Error:", err.message);
+
+      }
+
+      return {
+        statusCode: 201,
+        body: {
+          message: "Doctor created successfully. Credentials sent to email.",
+          user_id: userId,
+        },
+      };
+    }
+
+    // ===========================
+    // Assistant Registration
+    // ===========================
     if (role_id == 3) {
 
       if (!doctor_id) {
@@ -50,22 +94,19 @@ exports.registerUserOrAssistant = async (data) => {
         };
       }
 
-      const assistantPassword =
-        crypto.randomBytes(5).toString("hex");
+      const assistantPassword = crypto.randomBytes(5).toString("hex");
 
-      const hashedPassword =
-        await bcrypt.hash(assistantPassword, 10);
+      const hashedPassword = await bcrypt.hash(assistantPassword, 10);
 
-      const userId =
-        await User.createUser({
-          full_name,
-          email,
-          phone_number,
-          password: hashedPassword,
-          doctor_id,
-          role_id: 3,
-          email_verified: 1,
-        });
+      const userId = await User.createUser({
+        full_name,
+        email,
+        phone_number,
+        password: hashedPassword,
+        doctor_id,
+        role_id: 3,
+        email_verified: 1,
+      });
 
       try {
 
@@ -76,19 +117,23 @@ exports.registerUserOrAssistant = async (data) => {
         );
 
       } catch (err) {
-        console.log("Assistant Email Error :", err.message);
+
+        console.log("Assistant Email Error:", err.message);
+
       }
 
       return {
         statusCode: 201,
         body: {
-          message:
-            "Assistant created successfully. Credentials sent to email.",
+          message: "Assistant created successfully. Credentials sent to email.",
           user_id: userId,
         },
       };
     }
 
+    // ===========================
+    // Normal User Registration
+    // ===========================
     if (!password) {
       return {
         statusCode: 400,
@@ -98,22 +143,19 @@ exports.registerUserOrAssistant = async (data) => {
       };
     }
 
-    const hashedPassword =
-      await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    const verificationToken =
-      crypto.randomBytes(32).toString("hex");
+    const verificationToken = crypto.randomBytes(32).toString("hex");
 
-    const userId =
-      await User.createUser({
-        full_name,
-        email,
-        phone_number,
-        password: hashedPassword,
-        role_id: role_id || 2,
-        verificationToken,
-        email_verified: 0,
-      });
+    const userId = await User.createUser({
+      full_name,
+      email,
+      phone_number,
+      password: hashedPassword,
+      role_id: 1,
+      verificationToken,
+      email_verified: 0,
+    });
 
     try {
 
@@ -122,27 +164,19 @@ exports.registerUserOrAssistant = async (data) => {
         verificationToken
       );
 
-      return {
-        statusCode: 201,
-        body: {
-          message: "User registered. Please verify email.",
-          user_id: userId,
-        },
-      };
-
     } catch (err) {
 
-      console.log("Verification Email Error :", err.message);
+      console.log("Verification Email Error:", err.message);
 
-      return {
-        statusCode: 201,
-        body: {
-          message:
-            "User registered but verification email failed.",
-          user_id: userId,
-        },
-      };
     }
+
+    return {
+      statusCode: 201,
+      body: {
+        message: "User registered successfully. Please verify your email.",
+        user_id: userId,
+      },
+    };
 
   } catch (error) {
 

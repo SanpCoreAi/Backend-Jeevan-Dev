@@ -240,6 +240,67 @@ exports.sendAssistantCredentials = async (
 
 };
 
+exports.sendDoctorCredentials = async (
+  email,
+  name,
+  password
+) => {
+
+  try {
+
+    const mailOptions = {
+
+      from: `"Hospital Portal" <${process.env.EMAIL_USER}>`,
+
+      to: email,
+
+      subject: "doctor Account Created - Login Details",
+
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0a3f3e; max-width: 600px; margin: 0 auto; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+
+          <h2 style="color: #0a3f3e; margin-bottom: 20px;">Welcome ${name}! 👋</h2>
+
+          <p style="margin-bottom: 15px;">Your doctor account has been created successfully.</p>
+
+          <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #007bff;">
+            <p style="margin: 10px 0;"><strong>Login Email:</strong> ${email}</p>
+            <p style="margin: 10px 0;"><strong>Temporary Password:</strong> <code style="background: #f0f0f0; padding: 5px 10px; border-radius: 3px; font-family: monospace;">${password}</code></p>
+          </div>
+
+          <p style="margin-bottom: 15px; color: #666;"><strong>Important:</strong> Please login and change your password immediately after first login for security reasons.</p>
+
+          <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 12px;">
+            Hospital Portal Team<br>
+            This is an automated email, please do not reply
+          </p>
+
+        </div>
+      `,
+    };
+
+
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log(
+      `✅ doctor credentials sent to ${email}: ${info.response}`
+    );
+
+    return true;
+
+
+  } catch(error){
+
+    console.error(
+      "❌ Assistant mail error:",
+      error.message
+    );
+
+    throw error;
+  }
+
+};
+
 exports.sendResetPasswordEmail=
 async(email,token)=>{
 
