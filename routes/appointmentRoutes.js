@@ -22,7 +22,7 @@ router.get(
 
 router.get("/view-e-visit", verifyToken,allowRoles(2,3), appointmentController.getDoctorAppointmentsForTable);
 
-router.get("/getAllappoinment/my", verifyToken,allowRoles(2,3), appointmentController.getMyAppointments);
+router.get("/getAllappoinment/my", verifyToken,allowRoles(1,2,3), appointmentController.getMyAppointments);
 router.get(
   "/getAppointmentById",
   verifyToken,
