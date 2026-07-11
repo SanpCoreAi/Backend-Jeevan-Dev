@@ -224,40 +224,41 @@ async function getDoctorPublicProfileById(userId) {
     };
   }
 
-  return {
-    success: true,
-    data: {
-      id: doctor.id,
-      userId: doctor.user_id,
-      username: doctor.username,
-      specialization: doctor.specialization,
-      qualification: doctor.qualification,
-      experience: doctor.experience,
-      consultationFee: doctor.consultation_fee,
-      bio: doctor.bio,
+return {
+  success: true,
+  data: {
+    id: doctor.id,
+    userId: doctor.user_id,
+    username: doctor.username,
+    specialization: doctor.specialization,
+    age: doctor.age,
+    gender: doctor.gender,
+    qualification: doctor.qualification,
+    experience: doctor.experience,
+    consultationFee: doctor.consultation_fee,
+    bio: doctor.bio,
 
-      language: parseJSON(doctor.language),
-      availability: parseJSON(doctor.availability),
-      hospitalDetail: parseJSON(doctor.hospital_detail),
+    language: parseJSON(doctor.language),
+    availability: parseJSON(doctor.availability),
+    hospitalDetail: parseJSON(doctor.hospital_detail),
 
-      user: {
-        fullName: doctor.user_full_name,
-        email: doctor.user_email,
-        phoneNumber: doctor.user_phone_number
-      },
+    user: {
+      fullName: doctor.user_full_name,
+      email: doctor.user_email,
+      phoneNumber: doctor.user_phone_number
+    },
 
-      image: doctor.image_file_key
-        ? {
-            url:
-              S3_BASE_URL && S3_BASE_URL !== "undefined"
-                ? `${S3_BASE_URL}/${encodeURI(doctor.image_file_key)}`
-                : `${BASE_FILE_URL}/${encodeURI(doctor.image_file_key)}`
-          }
-        : null,
- 
-      avgRating: Number(doctor.avg_rating)
-    }
-  };
+    image: doctor.image_file_key
+      ? {
+          url: doctor.image_file_key
+        }
+      : null,
+
+    avgRating: Number(doctor.avg_rating || 0),
+    totalFeedbacks: Number(doctor.total_feedbacks || 0),
+    totalRatings: Number(doctor.total_ratings || 0)
+  }
+};
 }
 
 async function updateProfile(userId, body) {

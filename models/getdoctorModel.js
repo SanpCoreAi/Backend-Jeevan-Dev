@@ -1,110 +1,118 @@
 const db = require("../config/db");
 
+function parseJSON(value) {
+  if (!value) return [];
+
+  try {
+    return typeof value === "string" ? JSON.parse(value) : value;
+  } catch {
+    return [];
+  }
+}
+
 async function findDoctors(filters = {}) {
   try {
     let sql = `
-SELECT 
-  u.id,
-  u.full_name,
-  u.email,
-  u.phone_number,
+      SELECT
+        u.id,
+        u.full_name,
+        u.email,
+        u.phone_number,
 
-  d.id AS doctor_id,
-  d.specialization,
-  d.qualification AS education,
-  d.experience,
-  d.consultation_fee AS fee,
-  d.language,
-  d.bio,
+        d.id AS doctor_id,
+        d.user_id,
+        d.username,
+        d.specialization,
+        d.qualification AS education,
+        d.experience,
+        d.consultation_fee AS fee,
+        d.language,
+        d.age,
+        d.gender,
+        d.hospital_detail,
 
-  JSON_UNQUOTE(
-    JSON_EXTRACT(d.hospital_detail, '$[0].hospitalName')
-  ) AS hospital_name,
+        JSON_UNQUOTE(
+          JSON_EXTRACT(d.hospital_detail,'$[0].hospitalName')
+        ) AS hospital_name,
 
-  di.file_key AS photo,
+        (
+          SELECT file_key
+          FROM doctor_image
+          WHERE doctor_id IN (d.id,d.user_id)
+          ORDER BY id DESC
+          LIMIT 1
+        ) AS photo,
 
-  (
-    SELECT ROUND(AVG(f.rating), 1)
-    FROM feedbacks f
-    WHERE f.doctor_id = d.user_id
-  ) AS avg_rating
+        IFNULL(drs.avg_rating,0) AS avg_rating,
+        IFNULL(drs.total_feedbacks,0) AS total_feedbacks
 
-FROM users u
+      FROM users u
 
-LEFT JOIN doctors d 
-  ON u.id = d.user_id
+      INNER JOIN doctors d
+        ON d.user_id=u.id
 
-LEFT JOIN doctor_image di 
-  ON di.doctor_id = u.id
+      LEFT JOIN doctor_rating_summary drs
+      ON drs.doctor_id = d.user_id
 
-WHERE u.role_id = 2
-`;
+      WHERE u.role_id=2
+    `;
 
     const params = [];
 
-
-    // Name Filter
-    if (filters.name) {
+    if (filters.name?.trim()) {
       sql += " AND u.full_name LIKE ?";
       params.push(`%${filters.name.trim()}%`);
     }
 
-
-    // Email Filter
-    if (filters.email) {
+    if (filters.email?.trim()) {
       sql += " AND u.email LIKE ?";
       params.push(`%${filters.email.trim()}%`);
     }
 
-
-    // Phone Filter
-    if (filters.phone_number) {
+    if (filters.phone_number?.trim()) {
       sql += " AND u.phone_number LIKE ?";
       params.push(`%${filters.phone_number.trim()}%`);
     }
 
+    if (filters.specialization?.trim()) {
+      sql += " AND d.specialization LIKE ?";
+      params.push(`%${filters.specialization.trim()}%`);
+    }
 
-    sql += " ORDER BY u.created_at DESC";
+    sql += `
+      ORDER BY u.created_at DESC
+    `;
 
+    const [rows] = await db.execute(sql, params);
 
-    const [rows] = await db.query(sql, params);
+   return rows.map((doctor) => ({              // users.id
+  id: doctor.doctor_id,  // doctors.id
+  doctorId: doctor.id, 
+  fullName: doctor.full_name,
+  email: doctor.email,
+  phoneNumber: doctor.phone_number,
 
+  username:doctor.username,
+  gender: doctor.gender,
+  age: doctor.age,
 
-    const BASE_FILE_URL = "http://localhost:4000/uploads";
-    const S3_BASE_URL = process.env.AWS_S3_BUCKET_URL;
+  specialization: doctor.specialization,
+  education: doctor.education,
+  experience: doctor.experience,
+  consultationFee: doctor.fee,
 
+  language: parseJSON(doctor.language),
+  hospitalName: doctor.hospital_name,
+  hospitalDetail: parseJSON(doctor.hospital_detail),
 
-    return rows.map((row) => ({
-      ...row,
+  photo: doctor.photo || null,
 
-      avg_rating: row.avg_rating
-        ? Number(row.avg_rating)
-        : 0,
-
-
-      photo: row.photo
-        ? (
-            row.photo.startsWith("http") ||
-            row.photo.startsWith("data:")
-          )
-          ? row.photo
-
-          : S3_BASE_URL &&
-            S3_BASE_URL !== "undefined"
-
-          ? `${S3_BASE_URL}/${encodeURI(row.photo)}`
-
-          : `${BASE_FILE_URL}/doctor-images/${encodeURI(row.photo)}`
-
-        : null,
-    }));
-
-
-  } catch (err) {
-
-    console.error("Database Error (findDoctors):", err);
-
-    throw err;
+  avgRating: Number(doctor.avg_rating),
+  totalFeedbacks: Number(doctor.total_feedbacks)
+}));
+  } catch (error) {
+    console.error("findDoctors Error:", error);
+    throw error;
   }
 }
 

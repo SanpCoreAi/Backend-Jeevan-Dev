@@ -139,10 +139,6 @@ const getBydoctorId = async (userId) => {
         JSON_ARRAY()
       ) AS files,
 
-      -- =========================
-      -- AVG RATING
-      -- =========================
-
       (
         SELECT ROUND(AVG(f.rating), 1)
         FROM feedbacks f
@@ -184,7 +180,6 @@ const getBydoctorId = async (userId) => {
 
 
 async function getProfile(userId) {
-
   const d =
     await DoctorModel
       .getBydoctorId(userId);
@@ -406,11 +401,12 @@ const getDoctorPublicProfileById = async (doctorId) => {
       d.qualification,
       d.experience,
       d.consultation_fee,
+      d.age,
+      d.gender,
       d.bio,
       d.language,
       d.availability,
       d.hospital_detail,
-
       u.full_name AS user_full_name,
       u.email AS user_email,
       u.phone_number AS user_phone_number,
@@ -424,27 +420,18 @@ const getDoctorPublicProfileById = async (doctorId) => {
         LIMIT 1
       ) AS image_file_key,
 
-      (
-        SELECT di.folder_name
-        FROM doctor_image di
-        WHERE (di.doctor_id = d.user_id OR di.doctor_id = d.id)
-          AND di.file_key IS NOT NULL
-        ORDER BY di.id DESC
-        LIMIT 1
-      ) AS image_folder_name,
-
-      IFNULL(
-        (
-          SELECT AVG(f.rating)
-          FROM feedbacks f
-          WHERE f.doctor_id = d.id
-        ),
-        0
-      ) AS avg_rating
+      drs.avg_rating,
+      drs.total_feedbacks,
+      drs.total_ratings
 
     FROM doctors d
-    LEFT JOIN users u ON u.id = d.user_id
-    WHERE u.id = ?   -- ✅ recommended
+    LEFT JOIN users u
+      ON u.id = d.user_id
+
+  LEFT JOIN doctor_rating_summary drs
+  ON drs.doctor_id = d.user_id
+
+    WHERE u.id = ?
     LIMIT 1
   `;
 
@@ -472,8 +459,6 @@ const updateDoctor = async (params) => {
   await db.execute(sql, params);
 };
 
-
-/* ================= GET ALL DOCTORS (WITH USER + RATING) ================= */
 const getAllDoctors = async () => {
   const sql = `
     SELECT
@@ -485,11 +470,9 @@ const getAllDoctors = async () => {
       d.experience,
       d.consultation_fee,
       d.qr_code,
-
       u.full_name,
       u.email,
       u.phone_number,
-
       COALESCE(
         (
           SELECT JSON_ARRAYAGG(
@@ -506,7 +489,6 @@ const getAllDoctors = async () => {
         ),
         JSON_ARRAY()
       ) AS images,
-
       ROUND(
         IFNULL(
           (SELECT AVG(f.rating) FROM feedbacks f WHERE f.doctor_id = d.id),
@@ -517,7 +499,6 @@ const getAllDoctors = async () => {
     FROM doctors d
     LEFT JOIN users u ON u.id = d.user_id
   `;
-
   const [rows] = await db.execute(sql);
   return rows;
 };
