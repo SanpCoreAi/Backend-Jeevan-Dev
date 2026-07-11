@@ -5,8 +5,8 @@ const getCondition = (params = {}, column = "created_at") => {
 
   if (startDate && endDate) {
     return {
-      condition: `DATE(${column}) BETWEEN ? AND ?,
-      values: [startDate, endDate]`,
+      condition: `DATE(${column}) BETWEEN ? AND ?`,
+      values: [startDate, endDate],
     };
   }
 
@@ -19,8 +19,8 @@ const getCondition = (params = {}, column = "created_at") => {
 
     case "week":
       return {
-        condition:` YEARWEEK(${column},1)=YEARWEEK(CURDATE(),1),
-        values: []`,
+        condition: `YEARWEEK(${column},1)=YEARWEEK(CURDATE(),1)`,
+        values: [],
       };
 
     case "month":
@@ -31,8 +31,8 @@ const getCondition = (params = {}, column = "created_at") => {
 
     case "year":
       return {
-        condition:` YEAR(${column})=YEAR(CURDATE()),
-        values: []`,
+        condition: `YEAR(${column})=YEAR(CURDATE())`,
+        values: [],
       };
 
     default:
@@ -99,13 +99,13 @@ const getCompletedAppointmentsCount = async (params) => {
 };
 
 const getUpcomingAppointmentsCount = async (params) => {
-  const { condition, values } = getCondition(params, "slot_date");
+  const { condition, values } = getCondition(params);
 
   const [rows] = await db.query(
     `
     SELECT COUNT(*) AS total
     FROM appointments
-    WHERE DATE(slot_date) >= CURDATE()
+    WHERE status = 'CANCELLED'
       AND ${condition}
     `,
     values

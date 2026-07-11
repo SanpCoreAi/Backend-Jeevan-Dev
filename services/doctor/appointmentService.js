@@ -679,3 +679,44 @@ exports.getDoctorSlots = async ({
     }))
   };
 };
+
+exports.cancelAppointment = async (
+  patientId,
+  appointmentId
+) => {
+
+  const appointment =
+    await Appointment.getAppointmentForCancel(
+      appointmentId,
+      patientId
+    );
+
+  if (!appointment) {
+    return {
+      success: false,
+      message: "Appointment not found"
+    };
+  }
+
+  if (appointment.status.toLowerCase() === "cancelled") {
+    return {
+      success: false,
+      message: "Appointment already cancelled"
+    };
+  }
+
+  await Appointment.cancelAppointment(appointmentId);
+
+  await SlotModel.getActiveSlot(
+    appointment.schedule_id,
+    appointment.doctor_id,
+    appointment.slot_date,
+    appointment.start_time
+  );
+
+  return {
+    success: true,
+    message: "Appointment cancelled successfully"
+  };
+
+};

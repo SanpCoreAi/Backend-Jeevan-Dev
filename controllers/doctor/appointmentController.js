@@ -725,3 +725,28 @@ exports.getDoctorSlots = async (req, res) => {
     });
   }
 };
+
+exports.cancelAppointment = async (req, res) => {
+  try {
+
+    const patientId = req.user.id;
+    const appointmentId = Number(req.params.appointmentId);
+
+    const result = await appointmentService.cancelAppointment(
+      patientId,
+      appointmentId
+    );
+
+    return res
+      .status(result.success ? 200 : 400)
+      .json(result);
+
+  } catch (error) {
+
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
+  }
+};

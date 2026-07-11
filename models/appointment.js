@@ -225,6 +225,44 @@ exports.getDoctorAppointmentsForTable = async (
   };
 };
 
+exports.getAppointmentForCancel = async (
+  appointmentId,
+  patientId
+) => {
+
+  const [rows] = await db.query(
+    `
+    SELECT
+      id,
+      doctor_id,
+      patient_id,
+      schedule_id,
+      slot_date,
+      start_time,
+      status
+    FROM appointments
+    WHERE id = ?
+      AND patient_id = ?
+    LIMIT 1
+    `,
+    [appointmentId, patientId]
+  );
+
+  return rows[0] || null;
+};
+
+exports.cancelAppointment = async (appointmentId) => {
+
+  await db.query(
+    `
+    UPDATE appointments
+    SET status = 'cancelled'
+    WHERE id = ?
+    `,
+    [appointmentId]
+  );
+
+};
 
 exports.getAppointmentById = async (doctorId) => {
   const [rows] = await db.query(

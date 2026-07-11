@@ -83,4 +83,11 @@ router.get(
 );
 
 
+router.patch(
+  "/:appointmentId/cancel",
+  verifyToken,
+  allowRoles(1),
+  appointmentController.cancelAppointment
+);
+
 module.exports = router;
