@@ -137,87 +137,121 @@ AND is_deleted = 0;
 exports.getDoctorAppointmentsForTable = async (
   doctorId,
   hospitalName,
+  mode,
+  booked_at,
+  status,
   limit,
   offset
 ) => {
 
-  const [rows] = await db.query(
-    `
-    SELECT 
-      COALESCE(u.full_name, 'Unknown') AS name,
-
+  let query = `
+    SELECT
+      COALESCE(u.full_name,'Unknown') AS name,
       u.phone_number,
-
       d.specialization AS diagnostic,
-
-      DATE_FORMAT(a.slot_date, '%d-%m-%Y') AS date,
-
+      DATE_FORMAT(a.slot_date,'%d-%m-%Y') AS date,
       a.id AS appointment_id,
-
       a.token_number,
-
       a.appointment_type AS mode,
-
-      COALESCE(a.hospital_name, 'Online') AS hospital_name,
-
+      COALESCE(a.hospital_name,'Online') AS hospital_name,
       a.status,
-
-      DATE_FORMAT(a.created_at, '%d-%m-%Y %h:%i %p')
-        AS booked_at
-
+      DATE_FORMAT(a.created_at,'%d-%m-%Y %h:%i %p') AS booked_at
     FROM appointments a
-
     LEFT JOIN users u
       ON u.id = a.patient_id
-
     LEFT JOIN doctors d
       ON d.id = a.doctor_id
-
     WHERE a.doctor_id = ?
+  `;
 
-    AND (
-      LOWER(TRIM(COALESCE(a.hospital_name, '')))
-        = LOWER(TRIM(?))
+  const params = [doctorId];
 
-      OR a.hospital_name IS NULL
-    )
+  // Hospital Filter
+  if (hospitalName) {
+    query += `
+      AND LOWER(TRIM(a.hospital_name)) = LOWER(TRIM(?))
+    `;
+    params.push(hospitalName);
+  }
 
-    ORDER BY 
+  // Mode Filter
+  if (mode) {
+    query += `
+      AND LOWER(a.appointment_type) = LOWER(?)
+    `;
+    params.push(mode);
+  }
+
+  // Status Filter
+  if (status) {
+    query += `
+      AND LOWER(a.status) = LOWER(?)
+    `;
+    params.push(status);
+  }
+
+  // Booked Day Filter
+  const bookedAtDay = Number(booked_at);
+  const hasBookedAtFilter = booked_at !== undefined && booked_at !== null && booked_at !== '' && Number.isInteger(bookedAtDay) && bookedAtDay >= 1 && bookedAtDay <= 31;
+
+  if (hasBookedAtFilter) {
+    query += `
+      AND DAY(a.created_at) = ?
+    `;
+    params.push(bookedAtDay);
+  }
+
+  query += `
+    ORDER BY
       a.slot_date DESC,
       a.start_time ASC,
       a.token_number ASC
-
     LIMIT ? OFFSET ?
-    `,
-    [
-      doctorId,
-      hospitalName,
-      Number(limit),
-      Number(offset)
-    ]
-  );
+  `;
 
-  // Total Count Query
-  const [[countResult]] = await db.query(
-    `
+  params.push(Number(limit), Number(offset));
+
+  const [rows] = await db.query(query, params);
+
+  // ================= COUNT QUERY =================
+
+  let countQuery = `
     SELECT COUNT(*) AS total
-
     FROM appointments a
-
     WHERE a.doctor_id = ?
+  `;
 
-    AND (
-      LOWER(TRIM(COALESCE(a.hospital_name, '')))
-        = LOWER(TRIM(?))
+  const countParams = [doctorId];
 
-      OR a.hospital_name IS NULL
-    )
-    `,
-    [
-      doctorId,
-      hospitalName
-    ]
-  );
+  if (hospitalName) {
+    countQuery += `
+      AND LOWER(TRIM(a.hospital_name)) = LOWER(TRIM(?))
+    `;
+    countParams.push(hospitalName);
+  }
+
+  if (mode) {
+    countQuery += `
+      AND LOWER(a.appointment_type) = LOWER(?)
+    `;
+    countParams.push(mode);
+  }
+
+  if (status) {
+    countQuery += `
+      AND LOWER(a.status) = LOWER(?)
+    `;
+    countParams.push(status);
+  }
+
+  if (hasBookedAtFilter) {
+    countQuery += `
+      AND DAY(a.created_at) = ?
+    `;
+    countParams.push(bookedAtDay);
+  }
+
+  const [[countResult]] = await db.query(countQuery, countParams);
 
   return {
     rows,

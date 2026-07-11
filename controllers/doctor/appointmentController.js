@@ -128,36 +128,31 @@ exports.getDoctorAppointmentsForTable = async (req, res) => {
     }
 
 
+const {
+  hospitalName,
+  mode,
+  booked_at,
+  status,
+  page = 1,
+  limit = 10
+} = req.query;
 
-    const {
-      hospitalName,
-      page = 1,
-      limit = 10
-    } = req.query;
+if (!hospitalName) {
+  return res.status(400).json({
+    success: false,
+    message: "hospitalName is required"
+  });
+}
 
-
-
-    if (!hospitalName) {
-
-      return res.status(400).json({
-        success:false,
-        message:"hospitalName is required"
-      });
-
-    }
-
-
-
-    const result =
-      await appointmentService
-        .getDoctorAppointmentsForTable(
-          doctorId,
-          hospitalName,
-          Number(page),
-          Number(limit)
-        );
-
-
+const result = await appointmentService.getDoctorAppointmentsForTable(
+  doctorId,
+  hospitalName,
+  mode,
+  booked_at,
+  status,
+  Number(page),
+  Number(limit)
+);
 
     return res.status(200).json(result);
 
