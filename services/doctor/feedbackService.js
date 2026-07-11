@@ -87,17 +87,6 @@ ratings.reduce(
 ).toFixed(1)
 :0;
 
-
-
-await FeedbackModel.saveDoctorRatingSummary(
-doctorId,
-feedbacks.length,
-ratings.length,
-avg_rating
-);
-
-
-
 return {
 
 statusCode:201,

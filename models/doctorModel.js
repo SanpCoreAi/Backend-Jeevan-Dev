@@ -407,6 +407,7 @@ const getDoctorPublicProfileById = async (doctorId) => {
       d.language,
       d.availability,
       d.hospital_detail,
+
       u.full_name AS user_full_name,
       u.email AS user_email,
       u.phone_number AS user_phone_number,
@@ -420,18 +421,33 @@ const getDoctorPublicProfileById = async (doctorId) => {
         LIMIT 1
       ) AS image_file_key,
 
-      drs.avg_rating,
-      drs.total_feedbacks,
-      drs.total_ratings
+      (
+        SELECT ROUND(AVG(f.rating), 1)
+        FROM feedbacks f
+        WHERE f.doctor_id = d.user_id
+          AND f.rating IS NOT NULL
+      ) AS avg_rating,
+
+      (
+        SELECT COUNT(*)
+        FROM feedbacks f
+        WHERE f.doctor_id = d.user_id
+      ) AS total_feedbacks,
+
+      (
+        SELECT COUNT(f.rating)
+        FROM feedbacks f
+        WHERE f.doctor_id = d.user_id
+          AND f.rating IS NOT NULL
+      ) AS total_ratings
 
     FROM doctors d
+
     LEFT JOIN users u
       ON u.id = d.user_id
 
-  LEFT JOIN doctor_rating_summary drs
-  ON drs.doctor_id = d.user_id
-
     WHERE u.id = ?
+
     LIMIT 1
   `;
 

@@ -87,36 +87,6 @@ async function getAllDoctorsRatingSummary() {
   return rows;
 }
 
-async function saveDoctorRatingSummary(
-  doctor_id,
-  total_feedbacks,
-  total_ratings,
-  avg_rating
-) {
-  const [result] = await db.query(
-    `INSERT INTO doctor_rating_summary 
-      (doctor_id, total_feedbacks, total_ratings, avg_rating)
-     VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE
-       total_feedbacks = VALUES(total_feedbacks),
-       total_ratings = VALUES(total_ratings),
-       avg_rating = VALUES(avg_rating),
-       updated_at = CURRENT_TIMESTAMP`,
-    [doctor_id, total_feedbacks, total_ratings, avg_rating]
-  );
-
-  return result;
-}
-
-// async function createDoctorReply(feedback_id, doctor_id, reply_text) {
-//   const [result] = await db.query(
-//     `INSERT INTO feedback_replies (feedback_id, doctor_id, reply_text)
-//      VALUES (?, ?, ?)`,
-//     [feedback_id, doctor_id, reply_text]
-//   );
-
-//   return result.insertId;
-// }
 
 async function getFeedbackReplies(feedback_id) {
   const [rows] = await db.query(
@@ -139,8 +109,6 @@ module.exports = {
   getAllFeedbacks,
   getDoctorFeedbacks,
   getAllDoctorsRatingSummary,
-  saveDoctorRatingSummary,
   checkUserFeedback,
-  // createDoctorReply,
   getFeedbackReplies
 };

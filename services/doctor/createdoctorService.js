@@ -224,41 +224,42 @@ async function getDoctorPublicProfileById(userId) {
     };
   }
 
-return {
-  success: true,
-  data: {
-    id: doctor.id,
-    userId: doctor.user_id,
-    username: doctor.username,
-    specialization: doctor.specialization,
-    age: doctor.age,
-    gender: doctor.gender,
-    qualification: doctor.qualification,
-    experience: doctor.experience,
-    consultationFee: doctor.consultation_fee,
-    bio: doctor.bio,
+  return {
+    success: true,
+    statusCode: 200,
+    data: {
+      id: doctor.id,
+      userId: doctor.user_id,
+      username: doctor.username,
+      specialization: doctor.specialization,
+      age: doctor.age,
+      gender: doctor.gender,
+      qualification: doctor.qualification,
+      experience: doctor.experience,
+      consultationFee: doctor.consultation_fee,
+      bio: doctor.bio,
 
-    language: parseJSON(doctor.language),
-    availability: parseJSON(doctor.availability),
-    hospitalDetail: parseJSON(doctor.hospital_detail),
+      language: parseJSON(doctor.language),
+      availability: parseJSON(doctor.availability),
+      hospitalDetail: parseJSON(doctor.hospital_detail),
 
-    user: {
-      fullName: doctor.user_full_name,
-      email: doctor.user_email,
-      phoneNumber: doctor.user_phone_number
-    },
+      user: {
+        fullName: doctor.user_full_name,
+        email: doctor.user_email,
+        phoneNumber: doctor.user_phone_number
+      },
 
-    image: doctor.image_file_key
-      ? {
-          url: doctor.image_file_key
-        }
-      : null,
+      image: doctor.image_file_key
+        ? {
+            url: doctor.image_file_key
+          }
+        : null,
 
-    avgRating: Number(doctor.avg_rating || 0),
-    totalFeedbacks: Number(doctor.total_feedbacks || 0),
-    totalRatings: Number(doctor.total_ratings || 0)
-  }
-};
+      avgRating: doctor.avg_rating == null? "0.0": Number(doctor.avg_rating).toFixed(1),
+      totalFeedbacks: Number(doctor.total_feedbacks ?? 0),
+      totalRatings: Number(doctor.total_ratings ?? 0)
+    }
+  };
 }
 
 async function updateProfile(userId, body) {

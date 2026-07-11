@@ -41,20 +41,14 @@ async function findDoctors(filters = {}) {
           WHERE doctor_id IN (d.id,d.user_id)
           ORDER BY id DESC
           LIMIT 1
-        ) AS photo,
-
-        IFNULL(drs.avg_rating,0) AS avg_rating,
-        IFNULL(drs.total_feedbacks,0) AS total_feedbacks
+        ) AS photo
 
       FROM users u
 
       INNER JOIN doctors d
-        ON d.user_id=u.id
+        ON d.user_id = u.id
 
-      LEFT JOIN doctor_rating_summary drs
-      ON drs.doctor_id = d.user_id
-
-      WHERE u.role_id=2
+      WHERE u.role_id = 2
     `;
 
     const params = [];
@@ -79,37 +73,33 @@ async function findDoctors(filters = {}) {
       params.push(`%${filters.specialization.trim()}%`);
     }
 
-    sql += `
-      ORDER BY u.created_at DESC
-    `;
+    sql += " ORDER BY u.created_at DESC";
 
     const [rows] = await db.execute(sql, params);
 
-   return rows.map((doctor) => ({              // users.id
-  id: doctor.doctor_id,  // doctors.id
-  doctorId: doctor.id, 
-  fullName: doctor.full_name,
-  email: doctor.email,
-  phoneNumber: doctor.phone_number,
+    return rows.map((doctor) => ({
+      id: doctor.doctor_id,
+      doctorId: doctor.id,
 
-  username:doctor.username,
-  gender: doctor.gender,
-  age: doctor.age,
+      fullName: doctor.full_name,
+      email: doctor.email,
+      phoneNumber: doctor.phone_number,
 
-  specialization: doctor.specialization,
-  education: doctor.education,
-  experience: doctor.experience,
-  consultationFee: doctor.fee,
+      username: doctor.username,
+      gender: doctor.gender,
+      age: doctor.age,
 
-  language: parseJSON(doctor.language),
-  hospitalName: doctor.hospital_name,
-  hospitalDetail: parseJSON(doctor.hospital_detail),
+      specialization: doctor.specialization,
+      education: doctor.education,
+      experience: doctor.experience,
+      consultationFee: doctor.fee,
 
-  photo: doctor.photo || null,
+      language: parseJSON(doctor.language),
+      hospitalName: doctor.hospital_name,
+      hospitalDetail: parseJSON(doctor.hospital_detail),
 
-  avgRating: Number(doctor.avg_rating),
-  totalFeedbacks: Number(doctor.total_feedbacks)
-}));
+      photo: doctor.photo || null
+    }));
   } catch (error) {
     console.error("findDoctors Error:", error);
     throw error;
