@@ -726,10 +726,12 @@ exports.cancelAppointment = async (req, res) => {
 
     const patientId = req.user.id;
     const appointmentId = Number(req.params.appointmentId);
+    const { reason } = req.body;
 
     const result = await appointmentService.cancelAppointment(
       patientId,
-      appointmentId
+      appointmentId,
+      reason
     );
 
     return res

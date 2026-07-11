@@ -285,15 +285,20 @@ exports.getAppointmentForCancel = async (
   return rows[0] || null;
 };
 
-exports.cancelAppointment = async (appointmentId) => {
+exports.cancelAppointment = async (
+  appointmentId,
+  reason
+) => {
 
   await db.query(
     `
     UPDATE appointments
-    SET status = 'cancelled'
+    SET
+      status = 'cancelled',
+      cancel_reason = ?
     WHERE id = ?
     `,
-    [appointmentId]
+    [reason, appointmentId]
   );
 
 };

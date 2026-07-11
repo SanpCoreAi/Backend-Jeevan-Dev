@@ -650,8 +650,16 @@ exports.getDoctorSlots = async ({
 
 exports.cancelAppointment = async (
   patientId,
-  appointmentId
+  appointmentId,
+  reason
 ) => {
+
+  if (!reason || !reason.trim()) {
+    return {
+      success: false,
+      message: "Cancellation reason is required"
+    };
+  }
 
   const appointment =
     await Appointment.getAppointmentForCancel(
@@ -673,7 +681,10 @@ exports.cancelAppointment = async (
     };
   }
 
-  await Appointment.cancelAppointment(appointmentId);
+  await Appointment.cancelAppointment(
+    appointmentId,
+    reason.trim()
+  );
 
   await SlotModel.getActiveSlot(
     appointment.schedule_id,
