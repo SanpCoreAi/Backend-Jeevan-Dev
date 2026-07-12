@@ -276,19 +276,36 @@ async function updateSchedule(doctorId, scheduleId, body) {
 
 
 async function deleteSchedule(id, doctorId) {
+
+const [rows] = await db.query(
+  `SELECT COUNT(*) AS cnt
+   FROM appointments
+   WHERE schedule_id = ?
+   AND status = 'ACTIVE'`,
+  [id]
+);
+
+if (rows[0].cnt > 0) {
+  return {
+    success: false,
+    statusCode: 400,
+    message: "Cannot delete schedule because there are active appointments."
+  };
+}
+
   const deleted = await ScheduleModel.remove(id, doctorId);
 
   if (!deleted) {
     return {
       success: false,
       statusCode: 404,
-      message: "Schedule not found"
+      message: "Schedule not found."
     };
   }
 
   return {
     success: true,
-    message: "Schedule deleted successfully"
+    message: "Schedule deleted successfully."
   };
 }
 

@@ -18,7 +18,7 @@ const socketHandler = require("./socket/socketHandler");
 const prescriptionRoutes = require("./routes/prescriptionRoutes");
 const assistantProfileRoutes = require("./routes/assistant/assistantProfileRoutes");
 const AppointmentGraph = require("./routes/Dashboard")
-
+const appointmentCron = require("./cron/appointmentCron");
 dotenv.config();
 
 const app = express();
