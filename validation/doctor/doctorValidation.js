@@ -78,15 +78,42 @@ const createDoctorSchema = Joi.object({
 /* ================= UPDATE ================= */
 const updateDoctorSchema = Joi.object({
   username: Joi.string().optional(),
-  specialization: Joi.string().optional(),
-  qualification: Joi.string().optional(),
-  experience: Joi.number().min(0).optional(),
-  language: Joi.array().items(Joi.string()).optional(),
-  consultationFee: Joi.number().min(0).optional(),
-  medicalLicenseNo: Joi.string().optional(),
-  bio: Joi.string().allow("").optional(),
 
-  availability: Joi.array().items(availabilitySchema).optional(),
+  age: Joi.number()
+    .integer()
+    .min(18)
+    .max(100)
+    .optional(),
+
+  gender: Joi.string()
+    .valid("Male", "Female", "Other")
+    .optional(),
+
+  specialization: Joi.string().optional(),
+
+  qualification: Joi.string().optional(),
+
+  experience: Joi.number()
+    .min(0)
+    .optional(),
+
+  language: Joi.array()
+    .items(Joi.string())
+    .optional(),
+
+  consultationFee: Joi.number()
+    .min(0)
+    .optional(),
+
+  medicalLicenseNo: Joi.string().optional(),
+
+  bio: Joi.string()
+    .allow("")
+    .optional(),
+
+  availability: Joi.array()
+    .items(availabilitySchema)
+    .optional(),
 
   hospitalDetail: Joi.array().items(
     Joi.object({

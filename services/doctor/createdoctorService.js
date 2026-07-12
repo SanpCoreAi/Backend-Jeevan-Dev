@@ -278,6 +278,8 @@ async function updateProfile(userId, body) {
     body.bio ?? null,
     JSON.stringify(body.availability ?? []),
     JSON.stringify(body.hospitalDetail ?? []),
+    body.age ?? null,
+    body.gender ?? null,
     userId
   ];
 

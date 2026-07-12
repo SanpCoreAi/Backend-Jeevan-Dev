@@ -468,7 +468,9 @@ const updateDoctor = async (params) => {
       medical_license_no = ?,
       bio = ?,
       availability = ?,
-      hospital_detail = ?
+      hospital_detail = ?,
+      age = ?,
+      gender = ?
     WHERE user_id = ?
   `;
 
