@@ -555,28 +555,45 @@ SELECT
       FROM doctor_image di
       WHERE di.doctor_id = d.user_id
         AND di.file_key IS NOT NULL
-        AND di.file_key != ''
+        AND di.file_key <> ''
     ),
     JSON_ARRAY()
   ) AS images,
 
-  IFNULL(drs.avg_rating, 0) AS avg_rating,
-  IFNULL(drs.total_feedbacks, 0) AS total_feedbacks,
-  IFNULL(drs.total_ratings, 0) AS total_ratings
+  ROUND(
+    IFNULL(
+      (
+        SELECT AVG(f.rating)
+        FROM feedbacks f
+        WHERE f.doctor_id = d.user_id
+      ),
+      0
+    ),
+    1
+  ) AS avg_rating,
+
+  (
+    SELECT COUNT(*)
+    FROM feedbacks f
+    WHERE f.doctor_id = d.user_id
+  ) AS total_feedbacks,
+
+  (
+    SELECT COUNT(f.rating)
+    FROM feedbacks f
+    WHERE f.doctor_id = d.user_id
+      AND f.rating IS NOT NULL
+  ) AS total_ratings
 
 FROM doctors d
 
 LEFT JOIN users u
-  ON u.id = d.user_id
-
-LEFT JOIN doctor_rating_summary drs
-  ON drs.doctor_id = d.user_id;
+  ON u.id = d.user_id;
   `;
 
   const [rows] = await db.execute(query);
   return rows;
 };
-
 
 async function findUserByName(name) {
   const sql = `
