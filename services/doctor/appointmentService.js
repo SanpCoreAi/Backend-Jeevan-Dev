@@ -4,6 +4,7 @@ const Schedule = require("../../models/schedule");
 const User = require("../../models/usermodel");
 const { parse12to24, time24To12 } = require("../../utils/timeHelper");
 const { sendAppointmentEmail } = require("../../utils/sendEmail");
+const dayjs = require("dayjs");
 
 exports.bookAppointment = async (
   patientId,
@@ -97,20 +98,9 @@ exports.bookAppointment = async (
       continue;
     }
 
-    const apptDate =
-      new Date(appointment_date)
-        .toISOString()
-        .split("T")[0];
-
-    const startDate =
-      new Date(s.start_date)
-        .toISOString()
-        .split("T")[0];
-
-    const endDate =
-      new Date(s.end_date)
-        .toISOString()
-        .split("T")[0];
+ const startDate = dayjs(s.start_date).format("YYYY-MM-DD");
+    const endDate = dayjs(s.end_date).format("YYYY-MM-DD");
+    const apptDate = dayjs(appointment_date).format("YYYY-MM-DD");
 
     if (
       apptDate < startDate ||

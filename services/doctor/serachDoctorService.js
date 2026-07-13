@@ -40,29 +40,34 @@ async function searchDoctorService(filters) {
   let doctors = await findAllWithUser();
 
   // 🔹 Normalize data
-  doctors = doctors.map((d) => ({
-    user_id: d.user_id,
-    full_name: d.user_full_name,
-    email: d.user_email,
-    phone_number: d.user_phone_number,
-    username: d.username,
-    specialization: d.specialization,
-    qualification: d.qualification,
-    experience: Number(d.experience) || 0,
-    consultation_fee: Number(d.consultation_fee) || 0,
-    medical_license_no: d.medical_license_no,
-    bio: d.bio,
-    city: d.city || "",
-    state: d.state || "",
-    pin_code: d.pin_code || "",
-    district: d.district || "",
-    landmark: d.landmark || "",
-    language: parseJSON(d.language),
-    availability: parseJSON(d.availability),
-    hospitalDetail: parseJSON(d.hospital_detail),
-    images: parseJSON(d.images),
-    avg_rating: Number(d.avg_rating || 0),
-  }));
+doctors = doctors.map((d) => ({
+  user_id: d.user_id,
+  full_name: d.user_full_name,
+  email: d.user_email,
+  phone_number: d.user_phone_number,
+  username: d.username,
+  specialization: d.specialization,
+  qualification: d.qualification,
+  experience: Number(d.experience) || 0,
+  consultation_fee: Number(d.consultation_fee) || 0,
+  medical_license_no: d.medical_license_no,
+  bio: d.bio,
+
+  city: d.city || "",
+  state: d.state || "",
+  pin_code: d.pin_code || "",
+  district: d.district || "",
+  landmark: d.landmark || "",
+
+  language: parseJSON(d.language),
+  availability: parseJSON(d.availability),
+  hospitalDetail: parseJSON(d.hospital_detail),
+  images: parseJSON(d.images),
+
+  avg_rating: d.avg_rating,
+  total_feedbacks: Number(d.total_feedbacks ?? 0),
+  total_ratings: Number(d.total_ratings ?? 0),
+}));
 
   // 🔍 FILTER LOGIC (FIXED)
 doctors = doctors.filter((d) => {
@@ -155,39 +160,49 @@ return words.every((word) => {
 
   const paginated = doctors.slice(offset, offset + limit);
 
-  return {
-    success: true,
-    total: doctors.length,
-    page,
-    limit,
-    data: paginated.map((d) => ({
-      userId: d.user_id,
-      fullName: d.full_name,
-      email: d.email,
-      phoneNumber: d.phone_number,
-      username: d.username,
-      specialization: d.specialization,
-      qualification: d.qualification,
-      experience: d.experience,
-      consultationFee: d.consultation_fee,
-      medicalLicenseNo: d.medical_license_no,
-      bio: d.bio,
-      city: d.city,
-      state: d.state,
-      pinCode: d.pin_code,
-      district: d.district,
-      landmark: d.landmark,
-      language: d.language,
-      availability: d.availability,
-      hospitalDetail: d.hospitalDetail,
-      avgRating: d.avg_rating,
+return {
+  success: true,
+  total: doctors.length,
+  page,
+  limit,
+  data: paginated.map((d) => ({
+    userId: d.user_id,
+    fullName: d.full_name,
+    email: d.email,
+    phoneNumber: d.phone_number,
+    username: d.username,
+    specialization: d.specialization,
+    qualification: d.qualification,
+    experience: d.experience,
+    consultationFee: d.consultation_fee,
+    medicalLicenseNo: d.medical_license_no,
+    bio: d.bio,
 
-      profileImage:
-        d.images?.[0]?.fileKey
-          ? `${BASE_FILE_URL}/${d.images[0].fileKey}`
-          : null,
-    })),
-  };
+    city: d.city,
+    state: d.state,
+    pinCode: d.pin_code,
+    district: d.district,
+    landmark: d.landmark,
+
+    language: d.language,
+    availability: d.availability,
+    hospitalDetail: d.hospitalDetail,
+
+    avgRating:
+      d.avg_rating == null
+        ? "0.0"
+        : Number(d.avg_rating).toFixed(1),
+
+    totalFeedbacks: Number(d.total_feedbacks ?? 0),
+
+    totalRatings: Number(d.total_ratings ?? 0),
+
+    profileImage:
+      d.images?.[0]?.fileKey
+        ? `${BASE_FILE_URL}/${d.images[0].fileKey}`
+        : null,
+  })),
+};
 }
 
 module.exports = { searchDoctorService };
