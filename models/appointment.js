@@ -303,7 +303,7 @@ exports.cancelAppointment = async (
 
 };
 
-async function autoCancelPendingAppointments() {
+exports.autoCancelPendingAppointments = async () => {
 
   const sql = `
     UPDATE appointments
@@ -313,14 +313,11 @@ async function autoCancelPendingAppointments() {
       cancelled_at = NOW()
     WHERE
       status = 'PENDING'
-      AND appointment_date < CURDATE();
+      AND slot_date < CURDATE();
   `;
 
-  return db.query(sql);
-}
+  return await db.query(sql);
 
-module.exports = {
-  autoCancelPendingAppointments,
 };
 
 exports.getAppointmentById = async (doctorId) => {
