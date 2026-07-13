@@ -402,7 +402,24 @@ exports.getDoctorAppointmentsForTable = async (
     total,
     currentPage: page,
     totalPages: Math.ceil(total / limit),
-    appointments: rows
+
+    appointments: rows.map((item) => ({
+      appointmentId: item.appointment_id,
+      tokenNumber: item.token_number,
+
+      name: item.name,
+      phoneNumber: item.phone_number,
+      diagnostic: item.diagnostic,
+
+      date: item.date,
+      time: item.time,          // model se aayega
+
+      mode: item.mode,
+      hospitalName: item.hospital_name,
+
+      status: item.status,
+      bookedAt: item.booked_at
+    }))
   };
 };
 

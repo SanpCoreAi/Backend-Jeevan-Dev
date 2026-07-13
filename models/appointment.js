@@ -150,6 +150,7 @@ exports.getDoctorAppointmentsForTable = async (
       u.phone_number,
       d.specialization AS diagnostic,
       DATE_FORMAT(a.slot_date,'%d-%m-%Y') AS date,
+      DATE_FORMAT(a.start_time,'%h:%i %p') AS time,
       a.id AS appointment_id,
       a.token_number,
       a.appointment_type AS mode,
@@ -188,11 +189,22 @@ exports.getDoctorAppointmentsForTable = async (
       AND LOWER(a.status) = LOWER(?)
     `;
     params.push(status);
+  } else {
+    query += `
+      AND LOWER(a.status) IN ('pending','in_progress')
+    `;
   }
 
   // Booked Day Filter
   const bookedAtDay = Number(booked_at);
-  const hasBookedAtFilter = booked_at !== undefined && booked_at !== null && booked_at !== '' && Number.isInteger(bookedAtDay) && bookedAtDay >= 1 && bookedAtDay <= 31;
+
+  const hasBookedAtFilter =
+    booked_at !== undefined &&
+    booked_at !== null &&
+    booked_at !== "" &&
+    Number.isInteger(bookedAtDay) &&
+    bookedAtDay >= 1 &&
+    bookedAtDay <= 31;
 
   if (hasBookedAtFilter) {
     query += `
@@ -242,6 +254,10 @@ exports.getDoctorAppointmentsForTable = async (
       AND LOWER(a.status) = LOWER(?)
     `;
     countParams.push(status);
+  } else {
+    countQuery += `
+      AND LOWER(a.status) IN ('pending','in_progress')
+    `;
   }
 
   if (hasBookedAtFilter) {
