@@ -275,38 +275,78 @@ async function updateSchedule(doctorId, scheduleId, body) {
 }
 
 
-async function deleteSchedule(id, doctorId) {
-
-const [rows] = await db.query(
-  `SELECT COUNT(*) AS cnt
-   FROM appointments
-   WHERE schedule_id = ?
-   AND status = 'ACTIVE'`,
-  [id]
-);
-
-if (rows[0].cnt > 0) {
-  return {
-    success: false,
-    statusCode: 400,
-    message: "Cannot delete schedule because there are active appointments."
-  };
-}
-
-  const deleted = await ScheduleModel.remove(id, doctorId);
-
-  if (!deleted) {
+async function deleteHalfDaySlots(body, doctorId) {
+  if (!body || typeof body !== 'object') {
     return {
       success: false,
-      statusCode: 404,
-      message: "Schedule not found."
+      statusCode: 400,
+      message: "Request body is required."
     };
   }
 
+  const {
+    scheduleId,
+    date,
+    fromTime,
+    toTime
+  } = body;
+
+  if (!scheduleId || !date || !fromTime || !toTime) {
+    return {
+      success: false,
+      statusCode: 400,
+      message: "scheduleId, date, fromTime and toTime are required."
+    };
+  }
+
+  // booked slots
+  const [bookedSlots] = await db.query(
+    `
+    SELECT start_time
+    FROM appointments
+    WHERE doctor_id = ?
+      AND schedule_id = ?
+      AND slot_date = ?
+      AND start_time BETWEEN ? AND ?
+      AND status NOT IN ('CANCELLED','COMPLETED')
+    `,
+    [
+      doctorId,
+      scheduleId,
+      date,
+      fromTime,
+      toTime
+    ]
+  );
+
+  const booked =
+    bookedSlots.map(x => x.start_time);
+
+  const deleted =
+    await SlotModel.deleteHalfDaySlots({
+      doctorId,
+      scheduleId,
+      date,
+      fromTime,
+      toTime,
+      booked
+    });
+
   return {
+
     success: true,
-    message: "Schedule deleted successfully."
+
+    message:
+      "Half day slots deleted successfully.",
+
+    deletedSlots:
+      deleted.affectedRows,
+
+    skippedSlots:
+      booked.length
+
   };
+
 }
 
 
@@ -393,7 +433,7 @@ module.exports = {
   getScheduleByDoctorId,
   getSchedulePublicByDoctorId,
   updateSchedule,
-  deleteSchedule,
+  deleteHalfDaySlots,
   getUserById,
   getHospitalNamesByDoctor
 };

@@ -16,6 +16,10 @@ router.get('/getHospitalsName', verifyToken,allowRoles(2,3), ctrl.getHospitals);
 
 router.put("/updateSchedule/:id", verifyToken,allowRoles(2), ctrl.update);
 
-router.delete("/deleteSchedule/:id", verifyToken,allowRoles(2), ctrl.remove);
+router.delete(
+  "/deleteHalfDaySlots",
+  verifyToken,
+  ctrl.deleteHalfDaySlots
+);
 
 module.exports = router;

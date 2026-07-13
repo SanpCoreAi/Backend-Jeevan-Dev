@@ -142,17 +142,20 @@ exports.update = async (req, res) => {
   res.json(result);
 };
 
-exports.remove = async (req, res) => {
-  const result = await ScheduleService.deleteSchedule(
-    req.params.id,
-    req.user.id
-  );
+exports.deleteHalfDaySlots = async (req, res) => {
+  try {
 
-  if (!result.success) {
-    return res
-      .status(result.statusCode || 400)
-      .json(result);
+    const result = await ScheduleService.deleteHalfDaySlots(
+      req.body,
+      req.user.id
+    );
+
+    return res.status(result.success ? 200 : 400).json(result);
+
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
-
-  res.json(result);
 };

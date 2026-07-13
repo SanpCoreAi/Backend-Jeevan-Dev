@@ -105,10 +105,41 @@ async function getDoctorSlots(doctorId, hospitalName, date) {
   return rows;
 }
 
+async function deleteHalfDaySlots({
+  doctorId,
+  scheduleId,
+  date,
+  fromTime,
+  toTime,
+  booked
+}) {
+  const params = [doctorId, scheduleId, date, fromTime, toTime];
+  let query = `
+    DELETE FROM schedule_slots
+    WHERE doctor_id = ?
+      AND schedule_id = ?
+      AND start_date = ?
+      AND start_time BETWEEN ? AND ?
+      AND status = 'active'
+  `;
+
+  if (Array.isArray(booked) && booked.length > 0) {
+    const placeholders = booked.map(() => '?').join(', ');
+    query += `
+      AND start_time NOT IN (${placeholders})
+    `;
+    params.push(...booked);
+  }
+
+  const [result] = await db.query(query, params);
+  return result;
+}
+
 module.exports = {
   insertSlots,
   getActiveSlot,
   getDoctorSlots,
   deactivateSlot,
-  getNextAvailableSlot
+  deleteHalfDaySlots,
+  getNextAvailableSlot,
 };
