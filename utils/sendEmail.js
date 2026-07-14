@@ -142,24 +142,16 @@ exports.sendVerificationEmail = async (email, token) => {
       text: `Welcome to Hospital Portal\n\nThank you for registering. Your account has been created successfully.\n\nTo activate your account, please verify your email by clicking this link:\n\n${verificationLink}\n\nIf you did not create this account, please ignore this email and contact our support team.\n\nThis link will expire in 24 hours.\n\nHospital Portal Team\nSupport: support@hospitalportal.com`,
     };
 
-    console.log(`\n📧 [${new Date().toISOString()}] Sending verification email...`);
-    console.log(`   To: ${email}`);
-    console.log(`   Subject: ${mailOptions.subject}`);
     
     const info = await transporter.sendMail(mailOptions);
     
-    console.log(`✅ Verification email sent successfully`);
-    console.log(`   Message ID: ${info.messageId}`);
-    console.log(`   Response: ${info.response}`);
-    console.log(`   Link: ${verificationLink}\n`);
-    
-    return true;
+    return info;
 
   } catch (error) {
-    console.error(`\n❌ [${new Date().toISOString()}] Error sending verification email to ${email}`);
+    console.error(`\n [${new Date().toISOString()}] Error sending verification email to ${email}`);
     console.error(`   Error: ${error.message}`);
     console.error(`   Details:`, error);
-    throw new Error("Failed to send verification email: " + error.message);
+    throw error;
   }
 };
 

@@ -3,12 +3,15 @@ const crypto = require("crypto");
 
 const User = require("../../models/usermodel");
 
-const { sendVerificationEmail, sendAssistantCredentials, sendDoctorCredentials } = require("../../utils/sendEmail");
+const {
+  sendVerificationEmail,
+  sendAssistantCredentials,
+  sendDoctorCredentials,
+} = require("../../utils/sendEmail");
 
 exports.registerUserOrAssistant = async (data) => {
   try {
-
-    const {
+    let {
       full_name,
       email,
       phone_number,
@@ -17,9 +20,13 @@ exports.registerUserOrAssistant = async (data) => {
       doctor_id,
     } = data;
 
-    const emailExists = await User.findByEmail(email);
+    full_name = full_name.trim();
+    email = email.trim().toLowerCase();
+    phone_number = phone_number.trim();
 
-    if (emailExists) {
+    const existingEmail = await User.findByEmail(email);
+
+    if (existingEmail) {
       return {
         statusCode: 409,
         body: {
@@ -28,112 +35,105 @@ exports.registerUserOrAssistant = async (data) => {
       };
     }
 
-    const phoneExists = await User.findByPhone(phone_number);
+    const existingPhone = await User.findByPhone(phone_number);
 
-    if (phoneExists) {
+    if (existingPhone) {
       return {
         statusCode: 409,
         body: {
-          message: "Phone already exists",
+          message: "Phone number already exists",
         },
       };
     }
 
-    // ===========================
-    // Doctor Registration
-    // ===========================
-    if (role_id == 2) {
+    const createAccount = async ({
+      roleId,
+      password,
+      doctorId = null,
+      emailVerified = 1,
+      verificationToken = null,
+    }) => {
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-      const doctorPassword = crypto.randomBytes(5).toString("hex");
-
-      const hashedPassword = await bcrypt.hash(doctorPassword, 10);
-
-      const userId = await User.createUser({
+      return await User.createUser({
         full_name,
         email,
         phone_number,
         password: hashedPassword,
-        role_id: 2,
-        email_verified: 1,
+        role_id: roleId,
+        doctor_id: doctorId,
+        email_verified: emailVerified,
+        verificationToken,
+      });
+    };
+
+    if (role_id === 2) {
+      const doctorPassword = crypto.randomBytes(5).toString("hex");
+
+      const userId = await createAccount({
+        roleId: 2,
+        password: doctorPassword,
       });
 
       try {
-
         await sendDoctorCredentials(
           email,
           full_name,
           doctorPassword
         );
-
       } catch (err) {
-
-        console.log("Doctor Email Error:", err.message);
-
+        console.error("Doctor Email Error:", err.message);
       }
 
       return {
         statusCode: 201,
         body: {
-          message: "Doctor created successfully. Credentials sent to email.",
+          message:
+            "Doctor created successfully. Credentials sent to email.",
           user_id: userId,
         },
       };
     }
 
-    // ===========================
-    // Assistant Registration
-    // ===========================
-    if (role_id == 3) {
-
+    if (role_id === 3) {
       if (!doctor_id) {
         return {
-          statusCode: 401,
+          statusCode: 400,
           body: {
-            message: "Doctor token required",
+            message: "Doctor id is required",
           },
         };
       }
 
-      const assistantPassword = crypto.randomBytes(5).toString("hex");
+      const assistantPassword =
+        crypto.randomBytes(5).toString("hex");
 
-      const hashedPassword = await bcrypt.hash(assistantPassword, 10);
-
-      const userId = await User.createUser({
-        full_name,
-        email,
-        phone_number,
-        password: hashedPassword,
-        doctor_id,
-        role_id: 3,
-        email_verified: 1,
+      const userId = await createAccount({
+        roleId: 3,
+        password: assistantPassword,
+        doctorId: doctor_id,
       });
 
       try {
-
         await sendAssistantCredentials(
           email,
           full_name,
           assistantPassword
         );
-
       } catch (err) {
-
-        console.log("Assistant Email Error:", err.message);
-
+        console.error("Assistant Email Error:", err.message);
       }
 
       return {
         statusCode: 201,
         body: {
-          message: "Assistant created successfully. Credentials sent to email.",
+          message:
+            "Assistant created successfully. Credentials sent to email.",
           user_id: userId,
         },
       };
     }
 
-    // ===========================
-    // Normal User Registration
-    // ===========================
     if (!password) {
       return {
         statusCode: 400,
@@ -143,49 +143,43 @@ exports.registerUserOrAssistant = async (data) => {
       };
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const verificationToken =
+      crypto.randomBytes(32).toString("hex");
 
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-
-    const userId = await User.createUser({
-      full_name,
-      email,
-      phone_number,
-      password: hashedPassword,
-      role_id: 1,
+    const userId = await createAccount({
+      roleId: 1,
+      password,
+      emailVerified: 0,
       verificationToken,
-      email_verified: 0,
     });
 
     try {
-
       await sendVerificationEmail(
         email,
         verificationToken
       );
-
     } catch (err) {
-
-      console.log("Verification Email Error:", err.message);
-
+      console.error(
+        "Verification Email Error:",
+        err.message
+      );
     }
 
     return {
       statusCode: 201,
       body: {
-        message: "User registered successfully. Please verify your email.",
+        message:
+          "User registered successfully. Please verify your email.",
         user_id: userId,
       },
     };
-
   } catch (error) {
-
-    console.error(error);
+    console.error("Register Service Error:", error);
 
     return {
       statusCode: 500,
       body: {
-        message: error.message,
+        message: "Internal Server Error",
       },
     };
   }
@@ -194,22 +188,31 @@ exports.registerUserOrAssistant = async (data) => {
 exports.verifyEmail = async (token) => {
   try {
 
-    if (!token) {
+    if (!token || !token.trim()) {
       return {
         statusCode: 400,
         body: {
-          message: "Token missing",
+          message: "Verification token is required",
         },
       };
     }
 
-    const user = await User.verifyUserByToken(token);
+    const user = await User.verifyUserByToken(token.trim());
 
     if (!user) {
       return {
         statusCode: 400,
         body: {
-          message: "Invalid or expired token",
+          message: "Invalid or expired verification token",
+        },
+      };
+    }
+
+    if (user.email_verified === 1) {
+      return {
+        statusCode: 400,
+        body: {
+          message: "Email is already verified",
         },
       };
     }
@@ -225,28 +228,118 @@ exports.verifyEmail = async (token) => {
 
   } catch (error) {
 
+    console.error("Verify Email Service Error:", error);
+
     return {
       statusCode: 500,
       body: {
-        message: "Verification failed: " + error.message,
+        message: "Internal Server Error",
       },
     };
   }
 };
 
-exports.getUserByDoctorId = async (doctor_id) => {
+exports.resendVerificationEmail = async (email) => {
   try {
 
-    if (!doctor_id) {
+    if (!email || !email.trim()) {
       return {
         statusCode: 400,
         body: {
-          message: "doctor_id required",
+          message: "Email is required",
         },
       };
     }
 
-    const users = await User.findByDoctorId(doctor_id);
+    email = email.trim().toLowerCase();
+
+    const user = await User.findByEmail(email);
+
+    if (!user) {
+      return {
+        statusCode: 404,
+        body: {
+          message: "User not found",
+        },
+      };
+    }
+
+    if (user.email_verified === 1) {
+      return {
+        statusCode: 400,
+        body: {
+          message: "Email is already verified",
+        },
+      };
+    }
+
+    const verificationToken =
+      crypto.randomBytes(32).toString("hex");
+
+    await User.updateVerificationToken(
+      user.id,
+      verificationToken
+    );
+
+    try {
+
+      await sendVerificationEmail(
+        email,
+        verificationToken
+      );
+
+    } catch (emailError) {
+
+      console.error(
+        "Verification Email Error:",
+        emailError
+      );
+
+      return {
+        statusCode: 500,
+        body: {
+          message: "Unable to send verification email",
+        },
+      };
+    }
+
+    return {
+      statusCode: 200,
+      body: {
+        message:
+          "Verification email sent successfully. Please check your inbox.",
+      },
+    };
+
+  } catch (error) {
+
+    console.error(
+      "Resend Verification Service Error:",
+      error
+    );
+
+    return {
+      statusCode: 500,
+      body: {
+        message: "Internal Server Error",
+      },
+    };
+  }
+};
+
+exports.getUserByDoctorId = async (doctorId) => {
+  try {
+
+    if (!doctorId) {
+      return {
+        statusCode: 400,
+        body: {
+          message: "Doctor id is required",
+        },
+      };
+    }
+
+    const users = await User.findByDoctorId(Number(doctorId));
 
     return {
       statusCode: 200,
@@ -259,10 +352,12 @@ exports.getUserByDoctorId = async (doctor_id) => {
 
   } catch (error) {
 
+    console.error("Get User By Doctor Id Service Error:", error);
+
     return {
       statusCode: 500,
       body: {
-        message: error.message,
+        message: "Internal Server Error",
       },
     };
   }
@@ -271,12 +366,11 @@ exports.getUserByDoctorId = async (doctor_id) => {
 exports.getUsers = async (filters) => {
   try {
 
-    const page = filters.page || 1;
-    const limit = filters.limit || 10;
-
+    const page = Number(filters.page) || 1;
+    const limit = Number(filters.limit) || 10;
     const offset = (page - 1) * limit;
 
-    const users = await User.findUsers(
+    const result = await User.findUsers(
       filters,
       limit,
       offset
@@ -286,8 +380,12 @@ exports.getUsers = async (filters) => {
       statusCode: 200,
       body: {
         message: "Users fetched successfully",
-        results: users.length,
-        data: users,
+        page,
+        limit,
+        totalRecords: result.total,
+        totalPages: Math.ceil(result.total / limit),
+        results: result.users.length,
+        data: result.users,
       },
     };
 
@@ -296,7 +394,7 @@ exports.getUsers = async (filters) => {
     return {
       statusCode: 500,
       body: {
-        message: error.message,
+        message: "Internal Server Error",
       },
     };
   }
@@ -304,77 +402,39 @@ exports.getUsers = async (filters) => {
 
 exports.getAssistantStats = async (doctorId) => {
   try {
-    const stats = await User.getAssistantStats(doctorId);
+
+    if (!doctorId) {
+      return {
+        statusCode: 400,
+        body: {
+          message: "Doctor id is required",
+        },
+      };
+    }
+
+    const stats = await User.getAssistantStats(Number(doctorId));
 
     return {
       statusCode: 200,
       body: {
-        message: "Assistant status fetched successfully",
-        data: stats,
+        message: "Assistant statistics fetched successfully",
+        data: {
+          totalAssistants: Number(stats.totalAssistants) || 0,
+          yearAssistants: Number(stats.yearAssistants) || 0,
+          monthAssistants: Number(stats.monthAssistants) || 0,
+          weekAssistants: Number(stats.weekAssistants) || 0,
+        },
       },
     };
+
   } catch (error) {
+
+    console.error("Get Assistant Stats Service Error:", error);
+
     return {
       statusCode: 500,
       body: {
-        message: error.message,
-      },
-    };
-  }
-};
-
-exports.resendVerificationEmail = async (email) => {
-  try {
-    // Check if user exists
-    const user = await User.findByEmail(email);
-    
-    if (!user) {
-      return {
-        statusCode: 404,
-        body: {
-          message: "User not found with this email address",
-        },
-      };
-    }
-
-    if (user.email_verified === 1) {
-      return {
-        statusCode: 400,
-        body: {
-          message: "Email is already verified. Please login to continue.",
-        },
-      };
-    }
-
-    const verificationToken = crypto.randomBytes(32).toString("hex");
-
-    await User.updateVerificationToken(user.id, verificationToken);
-
-    try {
-
-      await sendVerificationEmail(email, verificationToken);
-
-      return {
-        statusCode: 200,
-        body: {
-          message: "Verification email sent successfully. Please check your inbox.",
-        },
-      };
-
-    } catch (emailError) {
-      return {
-        statusCode: 500,
-        body: {
-          message: "Failed to send verification email: " + emailError.message,
-        },
-      };
-    }
-
-  } catch (error) {
-    return {
-      statusCode: 500,
-      body: {
-        message: "Error: " + error.message,
+        message: "Internal Server Error",
       },
     };
   }

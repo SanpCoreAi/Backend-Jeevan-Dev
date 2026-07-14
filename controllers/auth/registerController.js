@@ -1,21 +1,33 @@
 const authService = require("../../services/auth/registerService");
-const { registerValidation, verifyEmailValidation, getUsersValidation,getUserByDoctorIdValidation,
+const {
+  registerValidation,
+  verifyEmailValidation,
+  getUsersValidation,
+  getUserByDoctorIdValidation,
 } = require("../../validation/auth/userValidator");
 
 exports.register = async (req, res) => {
   try {
+    const body = { ...req.body };
 
-    // Doctor Registration (Only Admin)
-    if (req.body.role_id == 2) {
+    body.role_id = body.role_id || 1;
 
-      if (!req.user || !req.user.id) {
+    if (body.role_id === 4) {
+      return res.status(403).json({
+        success: false,
+        message: "Admin cannot be registered from this API",
+      });
+    }
+
+    if (body.role_id === 2) {
+      if (!req.user) {
         return res.status(401).json({
           success: false,
           message: "Admin token required",
         });
       }
 
-      if (req.user.role_id != 4) {
+      if (req.user.role_id !== 4) {
         return res.status(403).json({
           success: false,
           message: "Only admin can create doctor",
@@ -23,40 +35,25 @@ exports.register = async (req, res) => {
       }
     }
 
-    // Assistant Registration (Only Doctor)
-    if (req.body.role_id == 3) {
-
-      if (!req.user || !req.user.id) {
+    if (body.role_id === 3) {
+      if (!req.user) {
         return res.status(401).json({
           success: false,
           message: "Doctor token required",
         });
       }
 
-      if (req.user.role_id != 2) {
+      if (req.user.role_id !== 2) {
         return res.status(403).json({
           success: false,
           message: "Only doctor can create assistant",
         });
       }
 
-      req.body.doctor_id = req.user.id;
+      body.doctor_id = req.user.id;
     }
 
-    // Admin Registration Not Allowed
-    if (req.body.role_id == 4) {
-      return res.status(403).json({
-        success: false,
-        message: "Admin cannot be registered from this API",
-      });
-    }
-
-    // Default Role = User
-    if (!req.body.role_id) {
-      req.body.role_id = 1;
-    }
-
-    const error = registerValidation(req.body);
+    const error = registerValidation(body);
 
     if (error) {
       return res.status(400).json({
@@ -65,7 +62,7 @@ exports.register = async (req, res) => {
       });
     }
 
-    const result = await authService.registerUserOrAssistant(req.body);
+    const result = await authService.registerUserOrAssistant(body);
 
     return res.status(result.statusCode).json({
       success: result.statusCode < 400,
@@ -76,7 +73,6 @@ exports.register = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error("Register Error:", error);
 
     return res.status(500).json({
@@ -105,7 +101,7 @@ exports.verifyEmail = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Verify Email Error:", error.message);
+    console.error("Verify Email Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -125,9 +121,9 @@ exports.getUserByDoctorId = async (req, res) => {
       });
     }
 
-    const result = await authService.getUserByDoctorId(
-      req.params.doctorId
-    );
+    const doctorId = Number(req.params.doctorId);
+
+    const result = await authService.getUserByDoctorId(doctorId);
 
     return res.status(result.statusCode).json({
       success: result.statusCode < 400,
@@ -137,7 +133,7 @@ exports.getUserByDoctorId = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("GetUserByDoctorId Error:", error.message);
+    console.error("GetUserByDoctorId Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -149,16 +145,16 @@ exports.getUserByDoctorId = async (req, res) => {
 exports.getUserByDoctorAssistant = async (req, res) => {
   try {
 
-    const doctor_id = req.user?.doctor_id || req.user?.id;
+    const doctorId = req.user?.doctor_id || req.user?.id;
 
-    if (!doctor_id) {
+    if (!doctorId) {
       return res.status(400).json({
         success: false,
         message: "Doctor id not found in token",
       });
     }
 
-    const result = await authService.getUserByDoctorId(doctor_id);
+    const result = await authService.getUserByDoctorId(doctorId);
 
     return res.status(result.statusCode).json({
       success: result.statusCode < 400,
@@ -168,7 +164,7 @@ exports.getUserByDoctorAssistant = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("GetUserByDoctorAssistant Error:", error.message);
+    console.error("GetUserByDoctorAssistant Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -179,6 +175,7 @@ exports.getUserByDoctorAssistant = async (req, res) => {
 
 exports.getUsers = async (req, res) => {
   try {
+
     const error = getUsersValidation(req.query);
 
     if (error) {
@@ -189,12 +186,12 @@ exports.getUsers = async (req, res) => {
     }
 
     const filters = {
-      doctor_id: req.query.doctor_id,
-      role_id: req.query.role_id,
+      doctor_id: req.query.doctor_id ? Number(req.query.doctor_id) : undefined,
+      role_id: req.query.role_id ? Number(req.query.role_id) : undefined,
       email: req.query.email,
       name: req.query.name,
-      page: parseInt(req.query.page) || 1,
-      limit: parseInt(req.query.limit) || 10,
+      page: Number(req.query.page) || 1,
+      limit: Number(req.query.limit) || 10,
     };
 
     const result = await authService.getUsers(filters);
@@ -207,7 +204,7 @@ exports.getUsers = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("GetUsers Error:", error.message);
+    console.error("GetUsers Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -218,6 +215,7 @@ exports.getUsers = async (req, res) => {
 
 exports.getAssistantStats = async (req, res) => {
   try {
+
     const doctorId = req.user?.doctor_id || req.user?.id;
 
     if (!doctorId) {
@@ -236,15 +234,18 @@ exports.getAssistantStats = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("GetAssistantStats Error:", error);
+
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal Server Error",
     });
   }
 };
 
 exports.resendVerificationEmail = async (req, res) => {
   try {
+
     const { email } = req.body;
 
     if (!email) {
@@ -254,7 +255,7 @@ exports.resendVerificationEmail = async (req, res) => {
       });
     }
 
-    const result = await authService.resendVerificationEmail(email);
+    const result = await authService.resendVerificationEmail(email.trim().toLowerCase());
 
     return res.status(result.statusCode).json({
       success: result.statusCode < 400,
@@ -262,7 +263,7 @@ exports.resendVerificationEmail = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Resend Verification Email Error:", error.message);
+    console.error("Resend Verification Error:", error);
 
     return res.status(500).json({
       success: false,

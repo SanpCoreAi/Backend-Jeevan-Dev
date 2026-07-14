@@ -17,34 +17,36 @@ exports.createUser = async (data) => {
     const fields = [];
     const values = [];
 
-    allowedFields.forEach((key) => {
+    for (const field of allowedFields) {
 
-      // doctor_id ko sirf assistant ke liye store karo
-      if (key === "doctor_id") {
+      if (field === "doctor_id") {
+
         if (data.doctor_id) {
-          fields.push("doctor_id");
+          fields.push(field);
           values.push(data.doctor_id);
         }
-        return;
+
+        continue;
       }
 
       if (
-        data[key] !== undefined &&
-        data[key] !== null
+        data[field] !== undefined &&
+        data[field] !== null
       ) {
-        fields.push(key);
-        values.push(data[key]);
+        fields.push(field);
+        values.push(data[field]);
       }
-
-    });
+    }
 
     const placeholders = fields
       .map(() => "?")
       .join(", ");
 
     const sql = `
-      INSERT INTO users (${fields.join(", ")})
-      VALUES (${placeholders})
+      INSERT INTO users
+      (${fields.join(", ")})
+      VALUES
+      (${placeholders})
     `;
 
     const [result] = await db.query(sql, values);
@@ -53,178 +55,64 @@ exports.createUser = async (data) => {
 
   } catch (error) {
 
-    console.error("Create User Error:", error);
+    console.error("Create User Model Error:", error);
     throw error;
 
   }
 };
 
+
 exports.findByEmail = async (email) => {
-
-  const [rows] = await db.query(
-    "SELECT * FROM users WHERE email = ?",
-    [email]
-  );
-
-  return rows[0] || null;
-};
-
-exports.findByPhone = async (phone_number) => {
-
-  const [rows] = await db.query(
-    "SELECT * FROM users WHERE phone_number = ?",
-    [phone_number]
-  );
-
-  return rows[0] || null;
-};
-
-exports.findByDoctorId = async (doctor_id) => {
-
-  const [rows] = await db.query(
-    `
-    SELECT 
-      id,
-      full_name,
-      email,
-      phone_number
-     
-    FROM users
-    WHERE doctor_id = ?
-    `,
-    [doctor_id]
-  );
-
-  return rows;
-};
-
-exports.findById=async(id)=>{
-
-
-const [rows]=await db.query(
-
-`
-SELECT
-id,
-password
-FROM users
-WHERE id=?
-LIMIT 1
-`,
-
-[id]
-
-);
-
-
-return rows[0];
-
-};
-
-exports.updatePassword=
-async(userId,password)=>{
-
-
-const [result]=await db.query(
-
-`
-UPDATE users
-SET password=?
-WHERE id=?
-`,
-
-[
-password,
-userId
-]
-
-);
-
-
-return result.affectedRows;
-
-};
-
-exports.verifyUserByToken = async (token) => {
-
-  const [rows] = await db.query(
-    `
-    SELECT *
-    FROM users
-    WHERE verificationToken = ?
-    `,
-    [token]
-  );
-
-  return rows[0] || null;
-};
-
-exports.markEmailVerified = async (id) => {
-
-  await db.query(
-    `
-    UPDATE users
-    SET
-      email_verified = 1,
-      verificationToken = NULL
-    WHERE id = ?
-    `,
-    [id]
-  );
-};
-
-exports.updateVerificationToken = async (id, token) => {
-
-  await db.query(
-    `
-    UPDATE users
-    SET
-      verificationToken = ?
-    WHERE id = ?
-    `,
-    [token, id]
-  );
-};
-
-exports.saveResetToken=async(
-userId,
-tokenHash,
-expiry
-)=>{
-
-
-const [result]=await db.query(
-
-`
-UPDATE users
-SET 
-reset_token_hash=?,
-reset_token_expiry=?
-WHERE id=?
-`,
-
-[
-tokenHash,
-expiry,
-userId
-]
-
-);
-
-
-return result;
-
-};
-
-exports.findUsers = async (
-  filters = {},
-  limit = 10,
-  offset = 0
-) => {
-
   try {
 
-    let sql = `
+    const [rows] = await db.query(
+      `
+      SELECT *
+      FROM users
+      WHERE email = ?
+      LIMIT 1
+      `,
+      [email]
+    );
+
+    return rows[0] || null;
+
+  } catch (error) {
+
+    console.error("Find By Email Model Error:", error);
+    throw error;
+
+  }
+};
+
+exports.findByPhone = async (phoneNumber) => {
+  try {
+
+    const [rows] = await db.query(
+      `
+      SELECT *
+      FROM users
+      WHERE phone_number = ?
+      LIMIT 1
+      `,
+      [phoneNumber]
+    );
+
+    return rows[0] || null;
+
+  } catch (error) {
+
+    console.error("Find By Phone Model Error:", error);
+    throw error;
+
+  }
+};
+
+exports.findById = async (id) => {
+  try {
+
+    const [rows] = await db.query(
+      `
       SELECT
         id,
         full_name,
@@ -232,181 +120,372 @@ exports.findUsers = async (
         phone_number,
         doctor_id,
         role_id,
+        password,
         email_verified
       FROM users
-      WHERE 1 = 1
-    `;
-
-    const params = [];
-
-    Object.entries(filters).forEach(
-      ([key, value]) => {
-
-        if (!value && value !== 0) return;
-
-        if (
-          [
-            "doctor_id",
-            "role_id",
-            "email_verified",
-          ].includes(key)
-        ) {
-          sql += ` AND ${key} = ?`;
-          params.push(value);
-        }
-
-        if (key === "email") {
-          sql += ` AND email LIKE ?`;
-          params.push(`%${value}%`);
-        }
-
-        if (key === "name") {
-          sql += ` AND full_name LIKE ?`;
-          params.push(`%${value}%`);
-        }
-
-      }
+      WHERE id = ?
+      LIMIT 1
+      `,
+      [id]
     );
 
-    sql += ` LIMIT ? OFFSET ?`;
+    return rows[0] || null;
 
-    params.push(limit, offset);
+  } catch (error) {
 
-    const [rows] = await db.query(sql, params);
+    console.error("Find By Id Model Error:", error);
+    throw error;
+
+  }
+};
+
+
+exports.verifyUserByToken = async (token) => {
+  try {
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        id,
+        email,
+        email_verified,
+        verificationToken
+      FROM users
+      WHERE verificationToken = ?
+      LIMIT 1
+      `,
+      [token]
+    );
+
+    return rows[0] || null;
+
+  } catch (error) {
+
+    console.error("Verify User By Token Model Error:", error);
+    throw error;
+
+  }
+};
+
+exports.markEmailVerified = async (userId) => {
+  try {
+
+    const [result] = await db.query(
+      `
+      UPDATE users
+      SET
+        email_verified = 1,
+        verificationToken = NULL
+      WHERE id = ?
+      `,
+      [userId]
+    );
+
+    return result.affectedRows;
+
+  } catch (error) {
+
+    console.error("Mark Email Verified Model Error:", error);
+    throw error;
+
+  }
+};
+
+exports.updateVerificationToken = async (
+  userId,
+  verificationToken
+) => {
+  try {
+
+    const [result] = await db.query(
+      `
+      UPDATE users
+      SET
+        verificationToken = ?
+      WHERE id = ?
+      `,
+      [
+        verificationToken,
+        userId,
+      ]
+    );
+
+    return result.affectedRows;
+
+  } catch (error) {
+
+    console.error("Update Verification Token Model Error:", error);
+    throw error;
+
+  }
+};
+
+exports.saveResetToken = async (
+  userId,
+  tokenHash,
+  expiry
+) => {
+  try {
+
+    const [result] = await db.query(
+      `
+      UPDATE users
+      SET
+        reset_token_hash = ?,
+        reset_token_expiry = ?
+      WHERE id = ?
+      `,
+      [
+        tokenHash,
+        expiry,
+        userId,
+      ]
+    );
+
+    return result.affectedRows;
+
+  } catch (error) {
+
+    console.error("Save Reset Token Model Error:", error);
+    throw error;
+
+  }
+};
+
+exports.findUserByResetToken = async (tokenHash) => {
+  try {
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        id,
+        reset_token_expiry
+      FROM users
+      WHERE reset_token_hash = ?
+      LIMIT 1
+      `,
+      [tokenHash]
+    );
+
+    return rows[0] || null;
+
+  } catch (error) {
+
+    console.error("Find Reset Token Model Error:", error);
+    throw error;
+
+  }
+};
+
+
+exports.updatePassword = async (
+  userId,
+  password
+) => {
+  try {
+
+    const [result] = await db.query(
+      `
+      UPDATE users
+      SET
+        password = ?
+      WHERE id = ?
+      `,
+      [
+        password,
+        userId,
+      ]
+    );
+
+    return result.affectedRows;
+
+  } catch (error) {
+
+    console.error("Update Password Model Error:", error);
+    throw error;
+
+  }
+};
+
+
+exports.clearResetToken = async (userId) => {
+  try {
+
+    const [result] = await db.query(
+      `
+      UPDATE users
+      SET
+        reset_token_hash = NULL,
+        reset_token_expiry = NULL
+      WHERE id = ?
+      `,
+      [userId]
+    );
+
+    return result.affectedRows;
+
+  } catch (error) {
+
+    console.error("Clear Reset Token Model Error:", error);
+    throw error;
+
+  }
+};
+
+exports.findByDoctorId = async (doctorId) => {
+  try {
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        id,
+        full_name,
+        email,
+        phone_number,
+        role_id,
+        email_verified,
+        created_at
+      FROM users
+      WHERE doctor_id = ?
+      ORDER BY created_at DESC
+      `,
+      [doctorId]
+    );
 
     return rows;
 
   } catch (error) {
 
-    console.error(
-      "DB Error (findUsers):",
-      error.message
-    );
-
+    console.error("Find By Doctor Id Model Error:", error);
     throw error;
+
   }
 };
 
-exports.findById = async(id)=>{
+exports.findUsers = async (
+  filters = {},
+  limit = 10,
+  offset = 0
+) => {
+  try {
 
- const [rows] = await db.query(
-   `
-   SELECT id, doctor_id, role_id, password
-   FROM users
-   WHERE id=?
-   `,
-   [id]
- );
+    let where = " WHERE 1=1 ";
+    const params = [];
 
- return rows[0];
+    if (filters.doctor_id) {
+      where += " AND doctor_id = ?";
+      params.push(filters.doctor_id);
+    }
 
-};
+    if (filters.role_id) {
+      where += " AND role_id = ?";
+      params.push(filters.role_id);
+    }
 
-exports.findUserByResetToken=
-async(token)=>{
+    if (filters.email_verified !== undefined) {
+      where += " AND email_verified = ?";
+      params.push(filters.email_verified);
+    }
 
+    if (filters.email) {
+      where += " AND email LIKE ?";
+      params.push(`%${filters.email}%`);
+    }
 
-const [rows]=await db.query(
+    if (filters.name) {
+      where += " AND full_name LIKE ?";
+      params.push(`%${filters.name}%`);
+    }
 
-`
-SELECT 
-id,
-reset_token_expiry
-FROM users
-WHERE reset_token_hash=?
-LIMIT 1
-`,
+    // Total Records
+    const [countRows] = await db.query(
+      `
+      SELECT COUNT(*) AS total
+      FROM users
+      ${where}
+      `,
+      params
+    );
 
-[token]
+    // User List
+    const [rows] = await db.query(
+      `
+      SELECT
+        id,
+        full_name,
+        email,
+        phone_number,
+        doctor_id,
+        role_id,
+        email_verified,
+        created_at
+      FROM users
+      ${where}
+      ORDER BY id DESC
+      LIMIT ?
+      OFFSET ?
+      `,
+      [...params, limit, offset]
+    );
 
-);
+    return {
+      total: countRows[0].total,
+      users: rows,
+    };
 
+  } catch (error) {
 
-return rows[0];
+    console.error("Find Users Model Error:", error);
+    throw error;
 
-};
-
-exports.updatePassword=
-async(userId,password)=>{
-
-
-const [result]=await db.query(
-
-`
-UPDATE users
-SET password=?
-WHERE id=?
-`,
-
-[
-password,
-userId
-]
-
-);
-
-
-return result;
-
-};
-
-exports.clearResetToken=
-async(userId)=>{
-
-
-const [result]=await db.query(
-
-`
-UPDATE users
-SET
-reset_token_hash=NULL,
-reset_token_expiry=NULL
-WHERE id=?
-`,
-
-[userId]
-
-);
-
-
-return result;
-
+  }
 };
 
 exports.getAssistantStats = async (doctorId) => {
-  const [rows] = await db.query(
-    `
-    SELECT
-      COUNT(*) AS totalAssistants,
+  try {
 
-      COUNT(
-        CASE
-          WHEN YEAR(created_at) = YEAR(CURDATE())
-          THEN 1
-        END
-      ) AS yearAssistants,
+    const [rows] = await db.query(
+      `
+      SELECT
 
-      COUNT(
-        CASE
-          WHEN YEARWEEK(created_at, 1) = YEARWEEK(CURDATE(), 1)
-          THEN 1
-        END
-      ) AS weekAssistants,
+        COUNT(*) AS totalAssistants,
 
-      COUNT(
-        CASE
-          WHEN YEAR(created_at) = YEAR(CURDATE())
-          AND MONTH(created_at) = MONTH(CURDATE())
-          THEN 1
-        END
-      ) AS monthAssistants
+        COUNT(
+          CASE
+            WHEN YEAR(created_at) = YEAR(CURDATE())
+            THEN 1
+          END
+        ) AS yearAssistants,
 
-    FROM users
-    WHERE doctor_id = ?
+        COUNT(
+          CASE
+            WHEN YEAR(created_at) = YEAR(CURDATE())
+            AND MONTH(created_at) = MONTH(CURDATE())
+            THEN 1
+          END
+        ) AS monthAssistants,
+
+        COUNT(
+          CASE
+            WHEN YEARWEEK(created_at,1)=YEARWEEK(CURDATE(),1)
+            THEN 1
+          END
+        ) AS weekAssistants
+
+      FROM users
+
+      WHERE doctor_id = ?
       AND role_id = 3
-    `,
-    [doctorId]
-  );
+      `,
+      [doctorId]
+    );
 
-  return rows[0];
+    return rows[0];
+
+  } catch (error) {
+
+    console.error("Assistant Stats Model Error:", error);
+    throw error;
+
+  }
 };

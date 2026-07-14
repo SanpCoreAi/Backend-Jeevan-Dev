@@ -186,7 +186,6 @@ async function getScheduleByDoctorId(doctorId) {
       date: slot.start_date
     }));
 
-    // determine overall schedule status based on slots stored in DB
     const scheduleStatus = formattedSlots.some(slot => slot.status === 'active') ? 'active' : 'inactive';
 
     finalData.push({
@@ -309,7 +308,7 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         INNER JOIN appointments a ON ss.start_time = a.start_time 
           AND ss.end_time = a.end_time
           AND ss.start_date = a.slot_date
-        WHERE ss.doctor_id = ?
+          WHERE ss.doctor_id = ?
           AND ss.schedule_id = ?
           AND ss.start_date = ?
           AND a.status NOT IN ('CANCELLED','COMPLETED')

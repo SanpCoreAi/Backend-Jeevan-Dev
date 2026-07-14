@@ -4,24 +4,49 @@ exports.registerValidation = (data) => {
 
   const schema = Joi.object({
 
-    full_name: Joi.string().required(),
+    full_name: Joi.string()
+      .trim()
+      .min(3)
+      .max(100)
+      .required(),
 
-    email: Joi.string().email().required(),
+    email: Joi.string()
+      .trim()
+      .lowercase()
+      .email()
+      .required(),
 
-    phone_number: Joi.string().required(),
+    phone_number: Joi.string()
+      .trim()
+      .pattern(/^[6-9]\d{9}$/)
+      .required(),
 
-    role_id: Joi.number().optional(),
+    password: Joi.string()
+      .min(8)
+      .max(20)
+      .pattern(/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).+$/)
+      .optional(),
 
-    password: Joi.string().optional(),
+    role_id: Joi.number()
+      .valid(1,2,3)
+      .optional(),
 
-    doctor_id: Joi.number().optional()   // <-- Add this
+    doctor_id: Joi.number().integer().positive().optional()
 
+  }).options({
+      abortEarly:false,
+      allowUnknown:false
   });
 
-  const { error } = schema.validate(data);
+  const {error}=schema.validate(data);
 
-  return error ? error.details[0].message : null;
-};
+  if(error){
+      return error.details.map(x=>x.message);
+  }
+
+  return null;
+
+}
 
 exports.verifyEmailValidation = (query) => {
   const schema = Joi.object({
