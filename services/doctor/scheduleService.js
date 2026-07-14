@@ -333,60 +333,38 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       };
     }
 
-    // ===================================================
-    // CASE 3 : Delete Single Slot
-    // ===================================================
-    if (!date && slotId) {
+if (!date && !slotId) {
 
-      // Get slot details to match with appointments
-      const [slotDetails] = await db.query(
-        `SELECT start_time, end_time, start_date FROM schedule_slots WHERE id = ?`,
-        [slotId]
-      );
+  const [appointments] = await db.query(
+    `
+    SELECT id
+    FROM appointments
+    WHERE doctor_id = ?
+      AND schedule_id = ?
+      AND status NOT IN ('CANCELLED', 'COMPLETED')
+    LIMIT 1
+    `,
+    [doctorId, scheduleId]
+  );
 
-      if (!slotDetails.length) {
-        return {
-          success: false,
-          message: "Slot not found."
-        };
-      }
+  if (appointments.length > 0) {
+    return {
+      success: false,
+      message: "Cannot delete schedule. One or more slots already have booked appointments."
+    };
+  }
 
-      const slot = slotDetails[0];
+  const result = await SlotModel.deleteCompleteSchedule({
+    doctorId,
+    scheduleId
+  });
 
-      // Check if there are booked appointments for this slot
-      const [booked] = await db.query(
-        `
-        SELECT id
-        FROM appointments
-        WHERE doctor_id = ?
-          AND schedule_id = ?
-          AND start_time = ?
-          AND end_time = ?
-          AND slot_date = ?
-          AND status NOT IN ('CANCELLED','COMPLETED')
-        `,
-        [doctorId, scheduleId, slot.start_time, slot.end_time, slot.start_date]
-      );
-
-      if (booked.length > 0) {
-        return {
-          success: false,
-          message: "Booked slot cannot be deleted."
-        };
-      }
-
-      const result = await SlotModel.deleteSingleSlot({
-        doctorId,
-        scheduleId,
-        slotId
-      });
-
-      return {
-        success: true,
-        message: "Slot deleted successfully.",
-        deletedSlots: result.affectedRows
-      };
-    }
+  return {
+    success: true,
+    message: "Schedule deleted successfully.",
+    deleted: result.affectedRows
+  };
+}
 
     return {
       success: false,
