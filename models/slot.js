@@ -104,42 +104,100 @@ async function getDoctorSlots(doctorId, hospitalName, date) {
 
   return rows;
 }
+async function deleteCompleteSchedule({
+  doctorId,
+  scheduleId
+}) {
 
-async function deleteHalfDaySlots({
+  // First delete all slots
+  await db.query(
+    `
+    DELETE FROM schedule_slots
+    WHERE doctor_id = ?
+      AND schedule_id = ?
+    `,
+    [doctorId, scheduleId]
+  );
+
+  // Then delete schedule
+  const [result] = await db.query(
+    `
+    DELETE FROM schedules
+    WHERE id = ?
+      AND doctor_id = ?
+    `,
+    [scheduleId, doctorId]
+  );
+
+  return result;
+}
+
+
+async function deleteSlotsByDate({
   doctorId,
   scheduleId,
   date,
-  fromTime,
-  toTime,
-  booked
+  bookedSlots
 }) {
-  const params = [doctorId, scheduleId, date, fromTime, toTime];
+
   let query = `
     DELETE FROM schedule_slots
     WHERE doctor_id = ?
       AND schedule_id = ?
       AND start_date = ?
-      AND start_time BETWEEN ? AND ?
-      AND status = 'active'
   `;
 
-  if (Array.isArray(booked) && booked.length > 0) {
-    const placeholders = booked.map(() => '?').join(', ');
+  const params = [
+    doctorId,
+    scheduleId,
+    date
+  ];
+
+  if (bookedSlots.length > 0) {
+
     query += `
-      AND start_time NOT IN (${placeholders})
+      AND id NOT IN (${bookedSlots.map(() => "?").join(",")})
     `;
-    params.push(...booked);
+
+    params.push(...bookedSlots);
   }
 
   const [result] = await db.query(query, params);
+
   return result;
 }
+
+async function deleteSingleSlot({
+  doctorId,
+  scheduleId,
+  slotId
+}) {
+
+  const [result] = await db.query(
+    `
+    DELETE FROM schedule_slots
+    WHERE id = ?
+      AND doctor_id = ?
+      AND schedule_id = ?
+    `,
+    [
+      slotId,
+      doctorId,
+      scheduleId
+    ]
+  );
+
+  return result;
+}
+
 
 module.exports = {
   insertSlots,
   getActiveSlot,
   getDoctorSlots,
   deactivateSlot,
-  deleteHalfDaySlots,
-  getNextAvailableSlot,
+  deleteCompleteSchedule,
+  deleteSlotsByDate,
+  deleteSingleSlot,
+  getNextAvailableSlot
 };

@@ -275,78 +275,128 @@ async function updateSchedule(doctorId, scheduleId, body) {
 }
 
 
-async function deleteHalfDaySlots(body, doctorId) {
-  if (!body || typeof body !== 'object') {
+async function deleteSchedule(scheduleId, body, doctorId) {
+  try {
+    if (!scheduleId) {
+      return {
+        success: false,
+        message: "Schedule id is required."
+      };
+    }
+
+    const { date, slotId } = body || {};
+
+    if (!date && !slotId) {
+
+      const result = await SlotModel.deleteCompleteSchedule({
+        doctorId,
+        scheduleId
+      });
+
+      return {
+        success: true,
+        message: "Schedule deleted successfully.",
+        deleted: result.affectedRows
+      };
+    }
+
+    if (date && !slotId) {
+
+      const [booked] = await db.query(
+        `
+        SELECT ss.id
+        FROM schedule_slots ss
+        INNER JOIN appointments a ON ss.start_time = a.start_time 
+          AND ss.end_time = a.end_time
+          AND ss.start_date = a.slot_date
+        WHERE ss.doctor_id = ?
+          AND ss.schedule_id = ?
+          AND ss.start_date = ?
+          AND a.status NOT IN ('CANCELLED','COMPLETED')
+        `,
+        [doctorId, scheduleId, date]
+      );
+
+      const bookedSlots = booked.map(item => item.id);
+
+      const result = await SlotModel.deleteSlotsByDate({
+        doctorId,
+        scheduleId,
+        date,
+        bookedSlots
+      });
+
+      return {
+        success: true,
+        message: "Date slots deleted successfully.",
+        deletedSlots: result.affectedRows,
+        skippedSlots: bookedSlots.length
+      };
+    }
+
+    // ===================================================
+    // CASE 3 : Delete Single Slot
+    // ===================================================
+    if (!date && slotId) {
+
+      // Get slot details to match with appointments
+      const [slotDetails] = await db.query(
+        `SELECT start_time, end_time, start_date FROM schedule_slots WHERE id = ?`,
+        [slotId]
+      );
+
+      if (!slotDetails.length) {
+        return {
+          success: false,
+          message: "Slot not found."
+        };
+      }
+
+      const slot = slotDetails[0];
+
+      // Check if there are booked appointments for this slot
+      const [booked] = await db.query(
+        `
+        SELECT id
+        FROM appointments
+        WHERE doctor_id = ?
+          AND schedule_id = ?
+          AND start_time = ?
+          AND end_time = ?
+          AND slot_date = ?
+          AND status NOT IN ('CANCELLED','COMPLETED')
+        `,
+        [doctorId, scheduleId, slot.start_time, slot.end_time, slot.start_date]
+      );
+
+      if (booked.length > 0) {
+        return {
+          success: false,
+          message: "Booked slot cannot be deleted."
+        };
+      }
+
+      const result = await SlotModel.deleteSingleSlot({
+        doctorId,
+        scheduleId,
+        slotId
+      });
+
+      return {
+        success: true,
+        message: "Slot deleted successfully.",
+        deletedSlots: result.affectedRows
+      };
+    }
+
     return {
       success: false,
-      statusCode: 400,
-      message: "Request body is required."
+      message: "Invalid request."
     };
+
+  } catch (error) {
+    throw error;
   }
-
-  const {
-    scheduleId,
-    date,
-    fromTime,
-    toTime
-  } = body;
-
-  if (!scheduleId || !date || !fromTime || !toTime) {
-    return {
-      success: false,
-      statusCode: 400,
-      message: "scheduleId, date, fromTime and toTime are required."
-    };
-  }
-
-  // booked slots
-  const [bookedSlots] = await db.query(
-    `
-    SELECT start_time
-    FROM appointments
-    WHERE doctor_id = ?
-      AND schedule_id = ?
-      AND slot_date = ?
-      AND start_time BETWEEN ? AND ?
-      AND status NOT IN ('CANCELLED','COMPLETED')
-    `,
-    [
-      doctorId,
-      scheduleId,
-      date,
-      fromTime,
-      toTime
-    ]
-  );
-
-  const booked =
-    bookedSlots.map(x => x.start_time);
-
-  const deleted =
-    await SlotModel.deleteHalfDaySlots({
-      doctorId,
-      scheduleId,
-      date,
-      fromTime,
-      toTime,
-      booked
-    });
-
-  return {
-
-    success: true,
-
-    message:
-      "Half day slots deleted successfully.",
-
-    deletedSlots:
-      deleted.affectedRows,
-
-    skippedSlots:
-      booked.length
-
-  };
-
 }
 
 
@@ -433,7 +483,7 @@ module.exports = {
   getScheduleByDoctorId,
   getSchedulePublicByDoctorId,
   updateSchedule,
-  deleteHalfDaySlots,
+  deleteSchedule,
   getUserById,
   getHospitalNamesByDoctor
 };

@@ -142,15 +142,19 @@ exports.update = async (req, res) => {
   res.json(result);
 };
 
-exports.deleteHalfDaySlots = async (req, res) => {
+exports.deleteSchedule = async (req, res) => {
   try {
+    const { scheduleId } = req.params;
 
-    const result = await ScheduleService.deleteHalfDaySlots(
+    const result = await ScheduleService.deleteSchedule(
+      scheduleId,
       req.body,
       req.user.id
     );
 
-    return res.status(result.success ? 200 : 400).json(result);
+    return res
+      .status(result.success ? 200 : 400)
+      .json(result);
 
   } catch (err) {
     return res.status(500).json({
