@@ -195,22 +195,12 @@ exports.getDoctorAppointmentsForTable = async (
     `;
   }
 
-  // Booked Day Filter
-  const bookedAtDay = Number(booked_at);
-
-  const hasBookedAtFilter =
-    booked_at !== undefined &&
-    booked_at !== null &&
-    booked_at !== "" &&
-    Number.isInteger(bookedAtDay) &&
-    bookedAtDay >= 1 &&
-    bookedAtDay <= 31;
-
-  if (hasBookedAtFilter) {
+  // Booked Date Filter (YYYY-MM-DD)
+  if (booked_at) {
     query += `
-      AND DAY(a.created_at) = ?
+      AND DATE(a.created_at) = ?
     `;
-    params.push(bookedAtDay);
+    params.push(booked_at);
   }
 
   query += `
@@ -260,11 +250,12 @@ exports.getDoctorAppointmentsForTable = async (
     `;
   }
 
-  if (hasBookedAtFilter) {
+  // Booked Date Filter (YYYY-MM-DD)
+  if (booked_at) {
     countQuery += `
-      AND DAY(a.created_at) = ?
+      AND DATE(a.created_at) = ?
     `;
-    countParams.push(bookedAtDay);
+    countParams.push(booked_at);
   }
 
   const [[countResult]] = await db.query(countQuery, countParams);
