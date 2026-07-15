@@ -277,6 +277,26 @@ exports.findUserByResetToken = async (tokenHash) => {
   }
 };
 
+exports.updateRefreshToken = async (
+  userId,
+  refreshToken
+) => {
+
+  const [result] = await db.query(
+    `
+    UPDATE users
+    SET refresh_token = ?
+    WHERE id = ?
+    `,
+    [
+      refreshToken,
+      userId,
+    ]
+  );
+
+  return result.affectedRows;
+};
+
 
 exports.updatePassword = async (
   userId,

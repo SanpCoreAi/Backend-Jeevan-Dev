@@ -1,56 +1,146 @@
 const jwt = require("jsonwebtoken");
-const db = require("../../config/db");
 
-exports.refreshToken = async (refreshToken) => {
+const User = require("../../models/usermodel");
+
+exports.refreshToken = async (
+  refreshToken
+) => {
+
   try {
-    let decoded;
 
-    try {
-      decoded = jwt.verify(
-        refreshToken,
-        process.env.REFRESH_SECRET || "refresh_secret"
+    if (
+      !process.env.ACCESS_SECRET ||
+      !process.env.REFRESH_SECRET
+    ) {
+      throw new Error(
+        "JWT Secret Missing"
       );
-    } catch (err) {
-      return {
-        statusCode: 403,
-        body: { message: "Invalid or expired refresh token" },
-      };
     }
 
-    const [rows] = await db.query(
-      "SELECT id, role_id FROM users WHERE id = ? AND refresh_token = ?",
-      [decoded.id, refreshToken]
-    );
+    const decoded =
+      jwt.verify(
+        refreshToken,
+        process.env.REFRESH_SECRET
+      );
 
-    if (!rows.length) {
+    const user =
+      await User.findByRefreshToken(
+        decoded.id,
+        refreshToken
+      );
+
+    if (!user) {
+
       return {
-        statusCode: 403,
-        body: { message: "Refresh token not valid" },
+        statusCode:403,
+        body:{
+          message:
+          "Invalid refresh token"
+        }
+
       };
+
     }
 
-    const user = rows[0];
+    if (
+      user.status &&
+      user.status !== "ACTIVE"
+    ) {
 
-    const newAccessToken = jwt.sign(
-      { id: user.id, role_id: user.role_id },
-      process.env.ACCESS_SECRET || "access_secret",
-      { expiresIn: "24h" }
+      return {
+        statusCode:403,
+        body:{
+          message:
+          "Account is inactive"
+        }
+
+      };
+
+    }
+
+    const accessToken =
+      jwt.sign(
+
+        {
+
+          id:user.id,
+          role_id:user.role_id,
+          doctor_id:user.doctor_id
+
+        },
+
+        process.env.ACCESS_SECRET,
+
+        {
+
+          expiresIn:
+          process.env.ACCESS_TOKEN_EXPIRE
+
+        }
+
+      );
+
+    const newRefreshToken =
+      jwt.sign(
+
+        {
+
+          id:user.id
+
+        },
+
+        process.env.REFRESH_SECRET,
+
+        {
+
+          expiresIn:
+          process.env.REFRESH_TOKEN_EXPIRE
+
+        }
+
+      );
+
+    await User.updateRefreshToken(
+
+      user.id,
+
+      newRefreshToken
+
     );
 
     return {
-      statusCode: 200,
-      body: {
-        message: "Access token refreshed successfully",
-        accessToken: newAccessToken,
-      },
+
+      statusCode:200,
+
+      body:{
+
+        message:
+        "Token refreshed successfully",
+        accessToken,
+        refreshToken:
+        newRefreshToken
+
+      }
+
     };
 
-  } catch (error) {
-    console.error("Refresh Service Error:", error.message);
+  } catch(error){
+
+    console.error(
+      "Refresh Token Service Error:",
+      error
+    );
 
     return {
-      statusCode: 500,
-      body: { message: "Failed to refresh token" },
+
+      statusCode:403,
+
+      body:{
+        message:
+        "Invalid or expired refresh token"
+      }
     };
+
   }
+
 };

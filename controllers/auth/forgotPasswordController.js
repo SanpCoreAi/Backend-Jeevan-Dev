@@ -1,36 +1,43 @@
-const forgotPasswordService = require(
-  "../../services/auth/forgotPasswordService"
-);
+const forgotPasswordService = require("../../services/auth/forgotPasswordService");
 
-exports.forgotPassword = async (
-  req,
-  res
-) => {
+const {forgotPasswordValidation,} = require("../../validation/auth/passwordValidator");
+
+exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
 
-    if (!email) {
+    const validationError =
+      forgotPasswordValidation(req.body);
+
+    if (validationError) {
       return res.status(400).json({
         success: false,
-        message: "Email is required",
+        message: validationError,
       });
     }
 
-    const result =
-      await forgotPasswordService
-        .forgotPassword(email);
+    const email = req.body.email
+      .trim()
+      .toLowerCase();
 
-    return res
-      .status(result.statusCode)
-      .json({
-        success:
-          result.statusCode === 200,
-        ...result.body,
-      });
+    const result =
+      await forgotPasswordService.forgotPassword(email);
+
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+    });
+
   } catch (error) {
+
+    console.error(
+      "Forgot Password Controller Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal Server Error",
     });
+
   }
 };

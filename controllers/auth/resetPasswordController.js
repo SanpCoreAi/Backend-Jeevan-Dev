@@ -1,41 +1,50 @@
-const resetPasswordService = require(
-  "../../services/auth/resetPasswordService"
-);
+const resetPasswordService = require("../../services/auth/resetPasswordService");
 
-exports.resetPassword = async (
-  req,
-  res
-) => {
+const {
+  resetPasswordValidation,
+} = require("../../validation/auth/passwordValidator");
+
+exports.resetPassword = async (req, res) => {
   try {
-    const { token, password } =
-      req.body;
 
-    if (!token || !password) {
+    // Validate Request
+    const validationError =
+      resetPasswordValidation(req.body);
+
+    if (validationError) {
       return res.status(400).json({
         success: false,
-        message:
-          "Token and password are required",
+        message: validationError,
       });
     }
 
-    const result =
-      await resetPasswordService
-        .resetPassword(
-          token,
-          password
-        );
+    // Sanitize Input
+    const token = req.body.token.trim();
+    const password = req.body.password.trim();
 
-    return res
-      .status(result.statusCode)
-      .json({
-        success:
-          result.statusCode === 200,
-        ...result.body,
-      });
+    // Service
+    const result =
+      await resetPasswordService.resetPassword(
+        token,
+        password
+      );
+
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+    });
+
   } catch (error) {
+
+    console.error(
+      "Reset Password Controller Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal Server Error",
     });
+
   }
 };

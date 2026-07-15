@@ -1,83 +1,39 @@
-const {
-  loginUser
-} = require("../../services/auth/loginService");
-
-const {
-  loginValidation
-} = require("../../validation/auth/loginValidator");
-
+const { loginUser } = require("../../services/auth/loginService");
+const { loginValidation } = require("../../validation/auth/loginValidator");
 
 exports.login = async (req, res) => {
-
   try {
 
+    const validationError = loginValidation(req.body);
 
-    const error =
-      loginValidation(req.body);
-
-
-    if (error) {
-
+    if (validationError) {
       return res.status(400).json({
-        success:false,
-        message:error
+        success: false,
+        message: validationError,
       });
-
     }
 
+    const credentials = {
+      email: req.body.email.trim().toLowerCase(),
+      password: req.body.password.trim(),
+    };
 
+    const result = await loginUser(credentials);
 
-    const {
-      email,
-      password
-    } = req.body;
-
-
-
-    const result =
-      await loginUser({
-        email,
-        password
-      });
-
-
-
-    return res
-    .status(result.statusCode)
-    .json({
-
-      success:
-      result.statusCode < 400,
-
-      message:
-      result.body.message,
-
-      data:
-      result.body.data || null
-
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      data: result.body.data || null,
     });
-
-
 
   } catch (error) {
 
-
-    console.error(
-      "LOGIN CONTROLLER ERROR:",
-      error
-    );
-
+    console.error("Login Controller Error:", error);
 
     return res.status(500).json({
-
-      success:false,
-
-      message:
-      "Internal Server Error"
-
+      success: false,
+      message: "Internal Server Error",
     });
 
-
   }
-
 };

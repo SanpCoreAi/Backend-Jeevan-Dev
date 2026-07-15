@@ -1,156 +1,130 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-const User =
-require("../../models/usermodel");
+const User = require("../../models/usermodel");
 
-const db =
-require("../../config/db");
+exports.loginUser = async ({ email, password }) => {
+  try {
 
-
-exports.loginUser = async ({ email, password}) => {
- try {
-
-  if(
+    if (
       !process.env.ACCESS_SECRET ||
       !process.env.REFRESH_SECRET
-    ){
-
-      throw new Error(
-        "JWT secret missing"
-      );
-
+    ) {
+      throw new Error("JWT secrets are missing");
     }
 
-    email =
-    email.toLowerCase().trim();
+    email = email.trim().toLowerCase();
+    password = password.trim();
 
-    const user =
-      await User.findByEmail(email);
+    const user = await User.findByEmail(email);
 
     if (!user) {
-
       return {
-      statusCode:401,
-
-        body:{
-          message:
-          "Invalid email or password"
-        }
-      };
-    }
-    if(!user.email_verified){
-
-      return {
-
-        statusCode:403,
-
-        body:{
-
-          message:
-          "Please verify your email first"
-
-        }
-      };
-    }
-
-    const isMatch =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
-
-    if(!isMatch){
-      console.log(
-        `Failed login attempt for ${email}`
-      );
-
-      return {
-        statusCode:401,
-        body:{
-          message:
-          "Invalid email or password"
-        }
-      };
-    }
-
-    const accessToken =
-      jwt.sign(
-
-        {
-          id:user.id,
-          role_id:user.role_id
+        statusCode: 401,
+        body: {
+          message: "Invalid email or password",
         },
+      };
+    }
 
-        process.env.ACCESS_SECRET,
-        
-        {
-          expiresIn:"1day"
-        }
-
-      );
-
-    const refreshToken =
-      jwt.sign(
-
-        {
-          id:user.id
+    if (user.email_verified !== 1) {
+      return {
+        statusCode: 403,
+        body: {
+          message: "Please verify your email first",
         },
+      };
+    }
 
-        process.env.REFRESH_SECRET,
+    if (
+      user.status &&
+      user.status !== "ACTIVE"
+    ) {
+      return {
+        statusCode: 403,
+        body: {
+          message: "Your account is inactive. Please contact administrator.",
+        },
+      };
+    }
 
-        {
-          expiresIn:"7d"
-        }
-
-      );
-
-    await db.query(
-      `
-      UPDATE users
-      SET refresh_token=?
-      WHERE id=?
-      `,
-
-      [
-        refreshToken,
-        user.id
-      ]
-
+    const isPasswordMatched = await bcrypt.compare(
+      password,
+      user.password
     );
 
-    return {
-      statusCode:200,
+    if (!isPasswordMatched) {
 
-      body:{
-      message:
-        "Login successful",
+      console.warn(`Failed login attempt: ${email}`);
 
-   data:{
-        accessToken,
-        refreshToken,
-        user:{
-        id:user.id,
-        full_name:user.full_name,
-        email:user.email,
-        phone_number:user.phone_number,
-        role_id:user.role_id
-       }
+      return {
+        statusCode: 401,
+        body: {
+          message: "Invalid email or password",
+        },
+      };
     }
-  }
-};
 
-  } catch(error) {
-    console.error(
-      "LOGIN SERVICE ERROR:",
-      error.message
-    );
-    return {
-      statusCode:500,
-      body:{
-       message:
-        error.message
+    const accessToken = jwt.sign(
+      {
+        id: user.id,
+        role_id: user.role_id,
+        doctor_id: user.doctor_id || null,
+      },
+      process.env.ACCESS_SECRET,
+      {
+        expiresIn:
+          process.env.ACCESS_TOKEN_EXPIRE || "1d",
       }
+    );
+
+    const refreshToken = jwt.sign(
+      {
+        id: user.id,
+      },
+      process.env.REFRESH_SECRET,
+      {
+        expiresIn:
+          process.env.REFRESH_TOKEN_EXPIRE || "7d",
+      }
+    );
+
+    await User.updateRefreshToken(
+      user.id,
+      refreshToken
+    );
+
+    return {
+      statusCode: 200,
+      body: {
+        message: "Login successful",
+        data: {
+          accessToken,
+          refreshToken,
+          user: {
+            id: user.id,
+            full_name: user.full_name,
+            email: user.email,
+            phone_number: user.phone_number,
+            role_id: user.role_id,
+            doctor_id: user.doctor_id || null,
+          },
+        },
+      },
+    };
+
+  } catch (error) {
+
+    console.error(
+      "Login Service Error:",
+      error
+    );
+
+    return {
+      statusCode: 500,
+      body: {
+        message: "Internal Server Error",
+      },
     };
   }
 };

@@ -1,63 +1,45 @@
-const changePasswordService=
-require("../../services/auth/changePasswordService");
+const changePasswordService = require("../../services/auth/changePasswordService");
+const {changePasswordValidation,} = require("../../validation/auth/passwordValidator");
 
-const {
-changePasswordValidation
-}=require("../../validation/auth/passwordValidator");
+exports.changePassword = async (req, res) => {
+  try {
 
+    const validationError = changePasswordValidation(req.body);
 
-exports.changePassword=async(req,res)=>{
+    if (validationError) {
+      return res.status(400).json({
+        success: false,
+        message: validationError,
+      });
+    }
 
-try{
+    const userId = req.user?.id;
 
-const error=
-changePasswordValidation(req.body);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
 
+    const result = await changePasswordService.changePassword(
+      userId,
+      req.body
+    );
 
-if(error)
-return res.status(400).json({
-success:false,
-message:error
-});
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+    });
 
+  } catch (error) {
 
-const userId=req.user?.id;
+    console.error("Change Password Controller Error:", error);
 
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
 
-if(!userId)
-return res.status(401).json({
-success:false,
-message:"Unauthorized"
-});
-
-
-const result=
-await changePasswordService.changePassword(
-userId,
-req.body
-);
-
-
-
-return res.status(result.statusCode).json({
-
-success:result.statusCode<400,
-
-message:result.body.message
-
-});
-
-
-}catch(error){
-
-return res.status(500).json({
-
-success:false,
-
-message:"Internal Server Error"
-
-});
-
-}
-
+  }
 };

@@ -1,42 +1,89 @@
-const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const User = require("../../models/usermodel");
-const { sendResetPasswordEmail } = require("../../utils/sendEmail");
+const {sendResetPasswordEmail,} = require("../../utils/sendEmail");
 
 exports.forgotPassword = async (email) => {
+
   try {
-    const user = await User.findByEmail(email);
+
+    if (!process.env.RESET_PASSWORD_SECRET) {
+      throw new Error(
+        "RESET_PASSWORD_SECRET is missing"
+      );
+    }
+
+    const user =
+      await User.findByEmail(email);
 
     if (!user) {
       return {
         statusCode: 200,
         body: {
-          message: "If email exists, reset link sent",
+          message:
+            "If the email exists, a password reset link has been sent.",
         },
       };
     }
 
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" }
+    if (
+      user.status &&
+      user.status !== "ACTIVE"
+    ) {
+      return {
+        statusCode: 200,
+        body: {
+          message:
+            "If the email exists, a password reset link has been sent.",
+        },
+      };
+    }
+
+    const resetToken =
+      crypto.randomBytes(32).toString("hex");
+
+    const tokenHash =
+      crypto
+        .createHash("sha256")
+        .update(resetToken)
+        .digest("hex");
+
+    const expiry =
+      new Date(Date.now() + 15 * 60 * 1000);
+
+    await User.saveResetToken(
+      user.id,
+      tokenHash,
+      expiry
     );
 
-   await sendResetPasswordEmail(email, token).catch((err) => {
-  console.error("EMAIL ERROR:", err);
-});
+    await sendResetPasswordEmail(
+      email,
+      resetToken
+    );
 
     return {
       statusCode: 200,
       body: {
-        message: "Reset link sent successfully",
+        message:
+          "If the email exists, a password reset link has been sent.",
       },
     };
+
   } catch (error) {
+
+    console.error(
+      "Forgot Password Service Error:",
+      error
+    );
+
     return {
       statusCode: 500,
       body: {
-        message: error.message,
+        message:
+          "Internal Server Error",
       },
     };
+
   }
+
 };
