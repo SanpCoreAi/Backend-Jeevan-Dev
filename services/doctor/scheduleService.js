@@ -4,6 +4,64 @@ const User = require("../../models/usermodel");
 const db = require("../../config/db");
 const {parse12to24,generateSlots12,time24To12} = require("../../utils/timeHelper");
 
+async function generateScheduleSlots(scheduleId, payload) {
+  const doctorId = payload.doctor_id;
+  const start24 = payload.start_time;
+  const end24 = payload.end_time;
+  const slotDuration = Number(payload.slot_duration);
+  const breakMinutes = Number(payload.break_minutes || 0);
+
+  if (!doctorId || !start24 || !end24 || !slotDuration || slotDuration <= 0) {
+    return 0;
+  }
+
+  const slots = generateSlots12(start24, end24, slotDuration, breakMinutes);
+
+  if (!slots.length) {
+    return 0;
+  }
+
+  const startDate = payload.start_date ? new Date(payload.start_date) : null;
+  const endDate = payload.end_date ? new Date(payload.end_date) : null;
+  const activeDays = Array.isArray(payload.active_days) ? payload.active_days : [];
+
+  if (!startDate || !endDate || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    return 0;
+  }
+
+  const slotRows = [];
+  let currentDate = new Date(startDate);
+
+  while (currentDate <= endDate) {
+    const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][currentDate.getDay()];
+
+    if (activeDays.includes(dayName)) {
+      const dateStr = currentDate.toISOString().slice(0, 10);
+
+      for (const slot of slots) {
+        slotRows.push({
+          schedule_id: scheduleId,
+          doctor_id: doctorId,
+          start_date: dateStr,
+          end_date: dateStr,
+          start_time: parse12to24(slot.start),
+          end_time: parse12to24(slot.end),
+          status: "active"
+        });
+      }
+    }
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  if (!slotRows.length) {
+    return 0;
+  }
+
+  await SlotModel.insertSlots(slotRows);
+  return slotRows.length;
+}
+
 async function createSchedule(doctorId, body) {
   try {
 
@@ -79,14 +137,18 @@ async function createSchedule(doctorId, body) {
       offlinepatient_number: body.offlinepatient_number ?? null
     });
 
-    const slots = generateSlots12(
-      start24,
-      end24,
-      body.slot_duration,
-      body.break_minutes || 0
-    );
+    const totalSlots = await generateScheduleSlots(scheduleId, {
+      doctor_id: doctorId,
+      start_time: start24,
+      end_time: end24,
+      slot_duration: body.slot_duration,
+      break_minutes: body.break_minutes || 0,
+      start_date: body.start_date,
+      end_date: body.end_date,
+      active_days: body.active_days || []
+    });
 
-    if (!slots.length) {
+    if (!totalSlots) {
       return {
         success: false,
         statusCode: 400,
@@ -94,43 +156,12 @@ async function createSchedule(doctorId, body) {
       };
     }
 
-    const startDate = new Date(body.start_date);
-    const endDate = new Date(body.end_date);
-    const activeDays = body.active_days || [];
-
-    const slotRows = [];
-    let currentDate = new Date(startDate);
-
-    while (currentDate <= endDate) {
-      const dayName = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][currentDate.getDay()];
-
-      if (activeDays.includes(dayName)) {
-        const dateStr = currentDate.toISOString().slice(0, 10);
-
-        for (const slot of slots) {
-          slotRows.push({
-            schedule_id: scheduleId,
-            doctor_id: doctorId,
-            start_date: dateStr,
-            end_date: dateStr,
-            start_time: parse12to24(slot.start),
-            end_time: parse12to24(slot.end),
-            status: "active"
-          });
-        }
-      }
-
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    await SlotModel.insertSlots(slotRows);
-
     return {
       success: true,
       message: "Schedule created successfully",
       data: {
         scheduleId,
-        totalSlots: slotRows.length
+        totalSlots
       }
     };
 
@@ -226,49 +257,127 @@ async function getSchedulePublicByDoctorId(doctorId) {
 
 async function updateSchedule(doctorId, scheduleId, body) {
   try {
+    // 1. Existing schedule
+    const schedules = await ScheduleModel.getScheduleByDoctor(doctorId);
 
-    const oldSchedules = await ScheduleModel.getScheduleByDoctor(doctorId);
-    const existing = oldSchedules.find(s => s.id == scheduleId);
+    const existing = schedules.find(
+      (s) => Number(s.id) === Number(scheduleId)
+    );
 
     if (!existing) {
       return {
         success: false,
         statusCode: 404,
-        message: "Schedule not found"
+        message: "Schedule not found",
       };
     }
 
-    if (
-      body.hospital_name &&
-      body.hospital_name !== existing.hospital_name
-    ) {
-      return await createSchedule(doctorId, body);
+    // 2. Time conversion
+    if (body.start_time) {
+      body.start_time = parse12to24(body.start_time);
     }
 
-    if (body.start_time) body.start_time = parse12to24(body.start_time);
-    if (body.end_time) body.end_time = parse12to24(body.end_time);
+    if (body.end_time) {
+      body.end_time = parse12to24(body.end_time);
+    }
 
+    // 3. Overlap check
+    const isOverlap =
+      await ScheduleModel.findOverlappingScheduleForUpdate({
+        doctor_id: doctorId,
+        schedule_id: scheduleId,
+        hospital_name:
+          body.hospital_name ?? existing.hospital_name,
+        start_time:
+          body.start_time ?? existing.start_time,
+        end_time:
+          body.end_time ?? existing.end_time,
+        start_date:
+          body.start_date ?? existing.start_date,
+        end_date:
+          body.end_date ?? existing.end_date,
+      });
+
+    if (isOverlap) {
+      return {
+        success: false,
+        statusCode: 409,
+        message:
+          "Another schedule already exists for the selected time.",
+      };
+    }
+
+    // 4. Update schedule
     const updated = await ScheduleModel.update(
       doctorId,
       scheduleId,
-      body
+      {
+        location_id:
+          body.location_id ?? existing.location_id,
+
+        hospital_name:
+          body.hospital_name ?? existing.hospital_name,
+
+        start_time:
+          body.start_time ?? existing.start_time,
+
+        end_time:
+          body.end_time ?? existing.end_time,
+
+        slot_duration:
+          body.slot_duration ?? existing.slot_duration,
+
+        break_minutes:
+          body.break_minutes ?? existing.break_minutes,
+
+        active_days:
+          body.active_days ?? existing.active_days,
+
+        start_date:
+          body.start_date ?? existing.start_date,
+
+        end_date:
+          body.end_date ?? existing.end_date,
+
+        note:
+          body.note ?? existing.note,
+      }
     );
 
     if (!updated) {
       return {
         success: false,
         statusCode: 400,
-        message: "Update failed"
+        message: "Schedule update failed",
       };
     }
 
-    return getAllSchedules(doctorId);
+    // 5. Delete old slots
+    await ScheduleModel.deleteByScheduleId(scheduleId);
 
+    // 6. Generate new slots
+    const totalSlots =
+      await generateScheduleSlots(scheduleId, {
+        ...existing,
+        ...body,
+      });
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Schedule updated successfully",
+      data: {
+        scheduleId: Number(scheduleId),
+        totalSlots,
+      },
+    };
   } catch (err) {
+    console.error(err);
+
     return {
       success: false,
       statusCode: 500,
-      message: err.message || "Update failed"
+      message: err.message || "Internal Server Error",
     };
   }
 }

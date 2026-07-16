@@ -127,19 +127,28 @@ exports.getHospitals = async (req, res) => {
 };
 
 exports.update = async (req, res) => {
-  const result = await ScheduleService.updateSchedule(
-    req.user.id,
-    req.params.id,
-    req.body
-  );
+  try {
+    const { id: scheduleId } = req.params;
+    const doctorId = req.user.id;
 
-  if (!result.success) {
+    const result = await ScheduleService.updateSchedule(
+      doctorId,
+      scheduleId,
+      req.body
+    );
+
     return res
-      .status(result.statusCode || 400)
+      .status(result.statusCode || (result.success ? 200 : 400))
       .json(result);
-  }
 
-  res.json(result);
+  } catch (error) {
+    console.error("Update Schedule Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
 };
 
 exports.deleteSchedule = async (req, res) => {

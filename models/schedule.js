@@ -93,6 +93,42 @@ async function getScheduleByDoctor(doctorId) {
   return rows;
 }
 
+async function findOverlappingScheduleForUpdate(data) {
+  const [rows] = await db.query(
+    `
+    SELECT id
+    FROM schedules
+    WHERE doctor_id = ?
+      AND id <> ?
+
+      AND (
+        (? IS NULL AND hospital_name IS NULL)
+        OR hospital_name = ?
+      )
+
+      AND start_time < ?
+      AND end_time > ?
+
+      AND start_date <= ?
+      AND end_date >= ?
+
+    LIMIT 1
+    `,
+    [
+      data.doctor_id,
+      data.schedule_id,
+      data.hospital_name,
+      data.hospital_name,
+      data.end_time,
+      data.start_time,
+      data.end_date,
+      data.start_date,
+    ]
+  );
+
+  return rows.length > 0;
+}
+
 async function getSlotsByScheduleId(scheduleId) {
   // return individual slot instances (per date) so inactive entries are visible
   const [rows] = await db.query(
@@ -144,7 +180,7 @@ async function update(doctorId, scheduleId, data) {
   return res.affectedRows > 0;
 }
 
-// ✅ Delete schedule
+
 async function remove(id, doctorId) {
   const [res] = await db.query(
     `DELETE FROM schedules WHERE id=? AND doctor_id=?`,
@@ -154,7 +190,15 @@ async function remove(id, doctorId) {
   return res.affectedRows > 0;
 }
 
-// ✅ Helper function (clean reusable)
+async function deleteByScheduleId(scheduleId) {
+  const [res] = await db.query(
+    `DELETE FROM schedule_slots WHERE schedule_id = ?`,
+    [scheduleId]
+  );
+
+  return res.affectedRows;
+}
+
 function parseActiveDays(r) {
   let active_days = r.active_days;
 
@@ -190,6 +234,8 @@ module.exports = {
   getScheduleByDoctor,
   getSchedulePublicByDoctorId,
   getSlotsByScheduleId,
+  findOverlappingScheduleForUpdate,
+  deleteByScheduleId,
   update,
   remove,
   findOverlappingSchedule
