@@ -104,29 +104,37 @@ async function getDoctorSlots(doctorId, hospitalName, date) {
 
   return rows;
 }
+
 async function deleteCompleteSchedule({
   doctorId,
   scheduleId
 }) {
 
-  // First delete all slots
+  // Delete only ACTIVE slots
   await db.query(
     `
     DELETE FROM schedule_slots
     WHERE doctor_id = ?
       AND schedule_id = ?
+      AND LOWER(status) = 'active'
     `,
-    [doctorId, scheduleId]
+    [
+      doctorId,
+      scheduleId
+    ]
   );
 
-  // Then delete schedule
+  // Delete schedule
   const [result] = await db.query(
     `
     DELETE FROM schedules
     WHERE id = ?
       AND doctor_id = ?
     `,
-    [scheduleId, doctorId]
+    [
+      scheduleId,
+      doctorId
+    ]
   );
 
   return result;
@@ -137,14 +145,15 @@ async function deleteSlotsByDate({
   doctorId,
   scheduleId,
   date,
-  bookedSlots
+  bookedSlots = []
 }) {
 
-  let query = `
+  let sql = `
     DELETE FROM schedule_slots
     WHERE doctor_id = ?
       AND schedule_id = ?
-      AND start_date = ?
+      AND DATE(start_date) = ?
+      AND LOWER(status) = 'active'
   `;
 
   const params = [
@@ -153,16 +162,13 @@ async function deleteSlotsByDate({
     date
   ];
 
+  // Agar bookedSlots use karna ho
   if (bookedSlots.length > 0) {
-
-    query += `
-      AND id NOT IN (${bookedSlots.map(() => "?").join(",")})
-    `;
-
+    sql += ` AND id NOT IN (${bookedSlots.map(() => "?").join(",")})`;
     params.push(...bookedSlots);
   }
 
-  const [result] = await db.query(query, params);
+  const [result] = await db.query(sql, params);
 
   return result;
 }
@@ -179,6 +185,7 @@ async function deleteSingleSlot({
     WHERE id = ?
       AND doctor_id = ?
       AND schedule_id = ?
+      AND LOWER(status) = 'active'
     `,
     [
       slotId,

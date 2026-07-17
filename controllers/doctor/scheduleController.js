@@ -155,20 +155,29 @@ exports.deleteSchedule = async (req, res) => {
   try {
     const { scheduleId } = req.params;
 
+    if (!scheduleId || isNaN(scheduleId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid schedule ID is required."
+      });
+    }
+
     const result = await ScheduleService.deleteSchedule(
-      scheduleId,
+      Number(scheduleId),
       req.body,
       req.user.id
     );
 
     return res
-      .status(result.success ? 200 : 400)
+      .status(result.statusCode || (result.success ? 200 : 400))
       .json(result);
 
-  } catch (err) {
+  } catch (error) {
+    console.error("Delete Schedule Error:", error);
+
     return res.status(500).json({
       success: false,
-      message: err.message
+      message: "Internal Server Error"
     });
   }
 };

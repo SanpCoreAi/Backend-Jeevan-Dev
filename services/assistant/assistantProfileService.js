@@ -24,7 +24,7 @@ body:{message:"Unauthorized"}
 };
 
 
-const exists=await AssistantProfile.getAssistantProfile(user_id);
+const exists=await AssistantProfile.hasAssistantProfile(user_id);
 
 if(exists)
 return {

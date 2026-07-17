@@ -127,6 +127,20 @@ exports.getAssistantProfile = async (userId) => {
   };
 };
 
+exports.hasAssistantProfile = async (userId) => {
+  const [rows] = await db.query(
+    `
+    SELECT 1
+    FROM assistant_profiles
+    WHERE user_id = ?
+    LIMIT 1
+    `,
+    [userId]
+  );
+
+  return rows.length > 0;
+};
+
 exports.updateAssistantProfile = async (
   userId,
   data

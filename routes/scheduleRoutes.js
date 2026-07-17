@@ -17,7 +17,7 @@ router.get('/getHospitalsName', verifyToken,allowRoles(2,3), ctrl.getHospitals);
 router.put("/updateSchedule/:id", verifyToken,allowRoles(2), ctrl.update);
 
 router.delete(
-  "/:scheduleId",
+  "/Delete/:scheduleId",
   verifyToken,
   ctrl.deleteSchedule
 );

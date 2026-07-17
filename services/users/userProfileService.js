@@ -90,12 +90,9 @@ exports.createProfile = async (userId, body) => {
 
 
 
-// ================= UPDATE PROFILE =================
-
 exports.updateUserProfile = async (userId, body) => {
   try {
 
-    // ✅ check existing profile
     const existing =
       await userProfileModel.getUserProfileByUserId(userId);
 
@@ -107,7 +104,7 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
-    // ✅ normalize arrays
+    // Normalize arrays
     if (body.language && !Array.isArray(body.language)) {
       body.language = [body.language];
     }
@@ -123,7 +120,6 @@ exports.updateUserProfile = async (userId, body) => {
       body.allergies = [body.allergies];
     }
 
-    // ✅ validate objects
     if (body.address && typeof body.address !== "object") {
       return {
         success: false,
@@ -143,7 +139,6 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
-    // ✅ update profile
     const updated =
       await userProfileModel.updateUserProfile(userId, body);
 
@@ -155,42 +150,15 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
-    // ✅ fetch updated profile
-    const updatedProfile =
-      await userProfileModel.getUserProfileByUserId(userId);
-
     return {
       success: true,
       message: "Profile updated successfully",
       data: {
-        ...updatedProfile,
-
-        language: safeParse(
-          updatedProfile.language
-        ),
-
-        existing_conditions: safeParse(
-          updatedProfile.existing_conditions
-        ),
-
-        allergies: safeParse(
-          updatedProfile.allergies
-        ),
-
-        address: safeParse(
-          updatedProfile.address,
-          {}
-        ),
-
-        emergency_contact: safeParse(
-          updatedProfile.emergency_contact,
-          {}
-        )
+        user_id: userId
       }
     };
 
   } catch (err) {
-
     return {
       success: false,
       statusCode: 500,
@@ -198,10 +166,6 @@ exports.updateUserProfile = async (userId, body) => {
     };
   }
 };
-
-
-
-// ================= GET USER PROFILE =================
 
 exports.getUserProfile = async (userId) => {
 
