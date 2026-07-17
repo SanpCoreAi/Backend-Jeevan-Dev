@@ -85,15 +85,19 @@ async function findOverlappingSchedule(data) {
 
 async function getScheduleByDoctor(doctorId) {
   const [rows] = await db.query(
-    `SELECT * FROM schedules WHERE doctor_id = ?`,
+    `
+    SELECT *
+    FROM schedules
+    WHERE doctor_id = ?
+    `,
     [doctorId]
   );
 
-   console.log(rows); 
   return rows;
 }
 
 async function findOverlappingScheduleForUpdate(data) {
+
   const [rows] = await db.query(
     `
     SELECT id
@@ -102,8 +106,8 @@ async function findOverlappingScheduleForUpdate(data) {
       AND id <> ?
 
       AND (
-        (? IS NULL AND hospital_name IS NULL)
-        OR hospital_name = ?
+            (? IS NULL AND hospital_name IS NULL)
+            OR hospital_name = ?
       )
 
       AND start_time < ?
@@ -122,7 +126,7 @@ async function findOverlappingScheduleForUpdate(data) {
       data.end_time,
       data.start_time,
       data.end_date,
-      data.start_date,
+      data.start_date
     ]
   );
 
@@ -146,38 +150,71 @@ async function getSchedulePublicByDoctorId(doctorId) {
   return getScheduleByDoctor(doctorId);
 }
 
-// ✅ Update schedule
-async function update(doctorId, scheduleId, data) {
-  const [res] = await db.query(
-    `UPDATE schedules SET
-      location_id=?,
-      hospital_name=?,
-      start_time=?,
-      end_time=?,
-      slot_duration=?,
-      break_minutes=?,
-      active_days=?,
-      start_date=?,
-      end_date=?,
-      note=?
-     WHERE doctor_id=? AND id=?`,
+async function deleteActiveSlots(doctorId, scheduleId) {
+
+  const [result] = await db.query(
+    `
+    DELETE FROM schedule_slots
+    WHERE doctor_id = ?
+      AND schedule_id = ?
+      AND LOWER(status) = 'active'
+    `,
     [
-      data.location_id ?? null,
-      data.hospital_name ?? null,
-      data.start_time ?? null,
-      data.end_time ?? null,
-      data.slot_duration ?? null,
-      data.break_minutes ?? 0,
-      JSON.stringify(Array.isArray(data.active_days) ? data.active_days : []),
-      data.start_date ?? null,
-      data.end_date ?? null,
-      data.note ?? null,
       doctorId,
       scheduleId
     ]
   );
 
-  return res.affectedRows > 0;
+  return result;
+}
+
+async function update(doctorId, scheduleId, body) {
+
+  // Ensure active_days is stored as a JSON string to avoid SQL syntax issues
+  let activeDaysValue = body.active_days;
+
+  if (Array.isArray(activeDaysValue) || typeof activeDaysValue === 'object') {
+    try {
+      activeDaysValue = JSON.stringify(activeDaysValue || []);
+    } catch (e) {
+      activeDaysValue = '' + (activeDaysValue || '');
+    }
+  }
+
+  const [result] = await db.query(
+    `
+    UPDATE schedules
+    SET
+      location_id = ?,
+      hospital_name = ?,
+      start_time = ?,
+      end_time = ?,
+      slot_duration = ?,
+      break_minutes = ?,
+      active_days = ?,
+      start_date = ?,
+      end_date = ?,
+      note = ?
+    WHERE id = ?
+      AND doctor_id = ?
+    `,
+    [
+      body.location_id,
+      body.hospital_name,
+      body.start_time,
+      body.end_time,
+      body.slot_duration,
+      body.break_minutes,
+      activeDaysValue,
+      body.start_date,
+      body.end_date,
+      body.note,
+      scheduleId,
+      doctorId
+    ]
+  );
+
+  return result.affectedRows > 0;
 }
 
 
@@ -237,6 +274,7 @@ module.exports = {
   findOverlappingScheduleForUpdate,
   deleteByScheduleId,
   update,
+  deleteActiveSlots,
   remove,
   findOverlappingSchedule
 };

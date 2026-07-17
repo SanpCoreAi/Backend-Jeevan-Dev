@@ -131,9 +131,17 @@ exports.update = async (req, res) => {
     const { id: scheduleId } = req.params;
     const doctorId = req.user.id;
 
+    // Validate Schedule ID
+    if (!scheduleId || isNaN(scheduleId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid schedule ID is required."
+      });
+    }
+
     const result = await ScheduleService.updateSchedule(
       doctorId,
-      scheduleId,
+      Number(scheduleId),
       req.body
     );
 

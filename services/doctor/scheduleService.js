@@ -257,22 +257,53 @@ async function getSchedulePublicByDoctorId(doctorId) {
 
 async function updateSchedule(doctorId, scheduleId, body) {
   try {
-    // 1. Existing schedule
+
+    if (!scheduleId) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Schedule ID is required."
+      };
+    }
+
     const schedules = await ScheduleModel.getScheduleByDoctor(doctorId);
 
     const existing = schedules.find(
-      (s) => Number(s.id) === Number(scheduleId)
+      schedule => Number(schedule.id) === Number(scheduleId)
     );
 
     if (!existing) {
       return {
         success: false,
         statusCode: 404,
-        message: "Schedule not found",
+        message: "Schedule not found."
       };
     }
 
-    // 2. Time conversion
+    const [inactiveSlots] = await db.query(
+      `
+      SELECT id
+      FROM schedule_slots
+      WHERE doctor_id = ?
+        AND schedule_id = ?
+        AND LOWER(status) = 'inactive'
+      LIMIT 1
+      `,
+      [
+        doctorId,
+        scheduleId
+      ]
+    );
+
+    if (inactiveSlots.length > 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message:
+          "Schedule cannot be updated because it contains inactive slots."
+      };
+    }
+
     if (body.start_time) {
       body.start_time = parse12to24(body.start_time);
     }
@@ -281,21 +312,28 @@ async function updateSchedule(doctorId, scheduleId, body) {
       body.end_time = parse12to24(body.end_time);
     }
 
-    // 3. Overlap check
     const isOverlap =
       await ScheduleModel.findOverlappingScheduleForUpdate({
+
         doctor_id: doctorId,
+
         schedule_id: scheduleId,
+
         hospital_name:
           body.hospital_name ?? existing.hospital_name,
+
         start_time:
           body.start_time ?? existing.start_time,
+
         end_time:
           body.end_time ?? existing.end_time,
+
         start_date:
           body.start_date ?? existing.start_date,
+
         end_date:
-          body.end_date ?? existing.end_date,
+          body.end_date ?? existing.end_date
+
       });
 
     if (isOverlap) {
@@ -303,11 +341,10 @@ async function updateSchedule(doctorId, scheduleId, body) {
         success: false,
         statusCode: 409,
         message:
-          "Another schedule already exists for the selected time.",
+          "Another schedule already exists for the selected time."
       };
     }
 
-    // 4. Update schedule
     const updated = await ScheduleModel.update(
       doctorId,
       scheduleId,
@@ -340,7 +377,7 @@ async function updateSchedule(doctorId, scheduleId, body) {
           body.end_date ?? existing.end_date,
 
         note:
-          body.note ?? existing.note,
+          body.note ?? existing.note
       }
     );
 
@@ -348,36 +385,42 @@ async function updateSchedule(doctorId, scheduleId, body) {
       return {
         success: false,
         statusCode: 400,
-        message: "Schedule update failed",
+        message: "Schedule update failed."
       };
     }
 
-    // 5. Delete old slots
-    await ScheduleModel.deleteByScheduleId(scheduleId);
+    await ScheduleModel.deleteActiveSlots(
+      doctorId,
+      scheduleId
+    );
 
-    // 6. Generate new slots
-    const totalSlots =
-      await generateScheduleSlots(scheduleId, {
+    const totalSlots = await generateScheduleSlots(
+      scheduleId,
+      {
         ...existing,
-        ...body,
-      });
+        ...body
+      }
+    );
+
 
     return {
       success: true,
       statusCode: 200,
-      message: "Schedule updated successfully",
+      message: "Schedule updated successfully.",
       data: {
         scheduleId: Number(scheduleId),
-        totalSlots,
-      },
+        totalSlots
+      }
     };
-  } catch (err) {
-    console.error(err);
+
+  } catch (error) {
+
+    console.error("Update Schedule Service Error:", error);
 
     return {
       success: false,
       statusCode: 500,
-      message: err.message || "Internal Server Error",
+      message: error.message || "Internal Server Error"
     };
   }
 }
