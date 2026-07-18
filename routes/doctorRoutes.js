@@ -11,7 +11,14 @@ const {allowRoles}=require("../middlewares/role");
 
 
 router.post("/create-profile", verifyToken,allowRoles(2), doctorController.createDoctorProfile);
-router.put("/update-profile", verifyToken,allowRoles(2), doctorController.updateDoctorProfile);
+
+router.patch(
+  "/update-profile",
+  verifyToken,
+  allowRoles(2),
+  doctorController.updateDoctorProfile
+);
+
 router.get("/getDoctorProfileById", verifyToken, doctorController.getDoctorProfile);
 router.get("/getDoctorPublicProfileById/:userId", verifyToken, doctorController.getDoctorPublicProfileById);
 

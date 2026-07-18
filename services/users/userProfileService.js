@@ -93,10 +93,18 @@ exports.createProfile = async (userId, body) => {
 exports.updateUserProfile = async (userId, body) => {
   try {
 
+    if (!body || Object.keys(body).length === 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "At least one field is required."
+      };
+    }
+
     const existing =
       await userProfileModel.getUserProfileByUserId(userId);
 
-    if (!existing || !existing.username) {
+    if (!existing) {
       return {
         success: false,
         statusCode: 404,
@@ -104,7 +112,6 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
-    // Normalize arrays
     if (body.language && !Array.isArray(body.language)) {
       body.language = [body.language];
     }
@@ -116,15 +123,21 @@ exports.updateUserProfile = async (userId, body) => {
       body.existing_conditions = [body.existing_conditions];
     }
 
-    if (body.allergies && !Array.isArray(body.allergies)) {
+    if (
+      body.allergies &&
+      !Array.isArray(body.allergies)
+    ) {
       body.allergies = [body.allergies];
     }
 
-    if (body.address && typeof body.address !== "object") {
+    if (
+      body.address &&
+      typeof body.address !== "object"
+    ) {
       return {
         success: false,
         statusCode: 400,
-        message: "Address must be an object"
+        message: "Address must be an object."
       };
     }
 
@@ -135,7 +148,7 @@ exports.updateUserProfile = async (userId, body) => {
       return {
         success: false,
         statusCode: 400,
-        message: "Emergency contact must be an object"
+        message: "Emergency contact must be an object."
       };
     }
 
@@ -146,13 +159,14 @@ exports.updateUserProfile = async (userId, body) => {
       return {
         success: false,
         statusCode: 400,
-        message: "Update failed"
+        message: "Profile update failed."
       };
     }
 
     return {
       success: true,
-      message: "Profile updated successfully",
+      statusCode: 200,
+      message: "Profile updated successfully.",
       data: {
         user_id: userId
       }
@@ -162,7 +176,7 @@ exports.updateUserProfile = async (userId, body) => {
     return {
       success: false,
       statusCode: 500,
-      message: err.message || "Update failed"
+      message: err.message
     };
   }
 };

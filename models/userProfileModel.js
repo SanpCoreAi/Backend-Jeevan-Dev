@@ -74,54 +74,56 @@ exports.createUserProfile = async (userId, data) => {
   }
 };
 
-exports.updateUserProfile = async (userId, data) => {
-  const {
-    username,
-    age,
-    gender,
-    language,
-    address,
-    blood_group,
-    weight,
-    height,
-    existing_conditions,
-    allergies,
-    bio,
-    emergency_contact  
-  } = data;
+exports.updateUserProfile = async (userId, body) => {
+  const fieldMap = {
+    username: "username",
+    age: "age",
+    gender: "gender",
+    language: "language",
+    address: "address",
+    blood_group: "blood_group",
+    weight: "weight",
+    height: "height",
+    existing_conditions: "existing_conditions",
+    allergies: "allergies",
+    bio: "bio",
+    emergency_contact: "emergency_contact"
+  };
+
+  const jsonFields = [
+    "language",
+    "address",
+    "existing_conditions",
+    "allergies",
+    "emergency_contact"
+  ];
+
+  const updates = [];
+  const values = [];
+
+  for (const key of Object.keys(body)) {
+    if (!fieldMap[key]) continue;
+
+    updates.push(`${fieldMap[key]} = ?`);
+
+    if (jsonFields.includes(key)) {
+      values.push(JSON.stringify(body[key]));
+    } else {
+      values.push(body[key]);
+    }
+  }
+
+  if (updates.length === 0) {
+    return false;
+  }
+
+  values.push(userId);
 
   const sql = `
-    UPDATE user_profiles SET
-      username = COALESCE(?, username),
-      age = COALESCE(?, age),
-      gender = COALESCE(?, gender),
-      language = COALESCE(?, language),
-      address = COALESCE(?, address),
-      blood_group = COALESCE(?, blood_group),
-      weight = COALESCE(?, weight),
-      height = COALESCE(?, height),
-      existing_conditions = COALESCE(?, existing_conditions),
-      allergies = COALESCE(?, allergies),
-      bio = COALESCE(?, bio),
-       emergency_contact = COALESCE(?, emergency_contact) 
+    UPDATE user_profiles
+    SET ${updates.join(", ")}
     WHERE user_id = ?
   `;
-
-  const values = [
-    username ?? null,
-    age ?? null,
-    gender ?? null,
-    language ? JSON.stringify(language) : null,
-    address ? JSON.stringify(address) : null,
-    blood_group ?? null,
-    weight ?? null,
-    height ?? null,
-    existing_conditions ? JSON.stringify(existing_conditions) : null,
-    allergies ? JSON.stringify(allergies) : null,
-    bio ?? null,
-    emergency_contact ? JSON.stringify(emergency_contact) : null,
-    userId
-  ];
 
   const [result] = await db.execute(sql, values);
 

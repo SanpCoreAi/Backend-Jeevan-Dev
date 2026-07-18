@@ -75,9 +75,8 @@ const createDoctorSchema = Joi.object({
 });
 
 
-/* ================= UPDATE ================= */
 const updateDoctorSchema = Joi.object({
-  username: Joi.string().optional(),
+  username: Joi.string().trim().optional(),
 
   age: Joi.number()
     .integer()
@@ -89,46 +88,56 @@ const updateDoctorSchema = Joi.object({
     .valid("Male", "Female", "Other")
     .optional(),
 
-  specialization: Joi.string().optional(),
+  specialization: Joi.string().trim().optional(),
 
-  qualification: Joi.string().optional(),
+  qualification: Joi.string().trim().optional(),
 
   experience: Joi.number()
+    .integer()
     .min(0)
     .optional(),
 
   language: Joi.array()
-    .items(Joi.string())
+    .items(Joi.string().trim())
     .optional(),
 
   consultationFee: Joi.number()
     .min(0)
     .optional(),
 
-  medicalLicenseNo: Joi.string().optional(),
+  medicalLicenseNo: Joi.string()
+    .trim()
+    .optional(),
 
   bio: Joi.string()
     .allow("")
+    .trim()
     .optional(),
 
   availability: Joi.array()
     .items(availabilitySchema)
     .optional(),
 
-  hospitalDetail: Joi.array().items(
-    Joi.object({
-      hospitalName: Joi.string().optional(),
-      flatPlotNo: Joi.string().allow("").optional(),
-      buildingSociety: Joi.string().allow("").optional(),
-      streetName: Joi.string().allow("").optional(),
-      areaLocality: Joi.string().allow("").optional(),
-      landmark: Joi.string().allow("").optional(),
-      city: Joi.string().optional(),
-      district: Joi.string().optional(),
-      state: Joi.string().optional(),
-      pinCode: Joi.string().optional()
-    })
-  ).optional()
+  hospitalDetail: Joi.array()
+    .items(
+      Joi.object({
+        hospitalName: Joi.string().trim().optional(),
+        flatPlotNo: Joi.string().allow("").trim().optional(),
+        buildingSociety: Joi.string().allow("").trim().optional(),
+        streetName: Joi.string().allow("").trim().optional(),
+        areaLocality: Joi.string().allow("").trim().optional(),
+        landmark: Joi.string().allow("").trim().optional(),
+        city: Joi.string().trim().optional(),
+        district: Joi.string().trim().optional(),
+        state: Joi.string().trim().optional(),
+        pinCode: Joi.string().trim().optional()
+      })
+    )
+    .optional()
+})
+.min(1)
+.messages({
+  "object.min": "At least one field is required to update."
 });
 
 

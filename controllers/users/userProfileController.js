@@ -132,17 +132,16 @@ exports.updateUserProfile = async (req, res) => {
       req.body
     );
 
-    if (!result.success) {
-      return res.status(result.statusCode || 400).json(result);
-    }
-
-    return res.status(200).json(result);
+    return res
+      .status(result.statusCode || (result.success ? 200 : 400))
+      .json(result);
 
   } catch (error) {
     console.error("Update profile error:", error);
+
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: "Internal Server Error"
     });
   }
 };

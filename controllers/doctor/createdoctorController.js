@@ -76,7 +76,7 @@ async function updateDoctorProfile(req, res) {
 
     const result = await DoctorService.updateProfile(req.user.id, value);
 
-    return res.status(200).json(result);
+    return res.status(result.statusCode || 200).json(result);
 
   } catch (err) {
     console.error("Update Doctor Error:", err);

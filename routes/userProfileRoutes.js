@@ -8,9 +8,11 @@ router.post("/createProfile", verifyToken, userProfileController.createUserProfi
 
 router.get("/getProfile", verifyToken, userProfileController.getUserProfile);
 
-router.put("/updateProfile", verifyToken, userProfileController.updateUserProfile);
-
-router.patch("/updateProfile", verifyToken, userProfileController.updateUserProfile);
+router.patch(
+  "/updateProfile",
+  verifyToken,
+  userProfileController.updateUserProfile
+);
 
 router.get(
   "/patient-card/:patientId",

@@ -264,30 +264,27 @@ async function getDoctorPublicProfileById(userId) {
 
 async function updateProfile(userId, body) {
   if (!userId) {
-    throw new Error("Unauthorized user");
+    return {
+      success: false,
+      statusCode: 401,
+      message: "Unauthorized user"
+    };
   }
 
-  const params = [
-    body.username ?? null,
-    body.specialization ?? null,
-    body.qualification ?? null,
-    body.experience ?? 0,
-    JSON.stringify(body.language ?? []),
-    body.consultationFee ?? 0,
-    body.medicalLicenseNo ?? null,
-    body.bio ?? null,
-    JSON.stringify(body.availability ?? []),
-    JSON.stringify(body.hospitalDetail ?? []),
-    body.age ?? null,
-    body.gender ?? null,
-    userId
-  ];
+  if (Object.keys(body).length === 0) {
+    return {
+      success: false,
+      statusCode: 400,
+      message: "At least one field is required."
+    };
+  }
 
-  await DoctorModel.updateDoctor(params);
+  await DoctorModel.updateDoctor(userId, body);
 
   return {
     success: true,
-    message: "Doctor profile updated successfully"
+    statusCode: 200,
+    message: "Doctor profile updated successfully."
   };
 }
 

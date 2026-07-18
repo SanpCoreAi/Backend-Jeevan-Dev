@@ -456,25 +456,54 @@ const getDoctorPublicProfileById = async (doctorId) => {
   return rows[0] || null;
 };
 
-const updateDoctor = async (params) => {
+const updateDoctor = async (userId, body) => {
+  const fields = [];
+  const values = [];
+
+  const jsonFields = ["language", "availability", "hospitalDetail"];
+
+  const fieldMap = {
+    username: "username",
+    specialization: "specialization",
+    qualification: "qualification",
+    experience: "experience",
+    language: "language",
+    consultationFee: "consultation_fee",
+    medicalLicenseNo: "medical_license_no",
+    bio: "bio",
+    availability: "availability",
+    hospitalDetail: "hospital_detail",
+    age: "age",
+    gender: "gender"
+  };
+
+  for (const key in body) {
+    if (!fieldMap[key]) continue;
+
+    fields.push(`${fieldMap[key]} = ?`);
+
+    if (jsonFields.includes(key)) {
+      values.push(JSON.stringify(body[key]));
+    } else {
+      values.push(body[key]);
+    }
+  }
+
+  if (fields.length === 0) {
+    throw new Error("No valid fields to update.");
+  }
+
+  values.push(userId);
+
   const sql = `
-    UPDATE doctors SET
-      username = ?,
-      specialization = ?,
-      qualification = ?,
-      experience = ?,
-      language = ?,
-      consultation_fee = ?,
-      medical_license_no = ?,
-      bio = ?,
-      availability = ?,
-      hospital_detail = ?,
-      age = ?,
-      gender = ?
+    UPDATE doctors
+    SET ${fields.join(", ")}
     WHERE user_id = ?
   `;
 
-  await db.execute(sql, params);
+  const [result] = await db.execute(sql, values);
+
+  return result;
 };
 
 const getAllDoctors = async () => {
