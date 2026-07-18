@@ -535,9 +535,9 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         };
       }
 
-    const [inactive] = await db.query(
+const [inactive] = await db.query(
   `
-    SELECT COUNT(*) AS total
+  SELECT COUNT(*) AS total
   FROM schedule_slots
   WHERE doctor_id = ?
     AND schedule_id = ?
@@ -547,21 +547,36 @@ async function deleteSchedule(scheduleId, body, doctorId) {
   [doctorId, scheduleId, dateStr]
 );
 
-const skippedInactiveSlots = inactive[0].total;
+if (inactive[0].total > 0) {
+  return {
+    success: false,
+    statusCode: 400,
+    message:
+      "Slots cannot be deleted because this date contains inactive slot(s)."
+  };
+}
 
-    const result = await SlotModel.deleteSlotsByDate({
-      doctorId,
-     scheduleId,
-    date: dateStr
-  });
+const result = await SlotModel.deleteSlotsByDate({
+  doctorId,
+  scheduleId,
+  date: dateStr
+});
+
+if (result.affectedRows === 0) {
+  return {
+    success: false,
+    statusCode: 400,
+    message: "No slots were deleted."
+  };
+}
 
 return {
   success: true,
   statusCode: 200,
   message: "Date slots deleted successfully.",
-  deletedSlots: result.affectedRows,
-  skippedInactiveSlots
+  deletedSlots: result.affectedRows
 };
+
     }
 
 if (slotId) {
