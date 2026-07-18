@@ -1,28 +1,71 @@
 const db = require("../config/db");
 
-const createDoctor = async (params) => {
+const createDoctor = async (userId, body) => {
+
+  const fieldMap = {
+    username: "username",
+    specialization: "specialization",
+    qualification: "qualification",
+    experience: "experience",
+    language: "language",
+    consultationFee: "consultation_fee",
+    medicalLicenseNo: "medical_license_no",
+    bio: "bio",
+    availability: "availability",
+    hospitalDetail: "hospital_detail",
+    age: "age",
+    gender: "gender"
+  };
+
+  const jsonFields = [
+    "language",
+    "availability",
+    "hospitalDetail"
+  ];
+
+  const defaultValues = {
+    username: "",
+    specialization: "",
+    qualification: "",
+    experience: "",
+    language: JSON.stringify([]),
+    consultationFee: 0,
+    medicalLicenseNo: "",
+    bio: "",
+    availability: JSON.stringify([]),
+    hospitalDetail: JSON.stringify([]),
+    age: null,
+    gender: null
+  };
+
+  const columns = ["user_id"];
+  const placeholders = ["?"];
+  const values = [userId];
+
+  for (const key of Object.keys(fieldMap)) {
+    columns.push(fieldMap[key]);
+    placeholders.push("?");
+
+    if (Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined && body[key] !== null) {
+      if (jsonFields.includes(key)) {
+        values.push(JSON.stringify(body[key]));
+      } else {
+        values.push(body[key]);
+      }
+    } else {
+      values.push(defaultValues[key]);
+    }
+  }
+
   const sql = `
     INSERT INTO doctors
-    (
-      user_id,
-      username,
-      specialization,
-      qualification,
-      experience,
-      language,
-      consultation_fee,
-      medical_license_no,
-      bio,
-      age,
-      gender,
-      availability,
-      hospital_detail
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (${columns.join(", ")})
+    VALUES (${placeholders.join(", ")})
   `;
 
-  const [result] = await db.execute(sql, params);
-  return result.insertId;
+  const [result] = await db.execute(sql, values);
+
+  return result;
 };
 
 const getByUserId = async (userId) => {
@@ -97,9 +140,6 @@ const getBydoctorId = async (userId) => {
       u.email AS user_email,
       u.phone_number AS user_phone_number,
 
-      -- =========================
-      -- DOCTOR IMAGE
-      -- =========================
 
       (
         SELECT di.file_key
@@ -119,9 +159,6 @@ const getBydoctorId = async (userId) => {
         LIMIT 1
       ) AS image_folder_name,
 
-      -- =========================
-      -- DOCTOR FILES
-      -- =========================
 
       COALESCE(
         (
@@ -177,7 +214,6 @@ const getBydoctorId = async (userId) => {
 
   return rows[0] || null;
 };
-
 
 async function getProfile(userId) {
   const d =
@@ -456,11 +492,25 @@ const getDoctorPublicProfileById = async (doctorId) => {
   return rows[0] || null;
 };
 
+const getDoctorByUserId = async (userId) => {
+
+  const [rows] = await db.execute(
+    `
+      SELECT id
+      FROM doctors
+      WHERE user_id = ?
+      LIMIT 1
+    `,
+    [userId]
+  );
+
+  return rows.length ? rows[0] : null;
+};
+
 const updateDoctor = async (userId, body) => {
+
   const fields = [];
   const values = [];
-
-  const jsonFields = ["language", "availability", "hospitalDetail"];
 
   const fieldMap = {
     username: "username",
@@ -477,7 +527,14 @@ const updateDoctor = async (userId, body) => {
     gender: "gender"
   };
 
-  for (const key in body) {
+  const jsonFields = [
+    "language",
+    "availability",
+    "hospitalDetail"
+  ];
+
+  for (const key of Object.keys(body)) {
+
     if (!fieldMap[key]) continue;
 
     fields.push(`${fieldMap[key]} = ?`);
@@ -490,7 +547,7 @@ const updateDoctor = async (userId, body) => {
   }
 
   if (fields.length === 0) {
-    throw new Error("No valid fields to update.");
+    return { affectedRows: 0 };
   }
 
   values.push(userId);
@@ -641,6 +698,7 @@ module.exports = {
   createDoctor,
   getByUserId,
   getBydoctorId,
+  getDoctorByUserId,
   getDoctorPublicProfileById,
   getAllDoctors,
   updateDoctor,

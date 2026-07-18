@@ -104,42 +104,85 @@ exports.getAssistantProfile = async (userId) => {
 };
 
 
-exports.updateAssistantProfile=async(userId,data)=>{
-try{
+exports.updateAssistantProfile = async (userId, data) => {
+  try {
 
-data=sanitize(data);
+    if (!userId) {
+      return {
+        success: false,
+        statusCode: 401,
+        message: "Unauthorized user."
+      };
+    }
 
+    data = sanitize(data);
 
-const updated=
-await AssistantProfile.updateAssistantProfile(
-userId,
-data
-);
+    if (!data || Object.keys(data).length === 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "At least one field is required."
+      };
+    }
 
+    const profile =
+      await AssistantProfile.getAssistantProfileByUserId(userId);
 
-if(!updated)
-return {
-statusCode:400,
-body:{message:"Profile update failed"}
-};
+    // CREATE
+    if (!profile) {
 
+      const created =
+        await AssistantProfile.createAssistantProfile(
+          userId,
+          data
+        );
 
-return {
-statusCode:200,
-body:{
-message:"Assistant profile updated successfully"
-}
-};
+      if (!created) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Profile creation failed."
+        };
+      }
 
+      return {
+        success: true,
+        statusCode: 201,
+        message: "Assistant profile created successfully."
+      };
+    }
 
-}catch(error){
+    // UPDATE
+    const updated =
+      await AssistantProfile.updateAssistantProfile(
+        userId,
+        data
+      );
 
-return {
-statusCode:500,
-body:{message:error.message}
-};
+    if (!updated) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Profile update failed."
+      };
+    }
 
-}
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Assistant profile updated successfully."
+    };
+
+  } catch (error) {
+
+    console.error(error);
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
+    };
+  }
 };
 
 

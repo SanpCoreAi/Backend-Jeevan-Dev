@@ -1,77 +1,69 @@
 const db = require("../config/db");
 
 
-exports.createUserProfile = async (userId, data) => {
-  try {
-  const {
-      username,
-      age = null,
-      gender = null,
-      language = [],
-      address = {},
-      blood_group = null,
-      weight = null,
-      height = null,
-      existing_conditions = [],
-      allergies = [],
-      bio = null,
-      emergency_contact = {}
-    } = data;
+exports.getUserProfileByUserId = async (userId) => {
+  const sql = `
+    SELECT *
+    FROM user_profiles
+    WHERE user_id = ?
+    LIMIT 1
+  `;
 
-    const [existing] = await db.execute(
-      "SELECT user_id FROM user_profiles WHERE user_id = ?",
-      [userId]
-    );
+  const [rows] = await db.execute(sql, [userId]);
 
-    const sql = `
-      INSERT INTO user_profiles (
-        user_id,
-        username,
-        age,
-        gender,
+  return rows.length ? rows[0] : null;
+};
 
+exports.createUserProfile = async (userId, body) => {
+  const fieldMap = {
+    username: "username",
+    age: "age",
+    gender: "gender",
+    language: "language",
+    address: "address",
+    blood_group: "blood_group",
+    weight: "weight",
+    height: "height",
+    existing_conditions: "existing_conditions",
+    allergies: "allergies",
+    bio: "bio",
+    emergency_contact: "emergency_contact"
+  };
 
-        language,
-        address,
-        blood_group,
-        weight,
-        height,
-        existing_conditions,
-        allergies,
-        bio,
-        emergency_contact
-      ) VALUES (?, ?, ?, ?,   ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+  const jsonFields = [
+    "language",
+    "address",
+    "existing_conditions",
+    "allergies",
+    "emergency_contact"
+  ];
 
-    const values = [
-      userId,
-      username,
-      age,
-      gender,
-    
+  const columns = ["user_id"];
+  const placeholders = ["?"];
+  const values = [userId];
 
-      JSON.stringify(language),
-      JSON.stringify(address),
-      blood_group,
-      weight,
-      height,
-      JSON.stringify(existing_conditions),
-      JSON.stringify(allergies),
-      bio,
-      JSON.stringify(emergency_contact)
-    ];
+  for (const key of Object.keys(body)) {
+    if (!fieldMap[key]) continue;
 
-    const [result] = await db.execute(sql, values);
+    columns.push(fieldMap[key]);
+    placeholders.push("?");
 
-    return {
-      success: true,
-      insertId: result.insertId
-    };
-
-  } catch (error) {
-    console.error("DB Error:", error);
-    throw error;
+    if (jsonFields.includes(key)) {
+      values.push(JSON.stringify(body[key]));
+    } else {
+      values.push(body[key]);
+    }
   }
+
+  const sql = `
+    INSERT INTO user_profiles
+    (${columns.join(", ")})
+    VALUES (${placeholders.join(", ")})
+  `;
+
+  const [result] = await db.execute(sql, values);
+
+  return result.affectedRows > 0;
 };
 
 exports.updateUserProfile = async (userId, body) => {
@@ -129,6 +121,8 @@ exports.updateUserProfile = async (userId, body) => {
 
   return result.affectedRows > 0;
 };
+
+
 
 exports.checkDoctorPatientRelation = async (
   doctorId,
@@ -204,39 +198,7 @@ exports.getPatientCardProfile = async (
   return rows[0];
 };
 
-exports.getUserProfileByUserId = async (userId) => {
-  const sql = `
-    SELECT
-      u.id AS user_id,
-      u.full_name,
-      u.email,
-      u.phone_number,
 
-      p.username,
-      p.age,
-      p.gender,
-      p.language,
-      p.address,
-      p.blood_group,
-      p.weight,
-      p.height,
-      p.existing_conditions,
-      p.allergies,
-      p.bio,
- p.emergency_contact,  
-      di.file_key AS doctor_image
-
-    FROM users u
-    LEFT JOIN user_profiles p ON u.id = p.user_id
-    LEFT JOIN doctor_image di ON u.id = di.doctor_id  
-
-    WHERE u.id = ?
-    LIMIT 1
-  `;
-
-  const [rows] = await db.execute(sql, [userId]);
-  return rows[0];
-};
 
 exports.getPatientDetails = async (doctorId, appointmentId) => {
   const [rows] = await db.execute(

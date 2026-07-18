@@ -123,7 +123,7 @@ exports.updateUserProfile = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized user"
+        message: "Unauthorized user."
       });
     }
 
@@ -137,11 +137,11 @@ exports.updateUserProfile = async (req, res) => {
       .json(result);
 
   } catch (error) {
-    console.error("Update profile error:", error);
+    console.error("Update User Profile Error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error."
     });
   }
 };

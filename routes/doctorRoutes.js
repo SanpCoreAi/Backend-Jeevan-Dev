@@ -8,8 +8,6 @@ const { verifyToken } = require("../middlewares/authMiddleware");
 const DoctorRatingController = require("../controllers/doctor/doctorRatingController");
 const {allowRoles}=require("../middlewares/role");
 
-
-
 router.post("/create-profile", verifyToken,allowRoles(2), doctorController.createDoctorProfile);
 
 router.patch(
@@ -29,7 +27,6 @@ router.get("/getDoctors", getDoctors);
 router.get("/doctor/search", DoctorSearchController.searchDoctors);
 
 router.get("/public/:doctorId", doctorController.getDoctorPublicProfileById);
-
 
 router.get("/:doctorId", DoctorRatingController.getDoctorProfileWithRating);
 

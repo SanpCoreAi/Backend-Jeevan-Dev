@@ -1,52 +1,51 @@
 const db = require("../../config/db");
 
 
-exports.createAssistantProfile = async (data) => {
+exports.createAssistantProfile = async (userId, data) => {
 
-  const {
-    user_id,
-    gender,
-    age,
-    department,
-    education,
-    experience,
-    language,
-    address,
-    bio
-  } = data;
+  const fieldMap = {
+    gender: "gender",
+    age: "age",
+    department: "department",
+    education: "education",
+    experience: "experience",
+    language: "language",
+    address: "address",
+    bio: "bio"
+  };
 
+  const jsonFields = [
+    "language",
+    "address"
+  ];
 
-  const [result] = await db.query(
-    `
+  const columns = ["user_id"];
+  const placeholders = ["?"];
+  const values = [userId];
+
+  for (const key of Object.keys(data)) {
+
+    if (!fieldMap[key]) continue;
+
+    columns.push(fieldMap[key]);
+    placeholders.push("?");
+
+    if (jsonFields.includes(key)) {
+      values.push(JSON.stringify(data[key]));
+    } else {
+      values.push(data[key]);
+    }
+  }
+
+  const sql = `
     INSERT INTO assistant_profiles
-    (
-      user_id,
-      gender,
-      age,
-      department,
-      education,
-      experience,
-      language,
-      address,
-      bio
-    )
-    VALUES (?,?,?,?,?,?,?,?,?)
-    `,
-    [
-      user_id,
-      gender,
-      age,
-      department,
-      education,
-      experience,
-      JSON.stringify(language || []),
-      JSON.stringify(address || {}),
-      bio
-    ]
-  );
+    (${columns.join(", ")})
+    VALUES (${placeholders.join(", ")})
+  `;
 
+  const [result] = await db.query(sql, values);
 
-  return result.insertId;
+  return result.affectedRows > 0;
 };
 
 exports.getAssistantProfile = async (userId) => {
@@ -141,69 +140,70 @@ exports.hasAssistantProfile = async (userId) => {
   return rows.length > 0;
 };
 
-exports.updateAssistantProfile = async (
-  userId,
-  data
-) => {
+exports.getAssistantProfileByUserId = async (userId) => {
 
+  const [rows] = await db.query(
+    `
+    SELECT id
+    FROM assistant_profiles
+    WHERE user_id = ?
+    LIMIT 1
+    `,
+    [userId]
+  );
 
-  const {
-    gender,
-    age,
-    department,
-    education,
-    experience,
-    language,
-    address,
-    bio
-  } = data;
+  return rows.length ? rows[0] : null;
+};
 
+exports.updateAssistantProfile = async (userId, data) => {
 
+  const fieldMap = {
+    gender: "gender",
+    age: "age",
+    department: "department",
+    education: "education",
+    experience: "experience",
+    language: "language",
+    address: "address",
+    bio: "bio"
+  };
 
-  const [result] = await db.query(
+  const jsonFields = [
+    "language",
+    "address"
+  ];
 
-`
-UPDATE assistant_profiles
-SET
+  const fields = [];
+  const values = [];
 
-gender = ?,
-age = ?,
-department = ?,
-education = ?,
-experience = ?,
-language = ?,
-address = ?,
-bio = ?
+  for (const key of Object.keys(data)) {
 
-WHERE user_id = ?
+    if (!fieldMap[key]) continue;
 
-`,
+    fields.push(`${fieldMap[key]} = ?`);
 
-[
+    if (jsonFields.includes(key)) {
+      values.push(JSON.stringify(data[key]));
+    } else {
+      values.push(data[key]);
+    }
+  }
 
-gender,
-age,
-department,
-education,
-experience,
+  if (fields.length === 0) {
+    return false;
+  }
 
-JSON.stringify(language || []),
+  values.push(userId);
 
-JSON.stringify(address || {}),
+  const sql = `
+    UPDATE assistant_profiles
+    SET ${fields.join(", ")}
+    WHERE user_id = ?
+  `;
 
-bio,
+  const [result] = await db.query(sql, values);
 
-userId
-
-]
-
-);
-
-
-
-return result.affectedRows > 0;
-
-
+  return result.affectedRows > 0;
 };
 
 exports.getAllAssistantProfiles = async (doctorId) => {

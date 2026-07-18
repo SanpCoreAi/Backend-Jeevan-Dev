@@ -263,29 +263,65 @@ async function getDoctorPublicProfileById(userId) {
 }
 
 async function updateProfile(userId, body) {
-  if (!userId) {
+  try {
+
+    if (!userId) {
+      return {
+        success: false,
+        statusCode: 401,
+        message: "Unauthorized user."
+      };
+    }
+
+    if (!body || Object.keys(body).length === 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "At least one field is required."
+      };
+    }
+
+    const doctor = await DoctorModel.getDoctorByUserId(userId);
+
+    // CREATE
+    if (!doctor) {
+
+      await DoctorModel.createDoctor(userId, body);
+
+      return {
+        success: true,
+        statusCode: 201,
+        message: "Doctor profile created successfully."
+      };
+    }
+
+    // UPDATE
+    const result = await DoctorModel.updateDoctor(userId, body);
+
+    if (result.affectedRows === 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Doctor profile update failed."
+      };
+    }
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Doctor profile updated successfully."
+    };
+
+  } catch (err) {
+
+    console.error(err);
+
     return {
       success: false,
-      statusCode: 401,
-      message: "Unauthorized user"
+      statusCode: 500,
+      message: "Internal Server Error"
     };
   }
-
-  if (Object.keys(body).length === 0) {
-    return {
-      success: false,
-      statusCode: 400,
-      message: "At least one field is required."
-    };
-  }
-
-  await DoctorModel.updateDoctor(userId, body);
-
-  return {
-    success: true,
-    statusCode: 200,
-    message: "Doctor profile updated successfully."
-  };
 }
 
 async function getAllDoctors() {

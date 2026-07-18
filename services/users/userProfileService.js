@@ -92,6 +92,13 @@ exports.createProfile = async (userId, body) => {
 
 exports.updateUserProfile = async (userId, body) => {
   try {
+    if (!userId) {
+      return {
+        success: false,
+        statusCode: 401,
+        message: "Unauthorized user."
+      };
+    }
 
     if (!body || Object.keys(body).length === 0) {
       return {
@@ -101,17 +108,7 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
-    const existing =
-      await userProfileModel.getUserProfileByUserId(userId);
-
-    if (!existing) {
-      return {
-        success: false,
-        statusCode: 404,
-        message: "Profile not found"
-      };
-    }
-
+    // Normalize Arrays
     if (body.language && !Array.isArray(body.language)) {
       body.language = [body.language];
     }
@@ -130,9 +127,10 @@ exports.updateUserProfile = async (userId, body) => {
       body.allergies = [body.allergies];
     }
 
+    // Validate Objects
     if (
       body.address &&
-      typeof body.address !== "object"
+      (typeof body.address !== "object" || Array.isArray(body.address))
     ) {
       return {
         success: false,
@@ -143,7 +141,8 @@ exports.updateUserProfile = async (userId, body) => {
 
     if (
       body.emergency_contact &&
-      typeof body.emergency_contact !== "object"
+      (typeof body.emergency_contact !== "object" ||
+        Array.isArray(body.emergency_contact))
     ) {
       return {
         success: false,
@@ -152,6 +151,34 @@ exports.updateUserProfile = async (userId, body) => {
       };
     }
 
+    // Check Profile Exists
+    const existingProfile =
+      await userProfileModel.getUserProfileByUserId(userId);
+
+    // CREATE
+    if (!existingProfile) {
+      const created =
+        await userProfileModel.createUserProfile(userId, body);
+
+      if (!created) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Profile creation failed."
+        };
+      }
+
+      return {
+        success: true,
+        statusCode: 201,
+        message: "Profile created successfully.",
+        data: {
+          user_id: userId
+        }
+      };
+    }
+
+    // UPDATE
     const updated =
       await userProfileModel.updateUserProfile(userId, body);
 
@@ -172,11 +199,13 @@ exports.updateUserProfile = async (userId, body) => {
       }
     };
 
-  } catch (err) {
+  } catch (error) {
+    console.error("Update User Profile Service Error:", error);
+
     return {
       success: false,
       statusCode: 500,
-      message: err.message
+      message: "Internal Server Error."
     };
   }
 };

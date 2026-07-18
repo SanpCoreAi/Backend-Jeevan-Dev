@@ -62,7 +62,6 @@ async function getDoctorPublicProfileById(req, res) {
     .json(result);
 }
 
-
 async function updateDoctorProfile(req, res) {
   try {
     const { error, value } = updateDoctorSchema.validate(req.body);
@@ -74,9 +73,14 @@ async function updateDoctorProfile(req, res) {
       });
     }
 
-    const result = await DoctorService.updateProfile(req.user.id, value);
+    const result = await DoctorService.updateProfile(
+      req.user.id,
+      value
+    );
 
-    return res.status(result.statusCode || 200).json(result);
+    return res
+      .status(result.statusCode || (result.success ? 200 : 400))
+      .json(result);
 
   } catch (err) {
     console.error("Update Doctor Error:", err);
@@ -86,7 +90,7 @@ async function updateDoctorProfile(req, res) {
       message: "Internal Server Error"
     });
   }
-}
+};
 
 async function getAllDoctors(req, res) {
   console.log("getAllDoctors Controller Called");
@@ -116,7 +120,7 @@ async function getAllDoctors(req, res) {
 module.exports = {
   createDoctorProfile,
   getDoctorProfile,
-  updateDoctorProfile,
   getDoctorPublicProfileById,
+  updateDoctorProfile,
   getAllDoctors,
 };
