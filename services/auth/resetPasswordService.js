@@ -1,125 +1,114 @@
-const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
 
 const User = require("../../models/usermodel");
 
-exports.resetPassword = async (
-  token,
-  password
-) => {
-
+exports.resetPassword = async (token, password) => {
   try {
 
-    if (!process.env.RESET_PASSWORD_SECRET) {
-      throw new Error(
-        "RESET_PASSWORD_SECRET is missing"
-      );
+    if (!token || !password) {
+      return {
+        statusCode: 400,
+        body: {
+          message: "Token and password are required"
+        }
+      };
     }
 
-    const decoded =
-      jwt.verify(
-        token,
-        process.env.RESET_PASSWORD_SECRET
-      );
+    // Hash incoming token
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
 
-    const user =
-      await User.findById(decoded.userId);
+    // Find user using hashed token
+    const user = await User.findUserByResetToken(tokenHash);
 
     if (!user) {
-
       return {
-        statusCode:404,
-        body:{
-          message:"User not found"
+        statusCode: 400,
+        body: {
+          message: "Invalid or expired reset token"
         }
-
       };
-
     }
 
-    if (
-      user.status &&
-      user.status !== "ACTIVE"
-    ) {
-
+    // Check expiry
+    if (new Date(user.reset_token_expiry) < new Date()) {
       return {
-
-        statusCode:403,
-
-        body:{
-          message:"Your account is inactive"
+        statusCode: 400,
+        body: {
+          message: "Reset token has expired"
         }
-
       };
-
     }
 
-    const isSamePassword =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
+    // Load complete user
+    const userData = await User.findById(user.id);
+
+    if (!userData) {
+      return {
+        statusCode: 404,
+        body: {
+          message: "User not found"
+        }
+      };
+    }
+
+    // Prevent same password
+    const isSamePassword = await bcrypt.compare(
+      password,
+      userData.password
+    );
 
     if (isSamePassword) {
-
       return {
-
-        statusCode:400,
-
-        body:{
+        statusCode: 400,
+        body: {
           message:
-          "New password cannot be the same as the current password"
+            "New password cannot be same as current password"
         }
-
       };
-
     }
 
-    const hashedPassword =
-      await bcrypt.hash(
-        password,
-        12
-      );
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    const affectedRows =
-      await User.updatePassword(
-        user.id,
-        hashedPassword
-      );
+    // Update password
+    const updated = await User.updatePassword(
+      user.id,
+      hashedPassword
+    );
 
-    if (!affectedRows) {
-
+    if (!updated) {
       return {
-        statusCode:500,
-        body:{
-          message:"Failed to update password"
+        statusCode: 500,
+        body: {
+          message: "Failed to update password"
         }
-
       };
-
     }
+
+    // Clear reset token
+    await User.clearResetToken(user.id);
 
     return {
-      statusCode:200,
-      body:{
-        message:"Password reset successfully"
+      statusCode: 200,
+      body: {
+        message: "Password reset successfully"
       }
-
     };
 
   } catch (error) {
 
-    console.error(
-      "Reset Password Service Error:",
-      error
-    );
+    console.error("Reset Password Error:", error);
 
     return {
-
-      statusCode:400,
-      body:{
-        message:"Invalid or expired token"
+      statusCode: 500,
+      body: {
+        message: "Internal Server Error"
       }
     };
+
   }
 };

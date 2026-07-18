@@ -6,7 +6,7 @@ exports.forgotPassword = async (email) => {
 
   try {
 
-    if (!process.env.RESET_PASSWORD_SECRET) {
+    if (!process.env.JWT_REFRESH_SECRET) {
       throw new Error(
         "RESET_PASSWORD_SECRET is missing"
       );
