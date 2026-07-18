@@ -59,12 +59,8 @@ body:{message:error.message}
 }
 };
 
-
-
-
 exports.getAssistantProfile = async (userId) => {
   try {
-
     if (!userId) {
       return {
         statusCode: 401,
@@ -88,21 +84,22 @@ exports.getAssistantProfile = async (userId) => {
     return {
       statusCode: 200,
       body: {
-        message: "Assistant profile fetched successfully",
+        message: "Assistant profile fetched successfully.",
         data: profile
       }
     };
 
   } catch (error) {
+    console.error("Get Assistant Profile Service Error:", error);
+
     return {
       statusCode: 500,
       body: {
-        message: error.message
+        message: "Internal Server Error"
       }
     };
   }
 };
-
 
 exports.updateAssistantProfile = async (userId, data) => {
   try {
