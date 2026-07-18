@@ -417,7 +417,6 @@ exports.findUsers = async (
       params.push(`%${filters.name}%`);
     }
 
-    // Total Records
     const [countRows] = await db.query(
       `
       SELECT COUNT(*) AS total
@@ -427,7 +426,7 @@ exports.findUsers = async (
       params
     );
 
-    // User List
+
     const [rows] = await db.query(
       `
       SELECT
