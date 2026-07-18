@@ -39,32 +39,34 @@ message:"Internal Server Error"
 
 
 
-exports.getAssistantProfile=async(req,res)=>{
-try{
+exports.getAssistantProfile = async (req, res) => {
+  try {
+    const userId = req.user?.id;
 
-const doctor_id=req.user?.doctor_id||req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      });
+    }
 
-if(!doctor_id)
-return res.status(401).json({success:false,message:"Unauthorized"});
+    const result = await assistantProfileService.getAssistantProfile(userId);
 
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      data: result.body.data || null
+    });
 
-const result=await assistantProfileService.getAssistantProfile(doctor_id);
+  } catch (error) {
+    console.error("Get Assistant Profile Error:", error);
 
-return res.status(result.statusCode).json({
-success:result.statusCode<400,
-message:result.body.message,
-data:result.body.data||{}
-});
-
-}catch(error){
-return res.status(500).json({
-success:false,
-message:"Internal Server Error"
-});
-}
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
+  }
 };
-
-
 
 
 exports.updateAssistantProfile = async (req, res) => {

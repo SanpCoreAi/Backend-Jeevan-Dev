@@ -27,7 +27,7 @@ const createDoctor = async (userId, body) => {
     username: "",
     specialization: "",
     qualification: "",
-    experience: "",
+    experience: null,
     language: JSON.stringify([]),
     consultationFee: 0,
     medicalLicenseNo: "",

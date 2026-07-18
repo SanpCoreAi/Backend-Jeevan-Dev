@@ -49,8 +49,6 @@ exports.createAssistantProfile = async (userId, data) => {
 };
 
 exports.getAssistantProfile = async (userId) => {
-
-  // Assistant profile check
   const [rows] = await db.query(
     `
     SELECT
@@ -64,6 +62,7 @@ exports.getAssistantProfile = async (userId) => {
       ap.address,
       ap.bio,
 
+      u.id AS user_id,
       u.full_name,
       u.email,
       u.phone_number,
@@ -72,7 +71,7 @@ exports.getAssistantProfile = async (userId) => {
 
     FROM assistant_profiles ap
 
-    LEFT JOIN users u
+    INNER JOIN users u
       ON u.id = ap.user_id
 
     LEFT JOIN users doctor
@@ -85,18 +84,18 @@ exports.getAssistantProfile = async (userId) => {
     [userId]
   );
 
-  // Profile exists
   if (rows.length > 0) {
     return rows[0];
   }
 
-  // Profile doesn't exist -> fetch users table
   const [userRows] = await db.query(
     `
     SELECT
+      id AS user_id,
       full_name,
       email,
-      phone_number
+      phone_number,
+      doctor_id
     FROM users
     WHERE id = ?
     LIMIT 1
@@ -108,7 +107,26 @@ exports.getAssistantProfile = async (userId) => {
     return null;
   }
 
+  let doctorAssign = null;
+
+  if (userRows[0].doctor_id) {
+    const [doctor] = await db.query(
+      `
+      SELECT full_name
+      FROM users
+      WHERE id = ?
+      LIMIT 1
+      `,
+      [userRows[0].doctor_id]
+    );
+
+    doctorAssign = doctor.length
+      ? doctor[0].full_name
+      : null;
+  }
+
   return {
+    user_id: userRows[0].user_id,
     full_name: userRows[0].full_name,
     email: userRows[0].email,
     phone_number: userRows[0].phone_number,
@@ -118,11 +136,11 @@ exports.getAssistantProfile = async (userId) => {
     department: null,
     education: null,
     experience: null,
-    language: null,
+    language: [],
     joining_date: null,
-    address: null,
-    bio: null,
-    doctor_assign: null
+    address: {},
+    bio: "",
+    doctor_assign: doctorAssign
   };
 };
 
