@@ -1,63 +1,118 @@
 const db = require("../../config/db");
 
-const DoctorFileModel = {
+const UserImageModel = {
 
-  create: async ({ doctorId, fileKey, folderName }) => {
-    if (!doctorId || !fileKey || !folderName) {
-      throw new Error("All parameters (doctorId, fileKey, folderName) are required");
+  create: async ({ userId, fileKey, folderName }) => {
+    if (!userId || !fileKey || !folderName) {
+      throw new Error(
+        "userId, fileKey and folderName are required."
+      );
     }
 
     const sql = `
-      INSERT INTO doctor_image (doctor_id, file_key, folder_name)
-      VALUES (?, ?, ?)
+      INSERT INTO user_images
+      (
+        user_id,
+        file_key,
+        folder_name
+      )
+      VALUES
+      (
+        ?,
+        ?,
+        ?
+      )
     `;
-    const [result] = await db.execute(sql, [doctorId, fileKey, folderName]);
 
-    return { id: result.insertId, doctorId, fileKey, folderName };
+    const [result] = await db.execute(sql, [
+      userId,
+      fileKey,
+      folderName,
+    ]);
+
+    return {
+      id: result.insertId,
+      userId,
+      fileKey,
+      folderName,
+    };
   },
 
-  getByDoctorId: async (doctorId) => {
-    if (!doctorId) throw new Error("doctorId is required");
+  getByUserId: async (userId) => {
+    if (!userId) {
+      throw new Error("User ID is required.");
+    }
 
     const sql = `
-      SELECT *
-      FROM doctor_image
-      WHERE doctor_id = ?
+      SELECT
+        id,
+        user_id,
+        file_key,
+        folder_name,
+        created_at
+      FROM user_images
+      WHERE user_id = ?
       ORDER BY id DESC
       LIMIT 1
     `;
-    const [rows] = await db.execute(sql, [doctorId]);
+
+    const [rows] = await db.execute(sql, [userId]);
+
     return rows[0] || null;
   },
 
-  getAllByDoctorId: async (doctorId) => {
-    if (!doctorId) throw new Error("doctorId is required");
+  getAllByUserId: async (userId) => {
+    if (!userId) {
+      throw new Error("User ID is required.");
+    }
 
     const sql = `
-      SELECT id, file_key, folder_name, created_at
-      FROM doctor_image
-      WHERE doctor_id = ?
+      SELECT
+        id,
+        user_id,
+        file_key,
+        folder_name,
+        created_at
+      FROM user_images
+      WHERE user_id = ?
       ORDER BY id DESC
     `;
-    const [rows] = await db.execute(sql, [doctorId]);
+
+    const [rows] = await db.execute(sql, [userId]);
+
     return rows;
   },
 
   deleteById: async (id) => {
-    if (!id) throw new Error("id is required");
+    if (!id) {
+      throw new Error("Image ID is required.");
+    }
 
-    const sql = `DELETE FROM doctor_image WHERE id = ?`;
+    const sql = `
+      DELETE FROM user_images
+      WHERE id = ?
+    `;
+
     const [result] = await db.execute(sql, [id]);
+
     return result.affectedRows > 0;
   },
 
-  deleteAllByDoctorId: async (doctorId) => {
-    if (!doctorId) throw new Error("doctorId is required");
+  deleteAllByUserId: async (userId) => {
+    if (!userId) {
+      throw new Error("User ID is required.");
+    }
 
-    const sql = `DELETE FROM doctor_image WHERE doctor_id = ?`;
-    const [result] = await db.execute(sql, [doctorId]);
+    const sql = `
+      DELETE FROM user_images
+      WHERE user_id = ?
+    `;
+
+    const [result] = await db.execute(sql, [userId]);
+
     return result.affectedRows;
   },
+
 };
 
-module.exports = DoctorFileModel;
+module.exports = UserImageModel;

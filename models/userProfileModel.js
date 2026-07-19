@@ -127,7 +127,6 @@ exports.getUserProfileByUserIds = async (userId) => {
   const [rows] = await db.execute(
     `
     SELECT
-
       u.id AS user_id,
       u.full_name,
       u.email,
@@ -144,8 +143,29 @@ exports.getUserProfileByUserIds = async (userId) => {
       p.existing_conditions,
       p.allergies,
       p.bio,
-      p.emergency_contact
+      p.emergency_contact,
+
+      COALESCE(
+        (
+          SELECT di.file_key
+          FROM doctor_image di
+          WHERE di.doctor_id = u.id
+            AND di.file_key IS NOT NULL
+          ORDER BY di.id DESC
+          LIMIT 1
+        ),
+        (
+          SELECT ui.file_key
+          FROM user_images ui
+          WHERE ui.user_id = u.id
+            AND ui.file_key IS NOT NULL
+          ORDER BY ui.id DESC
+          LIMIT 1
+        )
+      ) AS image_key
+
     FROM users u
+
     LEFT JOIN user_profiles p
       ON p.user_id = u.id
 
@@ -160,27 +180,7 @@ exports.getUserProfileByUserIds = async (userId) => {
     return null;
   }
 
-  const profile = rows[0];
-
-  return {
-    user_id: profile.user_id,
-    full_name: profile.full_name,
-    email: profile.email,
-    phone_number: profile.phone_number,
-
-    username: profile.username,
-    age: profile.age,
-    gender: profile.gender,
-    language: profile.language,
-    address: profile.address,
-    blood_group: profile.blood_group,
-    weight: profile.weight,
-    height: profile.height,
-    existing_conditions: profile.existing_conditions,
-    allergies: profile.allergies,
-    bio: profile.bio,
-    emergency_contact: profile.emergency_contact
-  };
+  return rows[0];
 };
 
 exports.checkDoctorPatientRelation = async (

@@ -1,15 +1,19 @@
-const { upload, uploadAndReplaceFile } = require("../../services/upload-file/uploadDoctorImageService");
-const DoctorFileModel = require("../../models/upload-file/doctorProfileImageModel");
+const {
+  upload,
+  uploadAndReplaceFile,
+} = require("../../services/upload-file/uploadDoctorImageService");
+
+const UserImageModel = require("../../models/upload-file/doctorProfileImageModel");
 
 const uploadFileAndImage = [
   upload.single("file"),
+
   async (req, res) => {
     try {
-      const doctorId = req.user?.id; 
-        console.log(doctorId);
+      const userId = req.user?.id;
       const folder = req.query.folder;
 
-      if (!doctorId) {
+      if (!userId) {
         return res.status(401).json({
           success: false,
           message: "Unauthorized",
@@ -23,14 +27,21 @@ const uploadFileAndImage = [
         });
       }
 
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "File is required",
+        });
+      }
+
       const result = await uploadAndReplaceFile({
         file: req.file,
         folder,
-        doctorId,
+        userId,
       });
 
-      await DoctorFileModel.create({
-        doctorId,
+      await UserImageModel.create({
+        userId,
         fileKey: result.fileKey,
         folderName: result.folder,
       });
@@ -41,6 +52,8 @@ const uploadFileAndImage = [
         data: result,
       });
     } catch (error) {
+      console.error("Upload Image Error:", error);
+
       return res.status(500).json({
         success: false,
         message: error.message,
@@ -49,18 +62,18 @@ const uploadFileAndImage = [
   },
 ];
 
-const getDoctorFiles = async (req, res) => {
+const getUserFiles = async (req, res) => {
   try {
-    const doctorId = req.user?.id;
+    const userId = req.user?.id;
 
-    if (!doctorId) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
       });
     }
 
-    const files = await DoctorFileModel.getAllByDoctorId(doctorId);
+    const files = await UserImageModel.getAllByUserId(userId);
 
     return res.status(200).json({
       success: true,
@@ -68,6 +81,8 @@ const getDoctorFiles = async (req, res) => {
       data: files,
     });
   } catch (error) {
+    console.error("Get User Files Error:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -77,5 +92,5 @@ const getDoctorFiles = async (req, res) => {
 
 module.exports = {
   uploadFileAndImage,
-  getDoctorFiles,
+  getUserFiles,
 };

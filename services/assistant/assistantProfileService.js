@@ -1,6 +1,17 @@
 const AssistantProfile=require("../../models/assistant/assistantProfileModel");
 const xss=require("xss");
 
+const AWS_S3_BUCKET_URL = process.env.AWS_S3_BUCKET_URL;
+const APP_BASE_URL = process.env.APP_BASE_URL;
+
+const safeParse = (value, defaultValue) => {
+  try {
+    return value ? JSON.parse(value) : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+};
+
 
 const sanitize=(data)=>{
 Object.keys(data).forEach(key=>{
@@ -61,6 +72,7 @@ body:{message:error.message}
 
 exports.getAssistantProfile = async (userId) => {
   try {
+
     if (!userId) {
       return {
         statusCode: 401,
@@ -70,7 +82,8 @@ exports.getAssistantProfile = async (userId) => {
       };
     }
 
-    const profile = await AssistantProfile.getAssistantProfile(userId);
+    const profile =
+      await AssistantProfile.getAssistantProfile(userId);
 
     if (!profile) {
       return {
@@ -81,6 +94,19 @@ exports.getAssistantProfile = async (userId) => {
       };
     }
 
+    profile.language = safeParse(profile.language, []);
+    profile.address = safeParse(profile.address, {});
+
+    profile.image = profile.image_key
+      ? {
+          url: AWS_S3_BUCKET_URL
+            ? `${AWS_S3_BUCKET_URL}/${encodeURI(profile.image_key)}`
+            : `${APP_BASE_URL}/uploads/${encodeURI(profile.image_key)}`
+        }
+      : null;
+
+    delete profile.image_key;
+
     return {
       statusCode: 200,
       body: {
@@ -90,7 +116,7 @@ exports.getAssistantProfile = async (userId) => {
     };
 
   } catch (error) {
-    console.error("Get Assistant Profile Service Error:", error);
+    console.error(error);
 
     return {
       statusCode: 500,

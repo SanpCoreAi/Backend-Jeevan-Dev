@@ -49,9 +49,11 @@ exports.createAssistantProfile = async (userId, data) => {
 };
 
 exports.getAssistantProfile = async (userId) => {
+
   const [rows] = await db.query(
     `
     SELECT
+
       ap.gender,
       ap.age,
       ap.department,
@@ -67,7 +69,15 @@ exports.getAssistantProfile = async (userId) => {
       u.email,
       u.phone_number,
 
-      doctor.full_name AS doctor_assign
+      doctor.full_name AS doctor_assign,
+
+      (
+        SELECT ui.file_key
+        FROM user_images ui
+        WHERE ui.user_id = u.id
+        ORDER BY ui.id DESC
+        LIMIT 1
+      ) AS image_key
 
     FROM assistant_profiles ap
 
@@ -91,13 +101,25 @@ exports.getAssistantProfile = async (userId) => {
   const [userRows] = await db.query(
     `
     SELECT
-      id AS user_id,
-      full_name,
-      email,
-      phone_number,
-      doctor_id
-    FROM users
-    WHERE id = ?
+
+      u.id AS user_id,
+      u.full_name,
+      u.email,
+      u.phone_number,
+      u.doctor_id,
+
+      (
+        SELECT ui.file_key
+        FROM user_images ui
+        WHERE ui.user_id = u.id
+        ORDER BY ui.id DESC
+        LIMIT 1
+      ) AS image_key
+
+    FROM users u
+
+    WHERE u.id = ?
+
     LIMIT 1
     `,
     [userId]
@@ -110,6 +132,7 @@ exports.getAssistantProfile = async (userId) => {
   let doctorAssign = null;
 
   if (userRows[0].doctor_id) {
+
     const [doctor] = await db.query(
       `
       SELECT full_name
@@ -120,27 +143,43 @@ exports.getAssistantProfile = async (userId) => {
       [userRows[0].doctor_id]
     );
 
-    doctorAssign = doctor.length
-      ? doctor[0].full_name
-      : null;
+    doctorAssign =
+      doctor.length > 0
+        ? doctor[0].full_name
+        : null;
   }
 
   return {
+
     user_id: userRows[0].user_id,
+
     full_name: userRows[0].full_name,
+
     email: userRows[0].email,
+
     phone_number: userRows[0].phone_number,
 
     gender: null,
+
     age: null,
+
     department: null,
+
     education: null,
+
     experience: null,
-    language: [],
+
+    language: null,
+
     joining_date: null,
-    address: {},
-    bio: "",
-    doctor_assign: doctorAssign
+
+    address: null,
+
+    bio: null,
+
+    doctor_assign: doctorAssign,
+
+    image_key: userRows[0].image_key
   };
 };
 

@@ -317,20 +317,18 @@ exports.cancelAppointment = async (
 };
 
 exports.autoCancelPendingAppointments = async () => {
-
   const sql = `
     UPDATE appointments
-    SET
-      status = 'CANCELLED',
-      cancelled_by = 'SYSTEM',
-      cancelled_at = NOW()
-    WHERE
-      status = 'PENDING'
-      AND slot_date < CURDATE();
+    SET status = 'CANCELLED'
+    WHERE status = 'PENDING'
+      AND slot_date < CURDATE()
   `;
 
-  return await db.query(sql);
+  const [result] = await db.execute(sql);
 
+  console.log("Cancelled:", result.affectedRows);
+
+  return result;
 };
 
 exports.getAppointmentById = async (doctorId) => {
@@ -759,12 +757,12 @@ exports.getNextTokenNumber = async (
   hospitalName
 ) => {
 
-  const [rows] = await db.query(
+  const [rows] = await db.execute(
     `
     SELECT COALESCE(MAX(token_number), 0) + 1 AS nextToken
     FROM appointments
     WHERE doctor_id = ?
-      AND slot_date = ?
+      AND appointment_date = ?
       AND LOWER(TRIM(hospital_name)) = LOWER(TRIM(?))
     `,
     [

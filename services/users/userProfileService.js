@@ -1,6 +1,10 @@
 const userProfileModel = require("../../models/userProfileModel");
 const { validateUserProfile } = require("../../validation/user/userProfile");
 
+
+const AWS_S3_BUCKET_URL = process.env.AWS_S3_BUCKET_URL;
+const APP_BASE_URL = process.env.APP_BASE_URL;
+
 const safeParse = (value, defaultValue = []) => {
   if (!value) return defaultValue;
 
@@ -235,10 +239,26 @@ exports.getUserProfile = async (userId) => {
     }
 
     profile.language = safeParse(profile.language, []);
-    profile.existing_conditions = safeParse(profile.existing_conditions, []);
+    profile.existing_conditions = safeParse(
+      profile.existing_conditions,
+      []
+    );
     profile.allergies = safeParse(profile.allergies, []);
     profile.address = safeParse(profile.address, {});
-    profile.emergency_contact = safeParse(profile.emergency_contact, {});
+    profile.emergency_contact = safeParse(
+      profile.emergency_contact,
+      {}
+    );
+
+    profile.image = profile.image_key
+      ? {
+          url: AWS_S3_BUCKET_URL
+            ? `${AWS_S3_BUCKET_URL}/${encodeURI(profile.image_key)}`
+            : `${APP_BASE_URL}/uploads/${encodeURI(profile.image_key)}`
+        }
+      : null;
+
+    delete profile.image_key;
 
     return {
       statusCode: 200,
@@ -249,8 +269,7 @@ exports.getUserProfile = async (userId) => {
     };
 
   } catch (error) {
-
-    console.error(error);
+    console.error("Get User Profile Service Error:", error);
 
     return {
       statusCode: 500,

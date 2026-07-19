@@ -50,7 +50,8 @@ exports.getAssistantProfile = async (req, res) => {
       });
     }
 
-    const result = await assistantProfileService.getAssistantProfile(userId);
+    const result =
+      await assistantProfileService.getAssistantProfile(userId);
 
     return res.status(result.statusCode).json({
       success: result.statusCode < 400,

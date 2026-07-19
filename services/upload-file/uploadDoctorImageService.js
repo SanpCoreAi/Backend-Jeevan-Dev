@@ -1,7 +1,12 @@
 const multer = require("multer");
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} = require("@aws-sdk/client-s3");
+
 const { v4: uuidv4 } = require("uuid");
-const DoctorFileModel = require("../../models/upload-file/doctorProfileImageModel");
+const UserImageModel = require("../../models/upload-file/doctorProfileImageModel");
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
@@ -13,29 +18,52 @@ const s3 = new S3Client({
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
 });
 
-const uploadAndReplaceFile = async ({ file, folder, doctorId }) => {
-  if (!file) throw new Error("File is required");
-  if (!folder) throw new Error("Folder is required");
+const uploadAndReplaceFile = async ({
+  file,
+  folder,
+  userId,
+}) => {
+  if (!file) {
+    throw new Error("File is required");
+  }
 
-  const oldFile = await DoctorFileModel.getByDoctorId(doctorId);
+  if (!folder) {
+    throw new Error("Folder is required");
+  }
 
+  if (!userId) {
+    throw new Error("User ID is required");
+  }
+
+  // Get old image
+  const oldFile = await UserImageModel.getByUserId(userId);
+
+  // Delete old image from S3 & DB
   if (oldFile) {
-    await s3.send(
-      new DeleteObjectCommand({
-        Bucket: process.env.AWS_BUCKET_NAME,
-        Key: oldFile.file_key,
-      })
-    );
+    try {
+      await s3.send(
+        new DeleteObjectCommand({
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: oldFile.file_key,
+        })
+      );
+    } catch (err) {
+      console.log("Old file not found on S3:", err.message);
+    }
 
-    await DoctorFileModel.deleteById(oldFile.id);
+    await UserImageModel.deleteById(oldFile.id);
   }
 
   const cleanFolder = folder.replace(/^\/+|\/+$/g, "");
-  const ext = file.originalname.split(".").pop();
-  const fileKey = `${cleanFolder}/${uuidv4()}.${ext}`;
+
+  const extension = file.originalname.split(".").pop();
+
+  const fileKey = `${cleanFolder}/${uuidv4()}.${extension}`;
 
   await s3.send(
     new PutObjectCommand({
@@ -48,7 +76,11 @@ const uploadAndReplaceFile = async ({ file, folder, doctorId }) => {
 
   const fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
 
-  return { folder: cleanFolder, fileKey, fileUrl };
+  return {
+    folder: cleanFolder,
+    fileKey,
+    fileUrl,
+  };
 };
 
 module.exports = {

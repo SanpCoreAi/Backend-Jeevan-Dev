@@ -50,7 +50,7 @@ exports.getUserProfile = async (req, res) => {
     const result = await userProfileService.getUserProfile(userId);
 
     return res
-      .status(result.statusCode)
+      .status(result.statusCode || 200)
       .json({
         success: result.statusCode < 400,
         message: result.body.message,
