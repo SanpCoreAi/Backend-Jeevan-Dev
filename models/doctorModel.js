@@ -608,77 +608,120 @@ const getAllDoctors = async () => {
 };
 
 const findAllWithUser = async () => {
-  const query = `
+
+const query = `
+
 SELECT
-  d.id AS doctor_id,
-  d.user_id,
-  d.username,
-  d.specialization,
-  d.qualification,
-  d.experience,
-  d.consultation_fee,
-  d.medical_license_no,
-  d.bio,
-  d.language,
-  d.availability,
-  d.hospital_detail,
-  d.qr_code,
 
-  u.full_name AS user_full_name,
-  u.email AS user_email,
-  u.phone_number AS user_phone_number,
+d.id AS doctor_id,
 
-  COALESCE(
-    (
-      SELECT JSON_ARRAYAGG(
-        JSON_OBJECT(
-          'id', di.id,
-          'fileKey', di.file_key,
-          'folder', di.folder_name,
-          'createdAt', di.created_at
-        )
-      )
-      FROM doctor_image di
-      WHERE di.doctor_id = d.user_id
-        AND di.file_key IS NOT NULL
-        AND di.file_key <> ''
-    ),
-    JSON_ARRAY()
-  ) AS images,
+u.id AS user_id,
 
-  ROUND(
-    IFNULL(
-      (
-        SELECT AVG(f.rating)
-        FROM feedbacks f
-        WHERE f.doctor_id = d.user_id
-      ),
-      0
-    ),
-    1
-  ) AS avg_rating,
+d.username,
+d.specialization,
+d.qualification,
+d.experience,
+d.consultation_fee,
+d.medical_license_no,
+d.bio,
+d.language,
+d.availability,
+d.hospital_detail,
+d.qr_code,
+d.age,
+d.gender,
 
-  (
-    SELECT COUNT(*)
-    FROM feedbacks f
-    WHERE f.doctor_id = d.user_id
-  ) AS total_feedbacks,
+u.full_name AS user_full_name,
+u.email AS user_email,
+u.phone_number AS user_phone_number,
 
-  (
-    SELECT COUNT(f.rating)
-    FROM feedbacks f
-    WHERE f.doctor_id = d.user_id
-      AND f.rating IS NOT NULL
-  ) AS total_ratings
+COALESCE(
 
-FROM doctors d
+(
 
-LEFT JOIN users u
-  ON u.id = d.user_id;
-  `;
+SELECT JSON_ARRAYAGG(
 
-  const [rows] = await db.execute(query);
-  return rows;
+JSON_OBJECT(
+
+'id',di.id,
+'fileKey',di.file_key,
+'folder',di.folder_name,
+'createdAt',di.created_at
+
+)
+
+)
+
+FROM doctor_image di
+
+WHERE di.doctor_id=u.id
+
+),
+
+JSON_ARRAY()
+
+) AS images,
+
+ROUND(
+
+IFNULL(
+
+(
+
+SELECT AVG(f.rating)
+
+FROM feedbacks f
+
+WHERE f.doctor_id=u.id
+
+),
+
+0
+
+),
+
+1
+
+) AS avg_rating,
+
+(
+
+SELECT COUNT(*)
+
+FROM feedbacks f
+
+WHERE f.doctor_id=u.id
+
+) AS total_feedbacks,
+
+(
+
+SELECT COUNT(f.rating)
+
+FROM feedbacks f
+
+WHERE f.doctor_id=u.id
+
+AND f.rating IS NOT NULL
+
+) AS total_ratings
+
+FROM users u
+
+LEFT JOIN doctors d
+
+ON d.user_id=u.id
+
+WHERE u.role=2
+
+ORDER BY u.id DESC;
+
+`;
+
+const [rows]=await db.execute(query);
+
+return rows;
+
 };
 
 async function findUserByName(name) {

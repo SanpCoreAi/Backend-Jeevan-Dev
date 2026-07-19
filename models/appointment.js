@@ -138,7 +138,7 @@ exports.getDoctorAppointmentsForTable = async (
   doctorId,
   hospitalName,
   mode,
-  booked_at,
+  slot_date,
   status,
   limit,
   offset
@@ -149,19 +149,25 @@ exports.getDoctorAppointmentsForTable = async (
       COALESCE(u.full_name,'Unknown') AS name,
       u.phone_number,
       d.specialization AS diagnostic,
+
       DATE_FORMAT(a.slot_date,'%d-%m-%Y') AS date,
       DATE_FORMAT(a.start_time,'%h:%i %p') AS time,
+
       a.id AS appointment_id,
       a.token_number,
       a.appointment_type AS mode,
       COALESCE(a.hospital_name,'Online') AS hospital_name,
       a.status,
       DATE_FORMAT(a.created_at,'%d-%m-%Y %h:%i %p') AS booked_at
+
     FROM appointments a
+
     LEFT JOIN users u
       ON u.id = a.patient_id
+
     LEFT JOIN doctors d
-      ON d.id = a.doctor_id
+      ON d.user_id = a.doctor_id
+
     WHERE a.doctor_id = ?
   `;
 
@@ -195,12 +201,12 @@ exports.getDoctorAppointmentsForTable = async (
     `;
   }
 
-  // Booked Date Filter (YYYY-MM-DD)
-  if (booked_at) {
+  // Slot Date Filter
+  if (slot_date) {
     query += `
-      AND DATE(a.created_at) = ?
+      AND DATE(a.slot_date) = ?
     `;
-    params.push(booked_at);
+    params.push(slot_date);
   }
 
   query += `
@@ -250,12 +256,12 @@ exports.getDoctorAppointmentsForTable = async (
     `;
   }
 
-  // Booked Date Filter (YYYY-MM-DD)
-  if (booked_at) {
+  // Slot Date Filter
+  if (slot_date) {
     countQuery += `
-      AND DATE(a.created_at) = ?
+      AND DATE(a.slot_date) = ?
     `;
-    countParams.push(booked_at);
+    countParams.push(slot_date);
   }
 
   const [[countResult]] = await db.query(countQuery, countParams);

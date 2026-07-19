@@ -33,17 +33,35 @@ return res.status(201).json({
 }
 
 async function getDoctorProfile(req, res) {
-  const userId = req.user?.id;
+  try {
+    const userId = req.user?.id;
 
-  const result = await DoctorService.getProfile(userId);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      });
+    }
 
-  if (!result.success) {
-    return res.status(404).json(result);
+    const result = await DoctorService.getProfile(userId);
+
+    return res
+      .status(result.statusCode)
+      .json({
+        success: result.statusCode < 400,
+        message: result.message,
+        data: result.data || null
+      });
+
+  } catch (error) {
+    console.error("Get Doctor Profile Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error"
+    });
   }
-
-  return res.status(200).json(result);
 }
-
 
 async function getDoctorPublicProfileById(req, res) {
   const userId = req.params.userId;
@@ -93,29 +111,26 @@ async function updateDoctorProfile(req, res) {
 };
 
 async function getAllDoctors(req, res) {
-  console.log("getAllDoctors Controller Called");
-
   try {
-    const data = await DoctorService.getAllDoctors();
 
-    console.log(data);
+    const result = await DoctorService.getAllDoctors();
 
     return res.status(200).json({
       success: true,
-      count: data.length,
-      data
+      count: result.length,
+      data: result
     });
 
-  } catch (err) {
-    console.error("Error fetching doctors:", err);
+  } catch (error) {
+
+    console.error("Get All Doctors Error:", error);
+
     return res.status(500).json({
       success: false,
-      message: "Error fetching doctors",
-      error: err.message
+      message: "Internal Server Error"
     });
   }
 }
-
 
 module.exports = {
   createDoctorProfile,

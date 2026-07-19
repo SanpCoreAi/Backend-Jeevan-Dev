@@ -99,118 +99,91 @@ async function getProfile(userId) {
 
   if (!d) {
     return {
+      statusCode: 404,
       success: false,
-      message: "Doctor profile not found"
+      message: "User not found."
     };
   }
 
-  let qrCode = d.qr_code;
+  let qrCode = null;
 
-  if (!qrCode) {
-    const hospitalDetail = parseJSON(d.hospital_detail);
+  if (d.id) {
 
-    const hospitals = hospitalDetail.map(h => ({
-      hospitalName: h.hospitalName,
-      address: buildAddress(h)
-    }));
+    qrCode = d.qr_code;
 
-    const qrData = JSON.stringify({
-      doctorId: d.user_id,
-      hospitals
-    });
+    if (!qrCode) {
 
-    const fileName = `qr_${d.id}.png`;
-    const filePath = path.join(qrFolder, fileName);
+      const hospitalDetail = parseJSON(d.hospital_detail);
 
-    await QRCode.toFile(filePath, qrData);
+      const hospitals = hospitalDetail.map(h => ({
+        hospitalName: h.hospitalName,
+        address: buildAddress(h)
+      }));
 
-    await DoctorModel.updateDoctorQr(d.id, fileName);
+      const qrData = JSON.stringify({
+        doctorId: d.user_id,
+        hospitals
+      });
 
-    qrCode = fileName;
+      const fileName = `qr_${d.id}.png`;
+      const filePath = path.join(qrFolder, fileName);
+
+      await QRCode.toFile(filePath, qrData);
+
+      await DoctorModel.updateDoctorQr(d.id, fileName);
+
+      qrCode = fileName;
+    }
   }
 
- return {
-  success: true,
+  return {
+    statusCode: 200,
+    success: true,
+    message: "Doctor profile fetched successfully.",
+    data: {
 
-  data: {
+      id: d.user_id,
 
-    id: d.user_id,
+      username: d.username,
+      specialization: d.specialization,
+      medicalLicenseNo: d.medical_license_no,
+      qualification: d.qualification,
+      experience: d.experience,
+      consultationFee: d.consultation_fee,
+      bio: d.bio,
+      age: d.age,
+      gender: d.gender,
 
-    username: d.username,
+      language: parseJSON(d.language),
+      availability: parseJSON(d.availability),
+      hospitalDetail: parseJSON(d.hospital_detail),
 
-    specialization: d.specialization,
-    medicalLicenseNo: d.medical_license_no,
-    qualification: d.qualification,
+      user: {
+        fullName: d.user_full_name,
+        email: d.user_email,
+        phoneNumber: d.user_phone_number
+      },
 
-    experience: d.experience,
+      image: d.image_file_key
+        ? {
+            url: `${S3_BASE_URL}/${encodeURI(d.image_file_key)}`
+          }
+        : null,
 
-    consultationFee: d.consultation_fee,
+      licenseFiles:
+        parseJSON(d.files)?.length
+          ? parseJSON(d.files).map(file => ({
+              url: `${S3_BASE_URL}/${encodeURI(file.fileKey)}`
+            }))
+          : [],
 
-    bio: d.bio,
+      avgRating: Number(d.avg_rating || 0),
 
-     age: d.age,
-
-    gender: d.gender,
-
-    language: parseJSON(d.language),
-
-    availability: parseJSON(d.availability),
-
-    hospitalDetail: parseJSON(d.hospital_detail),
-
-    user: {
-
-      fullName: d.user_full_name,
-
-      email: d.user_email,
-
-      phoneNumber: d.user_phone_number
-    },
-
-    // =========================
-    // PROFILE IMAGE
-    // =========================
-
-    image: d.image_file_key
-
-      ? {
-          // fileKey: d.image_file_key,
-
-          // folder: d.image_folder_name,
-
-          url:
-            `${S3_BASE_URL}/${encodeURI(d.image_file_key)}`
-        }
-
-      : null,
-
-    // =========================
-    // LICENSE FILE
-    // =========================
-
-   licenseFiles:
-
-  parseJSON(d.files)?.length > 0
-
-    ? parseJSON(d.files).map((file) => ({
-        
-        url: `${S3_BASE_URL}/${encodeURI(file.fileKey)}`,
-        
-      }))
-
-    : [],
-    avgRating:
-      Number(d.avg_rating),
-
-    qr_code:
-
-      qrCode
-
+      qr_code: qrCode
         ? `${BASE_FILE_URL}/qr/${qrCode}`
-
         : null
-  }
-};
+    }
+  };
 }
 
 async function getDoctorPublicProfileById(userId) {
@@ -238,11 +211,9 @@ async function getDoctorPublicProfileById(userId) {
       experience: doctor.experience,
       consultationFee: doctor.consultation_fee,
       bio: doctor.bio,
-
       language: parseJSON(doctor.language),
       availability: parseJSON(doctor.availability),
       hospitalDetail: parseJSON(doctor.hospital_detail),
-
       user: {
         fullName: doctor.user_full_name,
         email: doctor.user_email,
@@ -254,7 +225,6 @@ async function getDoctorPublicProfileById(userId) {
             url: doctor.image_file_key
           }
         : null,
-
       avgRating: doctor.avg_rating == null? "0.0": Number(doctor.avg_rating).toFixed(1),
       totalFeedbacks: Number(doctor.total_feedbacks ?? 0),
       totalRatings: Number(doctor.total_ratings ?? 0)
@@ -295,7 +265,6 @@ async function updateProfile(userId, body) {
       };
     }
 
-    // UPDATE
     const result = await DoctorModel.updateDoctor(userId, body);
 
     if (result.affectedRows === 0) {
@@ -325,53 +294,76 @@ async function updateProfile(userId, body) {
 }
 
 async function getAllDoctors() {
+
   const doctors = await DoctorModel.findAllWithUser();
 
-  return doctors.map(d => {
-    // Handle QR code URL formatting
+  return doctors.map((d) => {
+
     let qrUrl = null;
+
     if (d.qr_code) {
-      if (d.qr_code.startsWith('data:') || d.qr_code.startsWith('http')) {
-        qrUrl = d.qr_code;
-      } else {
-        qrUrl = `${BASE_FILE_URL}/qr/${d.qr_code}`;
-      }
+      qrUrl = d.qr_code.startsWith("http") || d.qr_code.startsWith("data:")
+        ? d.qr_code
+        : `${BASE_FILE_URL}/qr/${d.qr_code}`;
     }
 
-    // Format image URLs
-    const images = parseJSON(d.images, []).map(img => ({
+    const images = parseJSON(d.images, []).map((img) => ({
       ...img,
-      url: S3_BASE_URL && S3_BASE_URL !== 'undefined'
-        ? `${S3_BASE_URL}/${encodeURI(img.folder)}/${encodeURI(img.fileKey)}`
-        : `${BASE_FILE_URL}/uploads/${encodeURI(img.folder)}/${encodeURI(img.fileKey)}`
+      url: `${S3_BASE_URL}/${encodeURI(img.fileKey)}`
     }));
 
     return {
+
       doctorId: d.doctor_id,
+
       userId: d.user_id,
+
       username: d.username,
+
       specialization: d.specialization,
+
       qualification: d.qualification,
+
+      medicalLicenseNo: d.medical_license_no,
+
       experience: d.experience,
+
       consultationFee: d.consultation_fee,
 
+      bio: d.bio,
+
+      age: d.age,
+
+      gender: d.gender,
+
+      language: parseJSON(d.language),
+
+      availability: parseJSON(d.availability),
+
+      hospitalDetail: parseJSON(d.hospital_detail),
+
       user: {
+
         fullName: d.user_full_name,
+
         email: d.user_email,
+
         phoneNumber: d.user_phone_number
       },
 
-      language: parseJSON(d.language),
-      availability: parseJSON(d.availability),
-      hospitalDetail: parseJSON(d.hospital_detail),
-
       images,
 
-      avgRating: Number(d.avg_rating),
+      avgRating: Number(d.avg_rating || 0),
+
+      totalFeedbacks: Number(d.total_feedbacks || 0),
+
+      totalRatings: Number(d.total_ratings || 0),
 
       qr_code: qrUrl
     };
+
   });
+
 }
 
 module.exports = {

@@ -131,7 +131,7 @@ exports.getDoctorAppointmentsForTable = async (req, res) => {
 const {
   hospitalName,
   mode,
-  booked_at,
+  slot_date,
   status,
   page = 1,
   limit = 10
@@ -148,7 +148,7 @@ const result = await appointmentService.getDoctorAppointmentsForTable(
   doctorId,
   hospitalName,
   mode,
-  booked_at,
+  slot_date,
   status,
   Number(page),
   Number(limit)

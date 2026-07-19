@@ -369,58 +369,80 @@ exports.getDoctorAppointmentsForTable = async (
   doctorId,
   hospitalName,
   mode,
-  booked_at,
+  slot_date,
   status,
   page,
   limit
 ) => {
+  try {
 
-  const offset = (page - 1) * limit;
+    const offset = (page - 1) * limit;
 
-  const { rows, total } =
-    await Appointment.getDoctorAppointmentsForTable(
-      doctorId,
-      hospitalName,
-      mode,
-      booked_at,
-      status,
-      limit,
-      offset
-    );
+    const { rows, total } =
+      await Appointment.getDoctorAppointmentsForTable(
+        doctorId,
+        hospitalName,
+        mode,
+         slot_date,
+        status,
+        limit,
+        offset
+      );
 
-  if (!rows || rows.length === 0) {
+    if (!rows || rows.length === 0) {
+      return {
+        success: false,
+        message: "No appointments found.",
+        total: 0,
+        currentPage: page,
+        totalPages: 0,
+        appointments: []
+      };
+    }
+
+return {
+  success: true,
+  message: "Appointments fetched successfully.",
+  total,
+  currentPage: page,
+  totalPages: Math.ceil(total / limit),
+
+  appointments: rows.map((item) => ({
+    appointmentId: item.appointment_id,
+
+    tokenNumber: item.token_number,
+
+    name: item.name,
+
+    phoneNumber: item.phone_number,
+
+    diagnostic: item.diagnostic,
+
+    date: item.date,
+
+    time: item.time,
+
+    mode: item.mode,
+
+    hospitalName: item.hospital_name,
+
+    status: item.status,
+
+    slotDate: item.date,
+
+    bookedAt: item.booked_at
+  }))
+};
+
+  } catch (error) {
+    console.error("Get Doctor Appointments Service Error:", error);
+
     return {
       success: false,
-      message: "No appointments found",
+      message: "Internal Server Error",
       appointments: []
     };
   }
-
-  return {
-    success: true,
-    message: "Appointments fetched successfully",
-    total,
-    currentPage: page,
-    totalPages: Math.ceil(total / limit),
-
-    appointments: rows.map((item) => ({
-      appointmentId: item.appointment_id,
-      tokenNumber: item.token_number,
-
-      name: item.name,
-      phoneNumber: item.phone_number,
-      diagnostic: item.diagnostic,
-
-      date: item.date,
-      time: item.time,          // model se aayega
-
-      mode: item.mode,
-      hospitalName: item.hospital_name,
-
-      status: item.status,
-      bookedAt: item.booked_at
-    }))
-  };
 };
 
 exports.getAppointmentDetails = async (doctorId, appointmentId) => {

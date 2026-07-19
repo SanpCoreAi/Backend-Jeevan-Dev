@@ -211,39 +211,55 @@ exports.updateUserProfile = async (userId, body) => {
 };
 
 exports.getUserProfile = async (userId) => {
+  try {
 
-  const profile =
-    await userProfileModel.getUserProfileByUserId(userId);
+    if (!userId) {
+      return {
+        statusCode: 401,
+        body: {
+          message: "Unauthorized user."
+        }
+      };
+    }
 
-  if (!profile) return null;
+    const profile =
+      await userProfileModel.getUserProfileByUserIds(userId);
 
-  return {
-    ...profile,
+    if (!profile) {
+      return {
+        statusCode: 404,
+        body: {
+          message: "User not found."
+        }
+      };
+    }
 
-    language: safeParse(
-      profile.language
-    ),
+    profile.language = safeParse(profile.language, []);
+    profile.existing_conditions = safeParse(profile.existing_conditions, []);
+    profile.allergies = safeParse(profile.allergies, []);
+    profile.address = safeParse(profile.address, {});
+    profile.emergency_contact = safeParse(profile.emergency_contact, {});
 
-    existing_conditions: safeParse(
-      profile.existing_conditions
-    ),
+    return {
+      statusCode: 200,
+      body: {
+        message: "User profile fetched successfully.",
+        data: profile
+      }
+    };
 
-    allergies: safeParse(
-      profile.allergies
-    ),
+  } catch (error) {
 
-    address: safeParse(
-      profile.address,
-      {}
-    ),
+    console.error(error);
 
-    emergency_contact: safeParse(
-      profile.emergency_contact,
-      {}
-    )
-  };
+    return {
+      statusCode: 500,
+      body: {
+        message: "Internal Server Error."
+      }
+    };
+  }
 };
-
 
 exports.getPatientCardProfile = async (
   doctorId,

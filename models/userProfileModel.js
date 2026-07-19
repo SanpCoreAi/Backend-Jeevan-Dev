@@ -122,7 +122,66 @@ exports.updateUserProfile = async (userId, body) => {
   return result.affectedRows > 0;
 };
 
+exports.getUserProfileByUserIds = async (userId) => {
 
+  const [rows] = await db.execute(
+    `
+    SELECT
+
+      u.id AS user_id,
+      u.full_name,
+      u.email,
+      u.phone_number,
+
+      p.username,
+      p.age,
+      p.gender,
+      p.language,
+      p.address,
+      p.blood_group,
+      p.weight,
+      p.height,
+      p.existing_conditions,
+      p.allergies,
+      p.bio,
+      p.emergency_contact
+    FROM users u
+    LEFT JOIN user_profiles p
+      ON p.user_id = u.id
+
+    WHERE u.id = ?
+
+    LIMIT 1
+    `,
+    [userId]
+  );
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const profile = rows[0];
+
+  return {
+    user_id: profile.user_id,
+    full_name: profile.full_name,
+    email: profile.email,
+    phone_number: profile.phone_number,
+
+    username: profile.username,
+    age: profile.age,
+    gender: profile.gender,
+    language: profile.language,
+    address: profile.address,
+    blood_group: profile.blood_group,
+    weight: profile.weight,
+    height: profile.height,
+    existing_conditions: profile.existing_conditions,
+    allergies: profile.allergies,
+    bio: profile.bio,
+    emergency_contact: profile.emergency_contact
+  };
+};
 
 exports.checkDoctorPatientRelation = async (
   doctorId,

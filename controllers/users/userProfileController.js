@@ -43,29 +43,26 @@ exports.getUserProfile = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized user"
+        message: "Unauthorized user."
       });
     }
 
-    const data = await userProfileService.getUserProfile(userId);
+    const result = await userProfileService.getUserProfile(userId);
 
-    if (!data) {
-      return res.status(404).json({
-        success: false,
-        message: "Profile not found"
+    return res
+      .status(result.statusCode)
+      .json({
+        success: result.statusCode < 400,
+        message: result.body.message,
+        data: result.body.data || null
       });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data
-    });
 
   } catch (error) {
-    console.error("Get profile error:", error);
+    console.error("Get User Profile Error:", error);
+
     return res.status(500).json({
       success: false,
-      message: "Server error"
+      message: "Internal Server Error"
     });
   }
 };
