@@ -84,8 +84,8 @@ const sql = `
             'createdAt', di.created_at
           )
         )
-        FROM doctor_image di
-        WHERE di.doctor_id = d.user_id
+        FROM user_images di
+        WHERE di.user_id = d.user_id
       ), JSON_ARRAY()) AS images,
       COALESCE((
         SELECT JSON_ARRAYAGG(
@@ -143,8 +143,8 @@ const getBydoctorId = async (userId) => {
 
       (
         SELECT di.file_key
-        FROM doctor_image di
-        WHERE di.doctor_id = d.user_id
+        FROM user_images di
+        WHERE di.user_id = d.user_id
         AND di.file_key IS NOT NULL
         ORDER BY di.id DESC
         LIMIT 1
@@ -152,8 +152,8 @@ const getBydoctorId = async (userId) => {
 
       (
         SELECT di.folder_name
-        FROM doctor_image di
-        WHERE di.doctor_id = d.user_id
+        FROM user_images di
+        WHERE di.user_id = d.user_id
         AND di.file_key IS NOT NULL
         ORDER BY di.id DESC
         LIMIT 1
@@ -215,206 +215,6 @@ const getBydoctorId = async (userId) => {
   return rows[0] || null;
 };
 
-async function getProfile(userId) {
-  const d =
-    await DoctorModel
-      .getBydoctorId(userId);
-
-  if (!d) {
-
-    return {
-
-      success: false,
-
-      message:
-        "Doctor profile not found"
-    };
-  }
-
-  let qrCode =
-    d.qr_code;
-
-  if (!qrCode) {
-
-    const hospitalDetail =
-      parseJSON(
-        d.hospital_detail
-      );
-
-    const hospitals =
-      hospitalDetail.map(h => ({
-
-        hospitalName:
-          h.hospitalName,
-
-        address:
-          buildAddress(h)
-      }));
-
-    const qrData =
-      JSON.stringify({
-
-        doctorId:
-          d.user_id,
-
-        hospitals
-      });
-
-    const fileName =
-      `qr_${d.id}.png`;
-
-    const filePath =
-      path.join(
-        qrFolder,
-        fileName
-      );
-
-    await QRCode.toFile(
-      filePath,
-      qrData
-    );
-
-    await DoctorModel
-      .updateDoctorQr(
-        d.id,
-        fileName
-      );
-
-    qrCode = fileName;
-  }
-
-  return {
-
-    success: true,
-
-    data: {
-
-      id:
-        d.user_id,
-
-      username:
-        d.username,
-
-      specialization:
-        d.specialization,
-
-      qualification:
-        d.qualification,
-
-      experience:
-        d.experience,
-
-      consultationFee:
-        d.consultation_fee,
-
-      bio:
-        d.bio,
-
-      language:
-        parseJSON(d.language),
-
-      availability:
-        parseJSON(d.availability),
-
-      hospitalDetail:
-        parseJSON(
-          d.hospital_detail
-        ),
-
-      user: {
-
-        fullName:
-          d.user_full_name,
-
-        email:
-          d.user_email,
-
-        phoneNumber:
-          d.user_phone_number
-      },
-
-      imageUrl:
-        d.image_file_key
-
-          ? S3_BASE_URL &&
-            S3_BASE_URL !==
-            "undefined"
-
-            ? `${S3_BASE_URL}/${encodeURI(d.image_file_key)}`
-
-            : `${BASE_FILE_URL}/uploads/${encodeURI(d.image_file_key)}`
-
-          : null,
-
-      imageFileKey:
-        d.image_file_key || null,
-
-      imageFolderName:
-        d.image_folder_name || null,
-
-      files:
-        parseJSON(d.files),
-
-      avgRating:
-        Number(d.avg_rating),
-
-      qr_code:
-        qrCode
-
-          ? qrCode.startsWith("data:")
-            || qrCode.startsWith("http")
-
-            ? qrCode
-
-            : `${BASE_FILE_URL}/qr/${qrCode}`
-
-          : null
-    }
-  };
-}
-
-async function getDoctorProfile(
-  req,
-  res
-) {
-
-  try {
-
-    const userId =
-      req.user?.id;
-
-    const result =
-      await DoctorService
-        .getProfile(userId);
-
-    if (!result.success) {
-
-      return res
-        .status(404)
-        .json(result);
-    }
-
-    return res
-      .status(200)
-      .json(result);
-
-  } catch (error) {
-
-    return res
-      .status(500)
-      .json({
-
-        success: false,
-
-        message:
-          "Internal server error",
-
-        error:
-          error.message
-      });
-  }
-}
-
 const updateDoctorQr = async (doctorId, qrCode) => {
 
   const sql = `
@@ -450,8 +250,8 @@ const getDoctorPublicProfileById = async (doctorId) => {
 
       (
         SELECT di.file_key
-        FROM doctor_image di
-        WHERE (di.doctor_id = d.user_id OR di.doctor_id = d.id)
+        FROM user_images di
+        WHERE (di.user_id = d.user_id OR di.user_id = d.id)
           AND di.file_key IS NOT NULL
         ORDER BY di.id DESC
         LIMIT 1
@@ -587,8 +387,8 @@ const getAllDoctors = async () => {
               'createdAt', di.created_at
             )
           )
-          FROM doctor_image di
-          WHERE di.doctor_id = d.user_id
+          FROM user_images di
+          WHERE di.user_id = d.user_id
           AND di.file_key IS NOT NULL
         ),
         JSON_ARRAY()
@@ -608,15 +408,10 @@ const getAllDoctors = async () => {
 };
 
 const findAllWithUser = async () => {
-
-const query = `
-
+  const query = `
 SELECT
-
 d.id AS doctor_id,
-
 u.id AS user_id,
-
 d.username,
 d.specialization,
 d.qualification,
@@ -630,31 +425,22 @@ d.hospital_detail,
 d.qr_code,
 d.age,
 d.gender,
-
 u.full_name AS user_full_name,
 u.email AS user_email,
 u.phone_number AS user_phone_number,
-
 COALESCE(
-
 (
-
 SELECT JSON_ARRAYAGG(
-
 JSON_OBJECT(
-
 'id',di.id,
 'fileKey',di.file_key,
 'folder',di.folder_name,
 'createdAt',di.created_at
-
+)
 )
 
-)
-
-FROM doctor_image di
-
-WHERE di.doctor_id=u.id
+FROM user_images di
+WHERE di.user_id=u.id
 
 ),
 
@@ -669,9 +455,7 @@ IFNULL(
 (
 
 SELECT AVG(f.rating)
-
 FROM feedbacks f
-
 WHERE f.doctor_id=u.id
 
 ),
@@ -687,21 +471,15 @@ WHERE f.doctor_id=u.id
 (
 
 SELECT COUNT(*)
-
 FROM feedbacks f
-
 WHERE f.doctor_id=u.id
-
 ) AS total_feedbacks,
 
 (
 
 SELECT COUNT(f.rating)
-
 FROM feedbacks f
-
 WHERE f.doctor_id=u.id
-
 AND f.rating IS NOT NULL
 
 ) AS total_ratings
@@ -712,15 +490,15 @@ LEFT JOIN doctors d
 
 ON d.user_id=u.id
 
-WHERE u.role=2
+WHERE u.role_id=2
 
 ORDER BY u.id DESC;
 
 `;
 
-const [rows]=await db.execute(query);
+  const [rows] = await db.execute(query);
 
-return rows;
+  return rows;
 
 };
 

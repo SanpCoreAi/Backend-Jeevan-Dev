@@ -148,8 +148,8 @@ exports.getUserProfileByUserIds = async (userId) => {
       COALESCE(
         (
           SELECT di.file_key
-          FROM doctor_image di
-          WHERE di.doctor_id = u.id
+          FROM user_images di
+          WHERE di.user_id = u.id
             AND di.file_key IS NOT NULL
           ORDER BY di.id DESC
           LIMIT 1
