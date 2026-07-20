@@ -83,14 +83,38 @@ async function findOverlappingSchedule(data) {
   return rows.length > 0;
 }
 
-async function getScheduleByDoctor(doctorId) {
+async function getScheduleCountByDoctor(doctorId) {
+  const [rows] = await db.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM schedules
+    WHERE doctor_id = ?
+    `,
+    [doctorId]
+  );
+
+  return rows[0].total;
+}
+
+async function getScheduleByDoctor(
+  doctorId,
+  limit,
+  offset
+) {
   const [rows] = await db.query(
     `
     SELECT *
     FROM schedules
     WHERE doctor_id = ?
+    ORDER BY id DESC
+    LIMIT ?
+    OFFSET ?
     `,
-    [doctorId]
+    [
+      doctorId,
+      Number(limit),
+      Number(offset)
+    ]
   );
 
   return rows;
@@ -275,6 +299,7 @@ module.exports = {
   deleteByScheduleId,
   update,
   deleteActiveSlots,
+  getScheduleCountByDoctor,
   remove,
   findOverlappingSchedule
 };

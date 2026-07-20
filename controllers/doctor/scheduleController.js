@@ -39,18 +39,33 @@ exports.getByDoctorId = async (req, res) => {
 };
 
 exports.getSchedulePublicByDoctorId = async (req, res) => {
-  const result =
-    await ScheduleService.getSchedulePublicByDoctorId(
-      Number(req.params.doctorId)
-    );
+  try {
+    const doctorId = Number(req.params.doctorId);
 
-  if (!result.success) {
-    return res
-      .status(result.statusCode || 404)
-      .json(result);
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+
+    const result =
+      await ScheduleService.getSchedulePublicByDoctorId(
+        doctorId,
+        page,
+        limit
+      );
+
+    if (!result.success) {
+      return res
+        .status(result.statusCode || 404)
+        .json(result);
+    }
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
-
-  res.json(result);
 };
 
 exports.getHospitals = async (req, res) => {

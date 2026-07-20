@@ -433,12 +433,12 @@ exports.getAppointmentDetails = async (doctorId, appointmentId) => {
       a.status,
 
       u.id AS patient_id,
-      u.full_name AS patient_name,
-      u.phone_number,
-      u.email,
+      COALESCE(u.full_name, ap.patient_name) AS patient_name,
+      COALESCE(u.phone_number, ap.patient_phone) AS phone_number,
+      COALESCE(u.email, ap.patient_email) AS email,
 
-      up.gender,
-      up.age,
+      COALESCE(up.gender, ap.gender) AS gender,
+      COALESCE(up.age, ap.age) AS age,
       up.weight,
       up.height,
       up.blood_group,
@@ -449,6 +449,9 @@ exports.getAppointmentDetails = async (doctorId, appointmentId) => {
 
     LEFT JOIN users u
       ON u.id = a.patient_id
+
+    LEFT JOIN appointment_patients ap
+      ON ap.appointment_id = a.id
 
     LEFT JOIN user_profiles up
       ON up.user_id = u.id
@@ -493,140 +496,100 @@ exports.getAllByPatient = async (userId) => {
   return rows;
 };
 
-exports.getAppointments =
-  async ({
+exports.getAppointments = async ({
+  doctorId,
+  limit,
+  offset
+}) => {
+  try {
+    const todayDate = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Asia/Kolkata"
+    });
 
-    doctorId,
-    limit,
-    offset
-
-  }) => {
-
-    try {
-
-      const todayDate =
-        new Date()
-          .toLocaleDateString(
-            "en-CA",
-            {
-              timeZone:
-                "Asia/Kolkata"
-            }
-          );
-
-      const query = `
-
+    const query = `
       SELECT
+        a.id AS appointment_id,
 
-  a.id AS appointment_id,
+        DATE_FORMAT(a.slot_date, '%Y-%m-%d') AS slot_date,
 
-  DATE_FORMAT(
-    a.slot_date,
-    '%Y-%m-%d'
-  ) AS slot_date,
+        TIME_FORMAT(a.start_time, '%h:%i %p') AS start_time,
 
-  TIME_FORMAT(
-    a.start_time,
-    '%h:%i %p'
-  ) AS start_time,
+        a.status,
+        a.reason_for_visit,
 
-  a.status,
- a.reason_for_visit,
-  u.id AS patient_id,
+        u.id AS patient_id,
 
-  COALESCE(
-    u.full_name,
-    'Unknown'
-  ) AS patient_name,
+        COALESCE(u.full_name, ap.patient_name, '') AS patient_name,
 
-  u.phone_number,
-  u.email,
+        COALESCE(u.phone_number, ap.patient_phone) AS phone_number,
+        COALESCE(u.email, ap.patient_email) AS email,
 
-  up.age,
-  up.gender,
-  up.weight,
-  up.height,
-  up.blood_group,
-  up.language,
-  up.existing_conditions,
-  up.allergies,
-up.address
+        COALESCE(up.age, ap.age) AS age,
+        COALESCE(up.gender, ap.gender) AS gender,
+        up.weight,
+        up.height,
+        up.blood_group,
+        up.language,
+        up.existing_conditions,
+        up.allergies,
+        up.address
 
       FROM appointments a
 
       LEFT JOIN users u
         ON u.id = a.patient_id
 
+      LEFT JOIN appointment_patients ap
+        ON ap.appointment_id = a.id
+
       LEFT JOIN user_profiles up
         ON up.id = (
-
           SELECT id
-
           FROM user_profiles
-
           WHERE user_id = u.id
-
           ORDER BY id DESC
-
           LIMIT 1
         )
 
       WHERE a.doctor_id = ?
+        AND a.slot_date = ?
 
-      AND a.slot_date = ?
+      ORDER BY
+        a.slot_date DESC,
+        a.start_time ASC
 
-     
-
-      ORDER BY a.slot_date DESC,
-               a.start_time ASC
-
-      LIMIT ? OFFSET ?
+      LIMIT ?
+      OFFSET ?;
     `;
 
-      const [rows] =
-        await db.query(
-          query,
-          [
-            doctorId,
-            todayDate,
-            Number(limit),
-            Number(offset)
-          ]
-        );
+    const [rows] = await db.query(query, [
+      doctorId,
+      todayDate,
+      Number(limit),
+      Number(offset)
+    ]);
 
-      const countQuery = `
+    const countQuery = `
+      SELECT COUNT(*) AS total
+      FROM appointments
+      WHERE doctor_id = ?
+        AND slot_date = ?;
+    `;
 
-  SELECT
-    COUNT(*) AS total
+    const [[countResult]] = await db.query(countQuery, [
+      doctorId,
+      todayDate
+    ]);
 
-  FROM appointments
+    return {
+      rows,
+      total: countResult.total
+    };
 
-  WHERE doctor_id = ?
-  AND slot_date = ?
-`;
-
-      const [[countResult]] =
-        await db.query(
-          countQuery,
-          [
-            doctorId,
-            todayDate
-          ]
-        );
-
-      return {
-
-        rows,
-
-        total:
-          countResult.total
-      };
-
-    } catch (error) {
-
-      throw error;
-    }
-  };
+  } catch (error) {
+    throw error;
+  }
+};
 
 
   exports.getDashboardCards =
@@ -762,7 +725,7 @@ exports.getNextTokenNumber = async (
     SELECT COALESCE(MAX(token_number), 0) + 1 AS nextToken
     FROM appointments
     WHERE doctor_id = ?
-      AND appointment_date = ?
+      AND DATE(slot_date) = ?
       AND LOWER(TRIM(hospital_name)) = LOWER(TRIM(?))
     `,
     [

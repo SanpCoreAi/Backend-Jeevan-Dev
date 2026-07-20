@@ -195,8 +195,25 @@ async function getAllSchedules(doctorId) {
 }
 
 
-async function getScheduleByDoctorId(doctorId) {
-  const schedules = await ScheduleModel.getScheduleByDoctor(doctorId);
+async function getScheduleByDoctorId(
+  doctorId,
+  page = 1,
+  limit = 10
+) {
+
+  const offset = (page - 1) * limit;
+
+  const total =
+    await ScheduleModel.getScheduleCountByDoctor(
+      doctorId
+    );
+
+  const schedules =
+    await ScheduleModel.getScheduleByDoctor(
+      doctorId,
+      limit,
+      offset
+    );
 
   if (!schedules.length) {
     return {
@@ -208,7 +225,9 @@ async function getScheduleByDoctorId(doctorId) {
   const finalData = [];
 
   for (const s of schedules) {
-    const slotsFromDB = await ScheduleModel.getSlotsByScheduleId(s.id);
+
+    const slotsFromDB =
+      await ScheduleModel.getSlotsByScheduleId(s.id);
 
     const formattedSlots = slotsFromDB.map(slot => ({
       start: time24To12(slot.start_time),
@@ -217,13 +236,19 @@ async function getScheduleByDoctorId(doctorId) {
       date: slot.start_date
     }));
 
-    const scheduleStatus = formattedSlots.some(slot => slot.status === 'active') ? 'active' : 'inactive';
+    const scheduleStatus =
+      formattedSlots.some(
+        slot => slot.status === "active"
+      )
+        ? "active"
+        : "inactive";
 
     finalData.push({
       scheduleId: s.id,
       doctorId: s.doctor_id,
       hospitalName: s.hospital_name,
-      offlinepatient_number: s.offlinepatient_number,
+      offlinepatient_number:
+        s.offlinepatient_number,
 
       timing: {
         start: time24To12(s.start_time),
@@ -245,14 +270,33 @@ async function getScheduleByDoctorId(doctorId) {
 
   return {
     success: true,
+
+    pagination: {
+      totalRecords: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+      limit: limit,
+      hasNextPage: page < Math.ceil(total / limit),
+      hasPreviousPage: page > 1
+    },
+
     count: finalData.length,
+
     data: finalData
   };
 }
 
 
-async function getSchedulePublicByDoctorId(doctorId) {
-  return getScheduleByDoctorId(doctorId);
+async function getSchedulePublicByDoctorId(
+  doctorId,
+  page,
+ limit
+) {
+  return getScheduleByDoctorId(
+    doctorId,
+    page,
+    limit
+  );
 }
 
 async function updateSchedule(doctorId, scheduleId, body) {
