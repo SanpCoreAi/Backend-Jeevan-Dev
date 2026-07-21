@@ -45,9 +45,9 @@ router.get( "/doctor/table", verifyToken, appointmentController.getDoctorAppoint
 );
 
 
-router.get("/prescription", verifyToken, appointmentTokenController.getPrescription);
-router.get("/verify-token/:token", verifyToken, appointmentTokenController.verifyToken);
+router.get("/prescription", verifyToken, allowRoles(1, 2), appointmentTokenController.getPrescription);
 
+router.get("/verify-token/:token", verifyToken, appointmentTokenController.verifyToken);
 
 router.get(
   "/today-appointments",

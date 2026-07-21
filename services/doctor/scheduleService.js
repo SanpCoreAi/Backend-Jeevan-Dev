@@ -4,6 +4,25 @@ const User = require("../../models/usermodel");
 const db = require("../../config/db");
 const {parse12to24,generateSlots12,time24To12} = require("../../utils/timeHelper");
 
+function normalizeDateValue(value) {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  }
+
+  const valueString = String(value).trim();
+  if (!valueString) return null;
+
+  const dateOnly = valueString.split("T")[0].split(" ")[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+    return dateOnly;
+  }
+
+  const parsed = new Date(valueString);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+}
+
 async function generateScheduleSlots(scheduleId, payload) {
   const doctorId = payload.doctor_id;
   const start24 = payload.start_time;
@@ -194,13 +213,17 @@ async function getAllSchedules(doctorId) {
   };
 }
 
+function formatDate(date) {
+  if (!date) return null;
+
+  return new Date(date).toISOString().split("T")[0];
+}
 
 async function getScheduleByDoctorId(
   doctorId,
   page = 1,
   limit = 10
 ) {
-
   const offset = (page - 1) * limit;
 
   const total =
@@ -229,12 +252,21 @@ async function getScheduleByDoctorId(
     const slotsFromDB =
       await ScheduleModel.getSlotsByScheduleId(s.id);
 
-    const formattedSlots = slotsFromDB.map(slot => ({
-      start: time24To12(slot.start_time),
-      end: time24To12(slot.end_time),
-      status: slot.status,
-      date: slot.start_date
-    }));
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Asia/Kolkata"
+    });
+
+    const formattedSlots = slotsFromDB
+      .filter(slot => {
+        const slotDate = normalizeDateValue(slot.start_date);
+        return !slotDate || slotDate >= today;
+      })
+      .map(slot => ({
+        start: time24To12(slot.start_time),
+        end: time24To12(slot.end_time),
+        status: slot.status,
+        date: formatDate(slot.start_date)
+      }));
 
     const scheduleStatus =
       formattedSlots.some(
@@ -247,8 +279,7 @@ async function getScheduleByDoctorId(
       scheduleId: s.id,
       doctorId: s.doctor_id,
       hospitalName: s.hospital_name,
-      offlinepatient_number:
-        s.offlinepatient_number,
+      offlinepatient_number: s.offlinepatient_number,
 
       timing: {
         start: time24To12(s.start_time),
@@ -259,8 +290,8 @@ async function getScheduleByDoctorId(
 
       availability: {
         activeDays: s.active_days,
-        startDate: s.start_date,
-        endDate: s.end_date,
+        startDate: formatDate(s.start_date),
+        endDate: formatDate(s.end_date),
         status: scheduleStatus
       },
 
@@ -275,7 +306,7 @@ async function getScheduleByDoctorId(
       totalRecords: total,
       totalPages: Math.ceil(total / limit),
       currentPage: page,
-      limit: limit,
+      limit,
       hasNextPage: page < Math.ceil(total / limit),
       hasPreviousPage: page > 1
     },

@@ -89,6 +89,7 @@ async function getScheduleCountByDoctor(doctorId) {
     SELECT COUNT(*) AS total
     FROM schedules
     WHERE doctor_id = ?
+      AND end_date >= CURDATE()
     `,
     [doctorId]
   );
@@ -106,7 +107,8 @@ async function getScheduleByDoctor(
     SELECT *
     FROM schedules
     WHERE doctor_id = ?
-    ORDER BY id DESC
+      AND end_date >= CURDATE()
+    ORDER BY start_date ASC, id DESC
     LIMIT ?
     OFFSET ?
     `,
@@ -158,13 +160,25 @@ async function findOverlappingScheduleForUpdate(data) {
 }
 
 async function getSlotsByScheduleId(scheduleId) {
-  // return individual slot instances (per date) so inactive entries are visible
+
+  const today = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Kolkata"
+  });
+
   const [rows] = await db.query(
-    `SELECT start_time, end_time, start_date, status
-     FROM schedule_slots
-     WHERE schedule_id = ?
-     ORDER BY start_date ASC, start_time ASC`,
-    [scheduleId]
+    `
+    SELECT
+      id,
+      start_date,
+      start_time,
+      end_time,
+      status
+    FROM schedule_slots
+    WHERE schedule_id = ?
+      AND DATE(start_date) >= ?
+    ORDER BY start_date ASC, start_time ASC
+    `,
+    [scheduleId, today]
   );
 
   return rows;
