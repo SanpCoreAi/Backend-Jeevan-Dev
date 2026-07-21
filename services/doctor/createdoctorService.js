@@ -41,58 +41,6 @@ function buildAddress(hospital) {
     .join(", ");
 }
 
-async function createProfile(userId, body) {
-  if (!userId) {
-    return {
-      success: false,
-      message: "Unauthorized user"
-    };
-  }
-
-const params = [
-  userId ?? null,
-  body.username ?? null,
-  body.specialization ?? null,
-  body.qualification ?? null,
-  body.experience ?? 0,
-  JSON.stringify(body.language ?? []),
-  body.consultationFee ?? 0,
-  body.medicalLicenseNo ?? null,
-  body.bio ?? null,
-  body.age ?? null,          // NEW
-  body.gender ?? null,       // NEW
-  JSON.stringify(body.availability ?? []),
-  JSON.stringify(body.hospitalDetail ?? [])
-];
-
-  const doctorId = await DoctorModel.createDoctor(params);
-
-  const hospitalDetail = parseJSON(body.hospitalDetail);
-
-  const hospitals = hospitalDetail.map(h => ({
-    hospitalName: h.hospitalName,
-    address: buildAddress(h)
-  }));
-
-  const qrData = JSON.stringify({
-    doctorId: userId,
-    hospitals
-  });
-
-  const fileName = `qr_${doctorId}.png`;
-  const filePath = path.join(qrFolder, fileName);
-
-  await QRCode.toFile(filePath, qrData);
-
-  await DoctorModel.updateDoctorQr(doctorId, fileName);
-
-  return {
-    success: true,
-    userId,
-    doctorId,
-    qrCode: `${BASE_FILE_URL}/qr/${fileName}`
-  };
-}
 
 async function getProfile(userId) {
   const d = await DoctorModel.getBydoctorId(userId);
@@ -367,7 +315,6 @@ async function getAllDoctors() {
 }
 
 module.exports = {
-  createProfile,
   updateProfile,
   getAllDoctors,
   getProfile,

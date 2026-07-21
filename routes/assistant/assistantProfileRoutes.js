@@ -7,11 +7,6 @@ const { verifyToken } =
 const assistantProfileController =
 require("../../controllers/assistant/assistantProfileController");
 
-router.post(
-  "/createAssistantProfile",
-  verifyToken,
-  assistantProfileController.createAssistantProfile
-);
 
 router.get(
   "/getAssistantProfile",

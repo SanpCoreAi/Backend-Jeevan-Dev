@@ -20,61 +20,6 @@ const availabilitySchema = Joi.object({
 });
 
 
-/* ================= CREATE ================= */
-const createDoctorSchema = Joi.object({
-  username: Joi.string().required(),
-
-  specialization: Joi.string().required(),
-
-  qualification: Joi.string().required(),
-
-  experience: Joi.number().min(0).required(),
-
-  age: Joi.number()
-    .integer()
-    .min(18)
-    .max(100)
-    .required(),
-
-  gender: Joi.string()
-    .valid("Male", "Female", "Other")
-    .required(),
-
-  language: Joi.array()
-    .items(Joi.string())
-    .required(),
-
-  consultationFee: Joi.number()
-    .min(0)
-    .required(),
-
-  medicalLicenseNo: Joi.string().required(),
-
-  bio: Joi.string().allow("").optional(),
-
-  availability: Joi.array()
-    .items(availabilitySchema)
-    .required(),
-
-  hospitalDetail: Joi.array()
-    .items(
-      Joi.object({
-        hospitalName: Joi.string().required(),
-        flatPlotNo: Joi.string().allow(""),
-        buildingSociety: Joi.string().allow(""),
-        streetName: Joi.string().allow(""),
-        areaLocality: Joi.string().allow(""),
-        landmark: Joi.string().allow(""),
-        city: Joi.string().required(),
-        district: Joi.string().required(),
-        state: Joi.string().required(),
-        pinCode: Joi.string().required()
-      })
-    )
-    .required()
-});
-
-
 const updateDoctorSchema = Joi.object({
   username: Joi.string().trim().optional(),
 
@@ -143,6 +88,5 @@ const updateDoctorSchema = Joi.object({
 
 /* ================= EXPORT ================= */
 module.exports = {
-  createDoctorSchema,
   updateDoctorSchema
 };

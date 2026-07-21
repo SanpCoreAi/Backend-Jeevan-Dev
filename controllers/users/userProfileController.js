@@ -1,93 +1,101 @@
 const userProfileService = require("../../services/users/userProfileService");
 
-exports.createUserProfile = async (req, res) => {
-  try {
-    const userId = req.user?.id;
+const {
+  validateUserProfile,
+} = require("../../validation/user/userProfile");
 
-    if (!userId) {
+exports.getUserProfile = async (req, res) => {
+  try {
+    const userId = Number(req.user?.id);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized user"
+        message: "Unauthorized user.",
+        data: null,
       });
     }
 
-    const result = await userProfileService.createProfile(userId, req.body);
+    const result =
+      await userProfileService.getUserProfile(userId);
 
-    if (!result.success) {
-      return res.status(result.statusCode || 400).json({
-        success: false,
-        message: result.message
-      });
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: result.message,
-      data: result.data
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      data: result.body.data || null,
     });
 
   } catch (error) {
-    console.error("Create profile error:", error);
+    console.error("GET USER PROFILE ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: "Internal Server Error",
+      data: null,
     });
   }
 };
 
-exports.getUserProfile = async (req, res) => {
+exports.updateUserProfile = async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = Number(req.user?.id);
 
-    if (!userId) {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user.",
+      });
+    }
+
+    const validationError =
+      validateUserProfile(req.body);
+
+    if (validationError) {
+      return res.status(400).json({
+        success: false,
+        message: validationError,
+      });
+    }
+
+    const result =
+      await userProfileService.updateUserProfile(
+        userId,
+        req.body
+      );
+
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.message,
+      data: result.data || null,
+    });
+
+  } catch (error) {
+    console.error("UPDATE USER PROFILE ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+exports.getPatientCardProfile = async (req, res) => {
+  try {
+
+    const doctorId = Number(req.user?.id);
+    const patientId = Number(req.params.patientId);
+
+    if (!doctorId || doctorId <= 0) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized user."
       });
     }
 
-    const result = await userProfileService.getUserProfile(userId);
-
-    return res
-      .status(result.statusCode || 200)
-      .json({
-        success: result.statusCode < 400,
-        message: result.body.message,
-        data: result.body.data || null
-      });
-
-  } catch (error) {
-    console.error("Get User Profile Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error"
-    });
-  }
-};
-
-exports.getPatientCardProfile = async (req, res) => {
-
-  try {
-
-    // Doctor ID from token
-    const doctorId = req.user?.id;
-
-    // Patient ID from params
-    const patientId = req.params.patientId;
-
-    if (!doctorId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized doctor"
-      });
-    }
-
-    if (!patientId) {
+    if (!patientId || patientId <= 0) {
       return res.status(400).json({
         success: false,
-        message: "Patient id is required"
+        message: "Patient id is required."
       });
     }
 
@@ -97,90 +105,98 @@ exports.getPatientCardProfile = async (req, res) => {
         patientId
       );
 
-    if (!result.success) {
-      return res.status(result.statusCode).json(result);
-    }
-
-    return res.status(200).json(result);
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.body.message,
+      data: result.body.data || null
+    });
 
   } catch (error) {
 
-    console.error("Get patient card error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error"
-    });
-  }
-};
-
-exports.updateUserProfile = async (req, res) => {
-  try {
-    const userId = req.user?.id;
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized user."
-      });
-    }
-
-    const result = await userProfileService.updateUserProfile(
-      userId,
-      req.body
+    console.error(
+      "GET PATIENT CARD ERROR:",
+      error
     );
 
-    return res
-      .status(result.statusCode || (result.success ? 200 : 400))
-      .json(result);
-
-  } catch (error) {
-    console.error("Update User Profile Error:", error);
-
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error."
+      message: "Internal Server Error",
+      data: null
     });
+
   }
 };
-
 
 exports.getPatientDetails = async (req, res) => {
   try {
-    const doctorId = req.user.id;
-    const { appointmentId } = req.params;
 
-    const result = await userProfileService.getPatientDetails(
-      doctorId,
-      appointmentId
-    );
+    const doctorId = Number(req.user.id);
+    const appointmentId = Number(req.params.appointmentId);
+
+    if (!doctorId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized"
+      });
+    }
+
+    if (!appointmentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Appointment id is required"
+      });
+    }
+
+    const result =
+      await userProfileService.getPatientDetails(
+        doctorId,
+        appointmentId
+      );
 
     return res.status(result.statusCode).json({
       success: result.success,
-      message: result.message,
-      data: result.data || null,
+      message: result.body.message,
+      data: result.body.data || null
     });
+
   } catch (error) {
+
     console.error(error);
 
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Internal Server Error"
     });
+
   }
 };
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const result = await userProfileService.getAllUsers();
 
-    return res.status(result.statusCode).json(result);
+    const result =
+      await userProfileService.getAllUsers();
+
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.body.message,
+      count: result.body.count,
+      data: result.body.data
+    });
+
   } catch (error) {
-    console.error(error);
+
+    console.error(
+      "GET ALL USERS ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: "Internal Server Error",
+      count: 0,
+      data: []
     });
+
   }
 };

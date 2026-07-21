@@ -8,8 +8,6 @@ const { verifyToken } = require("../middlewares/authMiddleware");
 const DoctorRatingController = require("../controllers/doctor/doctorRatingController");
 const {allowRoles}=require("../middlewares/role");
 
-router.post("/create-profile", verifyToken,allowRoles(2), doctorController.createDoctorProfile);
-
 router.patch(
   "/update-profile",
   verifyToken,

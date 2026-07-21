@@ -22,54 +22,6 @@ return data;
 };
 
 
-
-exports.createAssistantProfile=async(data)=>{
-try{
-
-const {user_id}=data;
-
-if(!user_id)
-return {
-statusCode:401,
-body:{message:"Unauthorized"}
-};
-
-
-const exists=await AssistantProfile.hasAssistantProfile(user_id);
-
-if(exists)
-return {
-statusCode:409,
-body:{message:"Assistant profile already exists"}
-};
-
-
-data=sanitize(data);
-
-
-const profileId=
-await AssistantProfile.createAssistantProfile(data);
-
-
-return {
-statusCode:201,
-body:{
-message:"Assistant profile created successfully",
-profileId
-}
-};
-
-
-}catch(error){
-
-return {
-statusCode:500,
-body:{message:error.message}
-};
-
-}
-};
-
 exports.getAssistantProfile = async (userId) => {
   try {
 

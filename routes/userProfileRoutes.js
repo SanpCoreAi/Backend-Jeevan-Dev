@@ -3,8 +3,7 @@ const router = express.Router();
 
 const { verifyToken } = require("../middlewares/authMiddleware");
 const userProfileController = require("../controllers/users/userProfileController");
-
-router.post("/createProfile", verifyToken, userProfileController.createUserProfile);
+const {allowRoles}=require("../middlewares/role");
 
 router.get("/getProfile", verifyToken, userProfileController.getUserProfile);
 
@@ -16,19 +15,19 @@ router.patch(
 
 router.get(
   "/patient-card/:patientId",
-  verifyToken,
+  verifyToken,allowRoles(1,2),
   userProfileController.getPatientCardProfile
 );
 
 router.get(
   "/getPatientDetails/:appointmentId",
-  verifyToken,
+  verifyToken,allowRoles(2),
   userProfileController.getPatientDetails
 );
 
 router.get(
   "/getAllUsers",
-  verifyToken,
+  verifyToken,allowRoles(4),
   userProfileController.getAllUsers
 );
 

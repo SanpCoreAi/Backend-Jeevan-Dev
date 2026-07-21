@@ -1,109 +1,114 @@
 const db = require("../config/db");
 
 
+const fieldMap = {
+  username: "username",
+  age: "age",
+  gender: "gender",
+  language: "language",
+  address: "address",
+  blood_group: "blood_group",
+  weight: "weight",
+  height: "height",
+  existing_conditions: "existing_conditions",
+  allergies: "allergies",
+  bio: "bio",
+  emergency_contact: "emergency_contact"
+};
+
+
+const jsonFields = [
+  "language",
+  "address",
+  "existing_conditions",
+  "allergies",
+  "emergency_contact"
+];
+
+const formatValue = (key, value) => {
+
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (jsonFields.includes(key)) {
+    return JSON.stringify(value);
+  }
+
+  return value;
+};
+
 exports.getUserProfileByUserId = async (userId) => {
-  const sql = `
+
+  const [rows] = await db.execute(
+    `
     SELECT *
     FROM user_profiles
     WHERE user_id = ?
     LIMIT 1
-  `;
-
-  const [rows] = await db.execute(sql, [userId]);
+    `,
+    [userId]
+  );
 
   return rows.length ? rows[0] : null;
 };
 
-exports.createUserProfile = async (userId, body) => {
-  const fieldMap = {
-    username: "username",
-    age: "age",
-    gender: "gender",
-    language: "language",
-    address: "address",
-    blood_group: "blood_group",
-    weight: "weight",
-    height: "height",
-    existing_conditions: "existing_conditions",
-    allergies: "allergies",
-    bio: "bio",
-    emergency_contact: "emergency_contact"
-  };
-
-  const jsonFields = [
-    "language",
-    "address",
-    "existing_conditions",
-    "allergies",
-    "emergency_contact"
-  ];
+exports.createUserProfile = async (
+  userId,
+  body
+) => {
 
   const columns = ["user_id"];
   const placeholders = ["?"];
   const values = [userId];
 
-  for (const key of Object.keys(body)) {
-    if (!fieldMap[key]) continue;
+  Object.keys(body).forEach((key) => {
+
+    if (!fieldMap[key]) return;
 
     columns.push(fieldMap[key]);
     placeholders.push("?");
 
-    if (jsonFields.includes(key)) {
-      values.push(JSON.stringify(body[key]));
-    } else {
-      values.push(body[key]);
-    }
-  }
+    values.push(
+      formatValue(key, body[key])
+    );
+
+  });
 
   const sql = `
     INSERT INTO user_profiles
-    (${columns.join(", ")})
-    VALUES (${placeholders.join(", ")})
+    (${columns.join(",")})
+    VALUES
+    (${placeholders.join(",")})
   `;
 
-  const [result] = await db.execute(sql, values);
-
-  return result.affectedRows > 0;
+  const [result] =
+    await db.execute(sql, values);
+  // return insertId so callers can fetch the created row
+  return result.insertId || (result.affectedRows > 0);
 };
 
-exports.updateUserProfile = async (userId, body) => {
-  const fieldMap = {
-    username: "username",
-    age: "age",
-    gender: "gender",
-    language: "language",
-    address: "address",
-    blood_group: "blood_group",
-    weight: "weight",
-    height: "height",
-    existing_conditions: "existing_conditions",
-    allergies: "allergies",
-    bio: "bio",
-    emergency_contact: "emergency_contact"
-  };
-
-  const jsonFields = [
-    "language",
-    "address",
-    "existing_conditions",
-    "allergies",
-    "emergency_contact"
-  ];
+exports.updateUserProfile = async (
+  userId,
+  body
+) => {
 
   const updates = [];
   const values = [];
 
-  for (const key of Object.keys(body)) {
-    if (!fieldMap[key]) continue;
+  Object.keys(body).forEach((key) => {
 
-    updates.push(`${fieldMap[key]} = ?`);
+    if (!fieldMap[key]) return;
 
-    if (jsonFields.includes(key)) {
-      values.push(JSON.stringify(body[key]));
-    } else {
-      values.push(body[key]);
-    }
-  }
+    updates.push(
+      `${fieldMap[key]}=?`
+    );
+
+    values.push(
+      formatValue(key, body[key])
+    );
+
+  });
 
   if (updates.length === 0) {
     return false;
@@ -113,228 +118,302 @@ exports.updateUserProfile = async (userId, body) => {
 
   const sql = `
     UPDATE user_profiles
-    SET ${updates.join(", ")}
+    SET
+      ${updates.join(",")},
+      updated_at = CURRENT_TIMESTAMP
     WHERE user_id = ?
   `;
 
-  const [result] = await db.execute(sql, values);
+  const [result] =
+    await db.execute(sql, values);
 
   return result.affectedRows > 0;
 };
 
-exports.getUserProfileByUserIds = async (userId) => {
+exports.getUserProfileByUserIds =
+async (userId) => {
 
-  const [rows] = await db.execute(
-    `
-    SELECT
-      u.id AS user_id,
-      u.full_name,
-      u.email,
-      u.phone_number,
+  const [rows] =
+    await db.execute(
 
-      p.username,
-      p.age,
-      p.gender,
-      p.language,
-      p.address,
-      p.blood_group,
-      p.weight,
-      p.height,
-      p.existing_conditions,
-      p.allergies,
-      p.bio,
-      p.emergency_contact,
+`
+SELECT
 
-      COALESCE(
-        (
-          SELECT di.file_key
-          FROM user_images di
-          WHERE di.user_id = u.id
-            AND di.file_key IS NOT NULL
-          ORDER BY di.id DESC
-          LIMIT 1
-        ),
-        (
-          SELECT ui.file_key
-          FROM user_images ui
-          WHERE ui.user_id = u.id
-            AND ui.file_key IS NOT NULL
-          ORDER BY ui.id DESC
-          LIMIT 1
-        )
-      ) AS image_key
+u.id AS user_id,
+u.full_name,
+u.email,
+u.phone_number,
 
-    FROM users u
+p.username,
+p.age,
+p.gender,
+p.language,
+p.address,
+p.blood_group,
+p.weight,
+p.height,
+p.existing_conditions,
+p.allergies,
+p.bio,
+p.emergency_contact,
 
-    LEFT JOIN user_profiles p
-      ON p.user_id = u.id
+(
+SELECT file_key
+FROM user_images
+WHERE user_id=u.id
+ORDER BY id DESC
+LIMIT 1
+) AS image_key
 
-    WHERE u.id = ?
+FROM users u
 
-    LIMIT 1
-    `,
-    [userId]
-  );
+LEFT JOIN user_profiles p
+ON p.user_id=u.id
 
-  if (rows.length === 0) {
-    return null;
-  }
+WHERE u.id=?
 
-  return rows[0];
+LIMIT 1
+`,
+[userId]
+
+);
+
+return rows.length
+? rows[0]
+: null;
+
 };
 
-exports.checkDoctorPatientRelation = async (
-  doctorId,
-  patientId
-) => {
+exports.getUserProfileByUserIds =
+async (userId) => {
 
-  const sql = `
-    SELECT id
+const [rows] =
+await db.execute(
 
-    FROM appointments
+`
+SELECT
 
-    WHERE doctor_id = ?
-    AND patient_id = ?
+u.id user_id,
+u.full_name,
+u.email,
+u.phone_number,
 
-    LIMIT 1
-  `;
+p.username,
+p.age,
+p.gender,
+p.language,
+p.address,
+p.blood_group,
+p.weight,
+p.height,
+p.existing_conditions,
+p.allergies,
+p.bio,
+p.emergency_contact,
 
-  const [rows] = await db.execute(sql, [
-    doctorId,
-    patientId
-  ]);
+(
+SELECT file_key
+FROM user_images
+WHERE user_id=u.id
+ORDER BY id DESC
+LIMIT 1
+) image_key
 
-  return rows.length > 0;
+FROM users u
+
+LEFT JOIN user_profiles p
+ON p.user_id=u.id
+
+WHERE u.id=?
+
+LIMIT 1
+`,
+[userId]
+
+);
+
+return rows[0] || null;
+
 };
 
-exports.getPatientCardProfile = async (
-  patientId
-) => {
+exports.checkDoctorPatientRelation =
+async (
+doctorId,
+patientId
+)=>{
 
-  const sql = `
-    SELECT 
-      u.id AS patient_id,
+const [rows]=
+await db.execute(
 
-      u.full_name,
+`
+SELECT id
 
-      u.phone_number,
+FROM appointments
 
-      p.gender,
-      p.weight,
-      p.height,
-      p.age,
-      p.created_at,
+WHERE doctor_id=?
+AND patient_id=?
 
-      (
-        SELECT DATE_FORMAT(
-          a.created_at,
-          '%d-%m-%Y %h:%i %p'
-        )
+LIMIT 1
+`,
 
-        FROM appointments a
+[
+doctorId,
+patientId
+]
 
-        WHERE a.patient_id = u.id
+);
 
-        ORDER BY a.created_at DESC
+return rows.length>0;
 
-        LIMIT 1
-      ) AS last_appointment_booked
-
-    FROM users u
-
-    LEFT JOIN user_profiles p
-      ON u.id = p.user_id
-
-    WHERE u.id = ?
-
-    LIMIT 1
-  `;
-
-  const [rows] = await db.execute(sql, [
-    patientId
-  ]);
-
-  return rows[0];
 };
 
+exports.getPatientCardProfile =
+async(patientId)=>{
 
+const [rows]=
+await db.execute(
 
-exports.getPatientDetails = async (doctorId, appointmentId) => {
-  const [rows] = await db.execute(
-    `
-    SELECT
-        u.id AS user_id,
-        u.full_name,
-        u.phone_number,
-        u.email,
+`
+SELECT
 
-        up.age,
-        up.gender,
-        up.weight,
-        up.height,
-        up.blood_group,
-        up.created_at,
+u.id patient_id,
+u.full_name,
+u.phone_number,
 
-        a.id AS appointment_id,
-        a.slot_date,
-        a.appointment_type,
-        a.status,
-        a.reason_for_visit,
-        a.hospital_name
+p.age,
+p.gender,
+p.weight,
+p.height,
 
-    FROM appointments a
+(
+SELECT
+DATE_FORMAT(
+created_at,
+'%d-%m-%Y %h:%i %p'
+)
 
-    INNER JOIN users u
-        ON u.id = a.patient_id
+FROM appointments
 
-    LEFT JOIN user_profiles up
-        ON up.user_id = a.patient_id
+WHERE patient_id=u.id
 
-    WHERE
-        a.id = ?
-        AND a.doctor_id = ?
+ORDER BY created_at DESC
 
-    LIMIT 1
-    `,
-    [appointmentId, doctorId]
-  );
+LIMIT 1
 
-  return rows[0] || null;
+) last_appointment
+
+FROM users u
+
+LEFT JOIN user_profiles p
+ON p.user_id=u.id
+
+WHERE u.id=?
+
+LIMIT 1
+`,
+
+[patientId]
+
+);
+
+return rows[0] || null;
+
 };
 
-exports.getAllUsers = async () => {
-  const sql = `
-    SELECT
-      u.id AS user_id,
-      u.full_name,
-      u.email,
-      u.phone_number,
-      u.role_id,
+exports.getPatientDetails =
+async(
+doctorId,
+appointmentId
+)=>{
 
-      p.username,
-      p.age,
-      p.gender,
-      p.language,
-      p.address,
-      p.blood_group,
-      p.weight,
-      p.height,
-      p.existing_conditions,
-      p.allergies,
-      p.bio,
-      p.emergency_contact
+const [rows]=
+await db.execute(
 
-    FROM users u
+`
+SELECT
 
-    LEFT JOIN user_profiles p
-      ON u.id = p.user_id
+u.id user_id,
+u.full_name,
+u.email,
+u.phone_number,
 
-    WHERE u.role_id = 1
+up.age,
+up.gender,
+up.weight,
+up.height,
+up.blood_group,
 
-    ORDER BY u.id DESC
-  `;
+a.id appointment_id,
+a.slot_date,
+a.status,
+a.reason_for_visit,
+a.hospital_name
 
-  const [rows] = await db.execute(sql);
+FROM appointments a
 
-  return rows;
+INNER JOIN users u
+ON u.id=a.patient_id
+
+LEFT JOIN user_profiles up
+ON up.user_id=a.patient_id
+
+WHERE
+a.id=?
+AND a.doctor_id=?
+
+LIMIT 1
+`,
+
+[
+appointmentId,
+doctorId
+]
+
+);
+
+return rows[0] || null;
+
+};
+
+exports.getAllUsers =
+async()=>{
+
+const [rows]=
+await db.execute(
+
+`
+SELECT
+
+u.id user_id,
+u.full_name,
+u.email,
+u.phone_number,
+
+p.username,
+p.age,
+p.gender,
+p.language,
+p.address,
+p.blood_group,
+p.weight,
+p.height,
+p.existing_conditions,
+p.allergies,
+p.bio,
+p.emergency_contact
+
+FROM users u
+
+LEFT JOIN user_profiles p
+ON p.user_id=u.id
+
+WHERE u.role_id=1
+
+ORDER BY u.id DESC
+`
+
+);
+
+return rows;
+
 };

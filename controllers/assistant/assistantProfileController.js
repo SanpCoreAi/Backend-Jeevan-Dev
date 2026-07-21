@@ -5,38 +5,6 @@ updateAssistantProfileValidation
 }=require("../../validation/assistant/assistantProfileValidator");
 
 
-exports.createAssistantProfile=async(req,res)=>{
-try{
-
-const error=createAssistantProfileValidation(req.body);
-if(error)
-return res.status(400).json({success:false,message:error});
-
-const user_id=req.user?.id;
-
-if(!user_id)
-return res.status(401).json({success:false,message:"Unauthorized"});
-
-
-const result=await assistantProfileService.createAssistantProfile({
-...req.body,
-user_id
-});
-
-return res.status(result.statusCode).json({
-success:result.statusCode<400,
-message:result.body.message,
-data:{profile_id:result.body.profileId||null}
-});
-
-}catch(error){
-return res.status(500).json({
-success:false,
-message:"Internal Server Error"
-});
-}
-};
-
 
 
 exports.getAssistantProfile = async (req, res) => {
