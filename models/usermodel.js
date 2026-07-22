@@ -354,20 +354,42 @@ exports.clearResetToken = async (userId) => {
 
 exports.findByDoctorId = async (doctorId) => {
   try {
-
     const [rows] = await db.query(
       `
       SELECT
-        id,
-        full_name,
-        email,
-        phone_number,
-        role_id,
-        email_verified,
-        created_at
-      FROM users
-      WHERE doctor_id = ?
-      ORDER BY created_at DESC
+        u.id,
+        u.full_name,
+        u.email,
+        u.phone_number,
+        u.role_id,
+        u.email_verified,
+        u.created_at,
+
+        -- Assistant Profile
+        ap.gender,
+        ap.age,
+        ap.department,
+        ap.education,
+        ap.experience,
+        ap.language,
+        ap.address,
+        ap.bio,
+
+        -- User Image
+        ui.file_key AS image,
+        ui.folder_name
+
+      FROM users u
+
+      LEFT JOIN assistant_profiles ap
+        ON ap.user_id = u.id
+
+      LEFT JOIN user_images ui
+        ON ui.user_id = u.id
+
+      WHERE u.doctor_id = ?
+
+      ORDER BY u.created_at DESC
       `,
       [doctorId]
     );
@@ -375,10 +397,8 @@ exports.findByDoctorId = async (doctorId) => {
     return rows;
 
   } catch (error) {
-
     console.error("Find By Doctor Id Model Error:", error);
     throw error;
-
   }
 };
 
