@@ -37,8 +37,8 @@ async function findDoctors(filters = {}) {
 
         (
           SELECT file_key
-          FROM doctor_image
-          WHERE doctor_id IN (d.id,d.user_id)
+          FROM user_images
+          WHERE user_id IN (d.id,d.user_id)
           ORDER BY id DESC
           LIMIT 1
         ) AS photo
