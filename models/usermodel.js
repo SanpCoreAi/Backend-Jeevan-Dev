@@ -2,7 +2,6 @@ const db = require("../config/db");
 
 exports.createUser = async (data) => {
   try {
-
     const allowedFields = [
       "full_name",
       "email",
@@ -126,11 +125,10 @@ exports.findById = async (id) => {
       WHERE id = ?
       LIMIT 1
       `,
+
       [id]
     );
-
     return rows[0] || null;
-
   } catch (error) {
 
     console.error("Find By Id Model Error:", error);
@@ -138,7 +136,6 @@ exports.findById = async (id) => {
 
   }
 };
-
 
 exports.verifyUserByToken = async (token) => {
   try {

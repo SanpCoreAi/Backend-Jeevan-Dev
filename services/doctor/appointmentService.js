@@ -562,21 +562,17 @@ async ({ doctorId }) => {
 
 };
 
-exports.getPatientDashboardCards =
-async ({ doctorId }) => {
+exports.getPatientDashboardCards = async ({
+  doctorId,
+  filter,
+}) => {
 
-
-  const data =
-    await Appointment
-      .getPatientDashboardCards({
-        doctorId
-      });
-
-
-  return data;
+  return await Appointment.getPatientDashboardCards({
+    doctorId,
+    filter,
+  });
 
 };
-
 
 
 exports.getUserById = async(id)=>{

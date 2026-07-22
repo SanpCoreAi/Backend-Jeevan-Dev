@@ -506,91 +506,50 @@ exports.getDashboardCards = async (req, res) => {
 
 
 exports.getPatientDashboardCards = async (req, res) => {
-
   try {
-
     let doctorId;
 
-
-    // Doctor token
     if (req.user.role === 2) {
-
       doctorId = req.user.id;
-
-    }
-
-
-    // Assistant token
-    else if (req.user.role === 3) {
-
-      const user =
-        await appointmentService.getUserById(
-          req.user.id
-        );
-
+    } else if (req.user.role === 3) {
+      const user = await appointmentService.getUserById(req.user.id);
 
       if (!user || !user.doctor_id) {
-
         return res.status(404).json({
-          success:false,
-          message:"Doctor not found"
+          success: false,
+          message: "Doctor not found",
         });
-
       }
 
-
       doctorId = user.doctor_id;
-
-    }
-
-
-    else {
-
+    } else {
       return res.status(403).json({
-        success:false,
-        message:"Unauthorized role"
+        success: false,
+        message: "Unauthorized role",
       });
-
     }
 
+    // query parameter
+    const filter = req.query.filter || "day";
 
-
-    const data =
-      await appointmentService
-        .getPatientDashboardCards({
-          doctorId
-        });
-
-
+    const data = await appointmentService.getPatientDashboardCards({
+      doctorId,
+      filter,
+    });
 
     return res.status(200).json({
-
-      success:true,
-
-      message:
-        "Patient dashboard cards fetched successfully",
-
-      data
-
+      success: true,
+      message: "Patient dashboard cards fetched successfully",
+      data,
     });
-
-
-
-  } catch(error) {
-
+  } catch (error) {
     console.log(error);
 
-
     return res.status(500).json({
-
-      success:false,
-
-      message:"Something went wrong"
-
+      success: false,
+      message: "Something went wrong",
     });
-
   }
-
 };
 
 exports.getMyAppointments = async (req, res) => {
@@ -598,27 +557,17 @@ exports.getMyAppointments = async (req, res) => {
   try {
 
     let userId;
-
-
-    // Patient
     if (req.user.role === 1) {
-
       userId = req.user.id;
 
     }
 
-
-    // Doctor
     else if (req.user.role === 2) {
-
       userId = req.user.id;
 
     }
 
-
-    // Assistant
     else if (req.user.role === 3) {
-
       const user =
         await appointmentService.getUserById(
           req.user.id
@@ -634,12 +583,9 @@ exports.getMyAppointments = async (req, res) => {
 
       }
 
-
       userId = user.doctor_id;
 
     }
-
-
     else {
 
       return res.status(403).json({
@@ -648,8 +594,6 @@ exports.getMyAppointments = async (req, res) => {
       });
 
     }
-
-
 
     const result =
       await appointmentService.getMyAppointments(
@@ -660,9 +604,7 @@ exports.getMyAppointments = async (req, res) => {
     return res.status(200).json({
 
       success:true,
-
       count: result.data.length,
-
       data: result.data
 
     });
@@ -671,9 +613,7 @@ exports.getMyAppointments = async (req, res) => {
   } catch(error) {
 
     return res.status(500).json({
-
       success:false,
-
       message:error.message
 
     });
@@ -685,10 +625,7 @@ exports.getMyAppointments = async (req, res) => {
 exports.getDoctorSlots = async (req, res) => {
   try {
     let { doctorId, hospitalName, date } = req.query;
-
     const roleId = req.user.role_id;
-
-    // Doctor login
     if (roleId === 2) {
       doctorId = req.user.id;
     }
