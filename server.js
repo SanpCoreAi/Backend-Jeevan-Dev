@@ -17,6 +17,7 @@ const { notFound, errorHandler } = require("./middlewares/errorHandler");
 const socketHandler = require("./socket/socketHandler");
 const prescriptionRoutes = require("./routes/prescriptionRoutes");
 const assistantProfileRoutes = require("./routes/assistant/assistantProfileRoutes");
+const notificationRoutes = require("./routes/notification/notificationRoutes")
 const AppointmentGraph = require("./routes/Dashboard")
 const appointmentCron = require("./cron/appointmentCron");
 dotenv.config();
@@ -46,6 +47,7 @@ app.use("/api/emergency", emergencyRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
 app.use( "/api/assistant", assistantProfileRoutes);
 app.use('/api/dashboard', AppointmentGraph);
+app.use('/api/notification', notificationRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
