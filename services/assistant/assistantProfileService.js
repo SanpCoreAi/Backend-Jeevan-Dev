@@ -1,26 +1,26 @@
-const AssistantProfile=require("../../models/assistant/assistantProfileModel");
-const xss=require("xss");
+const AssistantProfile = require("../../models/assistant/assistantProfileModel");
+const xss = require("xss");
+const safeParse = require("../../utils/safeJson");
 
 const AWS_S3_BUCKET_URL = process.env.AWS_S3_BUCKET_URL;
 const APP_BASE_URL = process.env.APP_BASE_URL;
 
-const safeParse = (value, defaultValue) => {
-  try {
-    return value ? JSON.parse(value) : defaultValue;
-  } catch {
-    return defaultValue;
-  }
+
+const sanitize = (data = {}) => {
+  const sanitized = {};
+
+  Object.keys(data).forEach((key) => {
+    const value = data[key];
+
+    if (typeof value === "string") {
+      sanitized[key] = xss(value.trim());
+    } else {
+      sanitized[key] = value;
+    }
+  });
+
+  return sanitized;
 };
-
-
-const sanitize=(data)=>{
-Object.keys(data).forEach(key=>{
-if(typeof data[key]=="string")
-data[key]=xss(data[key].trim());
-});
-return data;
-};
-
 
 exports.getAssistantProfile = async (userId) => {
   try {
@@ -29,7 +29,7 @@ exports.getAssistantProfile = async (userId) => {
       return {
         statusCode: 401,
         body: {
-          message: "Unauthorized"
+          message: "Unauthorized user."
         }
       };
     }
@@ -41,7 +41,7 @@ exports.getAssistantProfile = async (userId) => {
       return {
         statusCode: 404,
         body: {
-          message: "Assistant not found"
+          message: "Assistant profile not found."
         }
       };
     }
@@ -68,7 +68,8 @@ exports.getAssistantProfile = async (userId) => {
     };
 
   } catch (error) {
-    console.error(error);
+
+    console.error("GET ASSISTANT PROFILE SERVICE ERROR:", error);
 
     return {
       statusCode: 500,
@@ -80,6 +81,7 @@ exports.getAssistantProfile = async (userId) => {
 };
 
 exports.updateAssistantProfile = async (userId, data) => {
+
   try {
 
     if (!userId) {
@@ -100,11 +102,31 @@ exports.updateAssistantProfile = async (userId, data) => {
       };
     }
 
-    const profile =
+    if (
+      data.language &&
+      !Array.isArray(data.language)
+    ) {
+      data.language = [data.language];
+    }
+
+    Object.keys(data).forEach((key) => {
+      if (data[key] === undefined || data[key] === null) {
+        delete data[key];
+      }
+    });
+
+    if (Object.keys(data).length === 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "No valid fields provided."
+      };
+    }
+
+    const existingProfile =
       await AssistantProfile.getAssistantProfileByUserId(userId);
 
-    // CREATE
-    if (!profile) {
+    if (!existingProfile) {
 
       const created =
         await AssistantProfile.createAssistantProfile(
@@ -115,19 +137,22 @@ exports.updateAssistantProfile = async (userId, data) => {
       if (!created) {
         return {
           success: false,
-          statusCode: 400,
+          statusCode: 500,
           message: "Profile creation failed."
         };
       }
 
+      const profile =
+        await AssistantProfile.getAssistantProfile(userId);
+
       return {
         success: true,
         statusCode: 201,
-        message: "Assistant profile created successfully."
+        message: "Assistant profile created successfully.",
+        data: profile
       };
     }
 
-    // UPDATE
     const updated =
       await AssistantProfile.updateAssistantProfile(
         userId,
@@ -137,20 +162,24 @@ exports.updateAssistantProfile = async (userId, data) => {
     if (!updated) {
       return {
         success: false,
-        statusCode: 400,
+        statusCode: 500,
         message: "Profile update failed."
       };
     }
 
+    const profile =
+      await AssistantProfile.getAssistantProfile(userId);
+
     return {
       success: true,
       statusCode: 200,
-      message: "Assistant profile updated successfully."
+      message: "Assistant profile updated successfully.",
+      data: profile
     };
 
   } catch (error) {
 
-    console.error(error);
+    console.error("UPDATE ASSISTANT PROFILE SERVICE ERROR:", error);
 
     return {
       success: false,
@@ -160,40 +189,18 @@ exports.updateAssistantProfile = async (userId, data) => {
   }
 };
 
-
-
-
-exports.getAllAssistantProfiles=async(doctorId)=>{
-try{
-
-const profiles=
-await AssistantProfile.getAllAssistantProfiles(
-doctorId
-);
-
-
-return {
-statusCode:200,
-body:{
-message:"Assistant profiles fetched successfully",
-results:profiles.length,
-data:profiles
-}
-};
-
-
-}catch(error){
-
-return {
-statusCode:500,
-body:{message:error.message}
-};
-
-}
-};
-
 exports.getAllAssistantProfiles = async (doctorId) => {
+
   try {
+
+    if (!doctorId) {
+      return {
+        statusCode: 400,
+        body: {
+          message: "Doctor id is required."
+        }
+      };
+    }
 
     const profiles =
       await AssistantProfile.getAllAssistantProfiles(doctorId);
@@ -201,7 +208,7 @@ exports.getAllAssistantProfiles = async (doctorId) => {
     return {
       statusCode: 200,
       body: {
-        message: "Assistant profiles fetched successfully",
+        message: "Assistant profiles fetched successfully.",
         results: profiles.length,
         data: profiles
       }
@@ -209,10 +216,95 @@ exports.getAllAssistantProfiles = async (doctorId) => {
 
   } catch (error) {
 
+    console.error("GET ALL ASSISTANT PROFILE SERVICE ERROR:", error);
+
     return {
       statusCode: 500,
-      body: { message: error.message }
+      body: {
+        message: "Internal Server Error"
+      }
+    };
+  }
+};
+
+exports.getAllAssistantProfile = async () => {
+
+  try {
+
+    const assistants =
+      await AssistantProfile.getAllAssistantProfile();
+
+    const data = assistants.map((assistant) => ({
+
+      ...assistant,
+
+      language: safeParse(
+        assistant.language,
+        []
+      ),
+
+      address: safeParse(
+        assistant.address,
+        {}
+      ),
+
+      image: assistant.image_key
+        ? {
+            url: AWS_S3_BUCKET_URL
+              ? `${AWS_S3_BUCKET_URL}/${encodeURI(
+                  assistant.image_key
+                )}`
+              : `${APP_BASE_URL}/uploads/${encodeURI(
+                  assistant.image_key
+                )}`
+          }
+        : null
+
+    }));
+
+    data.forEach(item => delete item.image_key);
+
+    return {
+
+      success: true,
+
+      statusCode: 200,
+
+      body: {
+
+        message:
+          "Assistant profiles fetched successfully.",
+
+        count: data.length,
+
+        data
+
+      }
+
+    };
+
+  } catch (error) {
+
+    console.error(
+      "GET ALL ASSISTANT PROFILES SERVICE ERROR:",
+      error
+    );
+
+    return {
+
+      success: false,
+
+      statusCode: 500,
+
+      body: {
+
+        message:
+          "Internal Server Error"
+
+      }
+
     };
 
   }
+
 };

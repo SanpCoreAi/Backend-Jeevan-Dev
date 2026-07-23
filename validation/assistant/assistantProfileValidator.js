@@ -1,143 +1,114 @@
 const Joi = require("joi");
 
+const genderSchema = Joi.string()
+  .trim()
+  .valid("male", "female", "other");
 
-// CREATE
+const ageSchema = Joi.number()
+  .integer()
+  .min(18)
+  .max(80);
 
-exports.createAssistantProfileValidation = (data)=>{
-const schema = Joi.object({
-gender:Joi.string()
-.valid("male","female","other")
-.required(),
+const departmentSchema = Joi.string()
+  .trim()
+  .min(2)
+  .max(100);
 
+const educationSchema = Joi.string()
+  .trim()
+  .min(2)
+  .max(200);
 
-age:Joi.number()
-.min(18)
-.max(80)
-.optional(),
+const experienceSchema = Joi.number()
+  .integer()
+  .min(0)
+  .max(60);
 
+const languageSchema = Joi.alternatives().try(
+  Joi.array().items(
+    Joi.string().trim().min(1).max(50)
+  ),
+  Joi.string().trim().min(1).max(50)
+);
 
-department:Joi.string()
-.min(2)
-.max(100)
-.required(),
+const addressSchema = Joi.object({
+  address_line_1: Joi.string().trim().max(255).optional(),
+  address_line_2: Joi.string().trim().max(255).allow("").optional(),
+  city: Joi.string().trim().max(100).optional(),
+  state: Joi.string().trim().max(100).optional(),
+  country: Joi.string().trim().max(100).optional(),
+  pincode: Joi.string().trim().max(20).optional()
+}).unknown(false);
 
+const bioSchema = Joi.string()
+  .trim()
+  .max(500)
+  .allow("");
 
-education:Joi.string()
-.min(2)
-.max(200)
-.required(),
+exports.createAssistantProfileValidation = (data) => {
 
+  const schema = Joi.object({
 
-experience:Joi.number()
-.min(0)
-.optional(),
+    gender: genderSchema.required(),
 
+    age: ageSchema.optional(),
 
-language:Joi.array()
-.items(Joi.string())
-.optional(),
+    department: departmentSchema.required(),
 
+    education: educationSchema.required(),
 
-address:Joi.object()
-.optional(),
+    experience: experienceSchema.optional(),
 
+    language: languageSchema.optional(),
 
-bio:Joi.string()
-.max(500)
-.allow("")
-.optional()
+    address: addressSchema.optional(),
 
+    bio: bioSchema.optional()
 
-});
+  })
+    .required()
+    .unknown(false);
 
+  const { error } = schema.validate(data, {
+    abortEarly: true,
+    stripUnknown: true
+  });
 
-
-const {error}=schema.validate(data,{
-
-abortEarly:true
-
-});
-
-
-return error
-? error.details[0].message
-: null;
-
-
+  return error
+    ? error.details[0].message
+    : null;
 };
 
+exports.updateAssistantProfileValidation = (data) => {
 
+  const schema = Joi.object({
 
+    gender: genderSchema.optional(),
 
+    age: ageSchema.optional(),
 
+    department: departmentSchema.optional(),
 
+    education: educationSchema.optional(),
 
+    experience: experienceSchema.optional(),
 
-// UPDATE
+    language: languageSchema.optional(),
 
+    address: addressSchema.optional(),
 
-exports.updateAssistantProfileValidation = (data)=>{
+    bio: bioSchema.optional()
 
+  })
+    .min(1)
+    .unknown(false);
 
-const schema = Joi.object({
-gender:Joi.string()
-.valid("male","female","other")
-.optional(),
+  const { error } = schema.validate(data, {
+    abortEarly: true,
+    stripUnknown: true
+  });
 
-
-age:Joi.number()
-.min(18)
-.max(80)
-.optional(),
-
-
-department:Joi.string()
-.min(2)
-.max(100)
-.optional(),
-
-
-education:Joi.string()
-.min(2)
-.max(200)
-.optional(),
-
-
-experience:Joi.number()
-.min(0)
-.optional(),
-
-
-language:Joi.array()
-.items(Joi.string())
-.optional(),
-
-
-address:Joi.object()
-.optional(),
-
-
-bio:Joi.string()
-.max(500)
-.allow("")
-.optional()
-
-
-});
-
-
-
-const {error}=schema.validate(data,{
-
-abortEarly:true
-
-});
-
-
-
-return error
-? error.details[0].message
-: null;
-
-
+  return error
+    ? error.details[0].message
+    : null;
 };

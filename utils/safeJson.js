@@ -1,19 +1,22 @@
-const safeJSON = (value, fallback = []) => {
-  if (value === null || value === undefined) return fallback;
+const safeParse = (value, defaultValue) => {
 
-  if (typeof value === "object") return value;
+  if (value === null || value === undefined) {
+    return defaultValue;
+  }
+
+  if (Array.isArray(value) || typeof value === "object") {
+    return value;
+  }
 
   if (typeof value === "string") {
     try {
       return JSON.parse(value);
-    } catch (e) {
-      return fallback;
+    } catch {
+      return defaultValue;
     }
   }
 
-  return fallback;
+  return defaultValue;
 };
 
-module.exports = {
-  safeJSON,
-};
+module.exports = safeParse;

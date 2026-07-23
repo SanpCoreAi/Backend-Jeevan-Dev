@@ -84,7 +84,6 @@ exports.createUserProfile = async (
 
   const [result] =
     await db.execute(sql, values);
-  // return insertId so callers can fetch the created row
   return result.insertId || (result.affectedRows > 0);
 };
 

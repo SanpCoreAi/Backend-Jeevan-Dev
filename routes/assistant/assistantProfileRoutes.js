@@ -4,6 +4,9 @@ const router = express.Router();
 const { verifyToken } =
   require("../../middlewares/authMiddleware");
 
+  const { allowRoles } =
+  require("../../middlewares/role");
+
 const assistantProfileController =
 require("../../controllers/assistant/assistantProfileController");
 
@@ -15,14 +18,14 @@ router.get(
 );
 
 router.get(
-  "/getAllAssistantProfiles",
-  verifyToken,
-  assistantProfileController.getAllAssistantProfiles
+  "/getAllAssistantProfile",
+  verifyToken, allowRoles(4),
+  assistantProfileController.getAllAssistantProfile
 );
 
 router.patch(
   "/updateAssistantProfile",
-  verifyToken,
+  verifyToken,allowRoles(3),
   assistantProfileController.updateAssistantProfile
 );
 

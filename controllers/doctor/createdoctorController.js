@@ -1,5 +1,6 @@
 const DoctorService = require("../../services/doctor/createdoctorService");
 const {  updateDoctorSchema  } = require("../../validation/doctor/doctorValidation");
+const safeParse = require("../../utils/safeJson");
 
 
 async function getDoctorProfile(req, res) {

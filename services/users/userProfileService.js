@@ -1,20 +1,9 @@
 const userProfileModel = require("../../models/userProfileModel");
 const { validateUserProfile } = require("../../validation/user/userProfile");
+const safeParse = require("../../utils/safeJson");
 
 const AWS_S3_BUCKET_URL = process.env.AWS_S3_BUCKET_URL;
 const APP_BASE_URL = process.env.APP_BASE_URL;
-
-const safeParse = (value, defaultValue) => {
-  if (!value) return defaultValue;
-
-  try {
-    return typeof value === "string"
-      ? JSON.parse(value)
-      : value;
-  } catch {
-    return defaultValue;
-  }
-};
 
 exports.getUserProfile = async (userId) => {
   try {
@@ -198,7 +187,6 @@ exports.updateUserProfile = async (
       };
     }
 
-    // UPDATE PROFILE
     const updated =
       await userProfileModel.updateUserProfile(
         userId,
