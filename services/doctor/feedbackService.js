@@ -1,253 +1,248 @@
-const FeedbackModel=require("../../models/feedbackModel");
-const xss=require("xss");
+const FeedbackModel = require("../../models/feedbackModel");
+const xss = require("xss");
 
+exports.createFeedback = async (userId, doctorId, body) => {
+  try {
 
-exports.createFeedback=async(userId,doctorId,body)=>{
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return {
+        success: false,
+        statusCode: 401,
+        body: {
+          message: "Unauthorized user."
+        }
+      };
+    }
 
-try{
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        body: {
+          message: "Valid doctor id is required."
+        }
+      };
+    }
 
-if(!userId)
-return {
-statusCode:401,
-body:{message:"User not authenticated"}
+    let { feedback_text, rating } = body;
+
+    feedback_text = xss(String(feedback_text || "").trim());
+
+    rating =
+      rating !== undefined && rating !== null
+        ? Number(rating)
+        : null;
+
+    if (
+      rating !== null &&
+      (Number.isNaN(rating) || rating < 1 || rating > 5)
+    ) {
+      return {
+        success: false,
+        statusCode: 400,
+        body: {
+          message: "Rating must be between 1 and 5."
+        }
+      };
+    }
+
+    const alreadyExists =
+      await FeedbackModel.checkUserFeedback(
+        userId,
+        doctorId
+      );
+
+    if (alreadyExists) {
+      return {
+        success: false,
+        statusCode: 409,
+        body: {
+          message: "Feedback already submitted."
+        }
+      };
+    }
+
+    const feedbackId =
+      await FeedbackModel.createFeedback(
+        userId,
+        doctorId,
+        feedback_text,
+        rating
+      );
+
+    return {
+      success: true,
+      statusCode: 201,
+      body: {
+        message: "Feedback created successfully.",
+        data: {
+          feedback_id: feedbackId
+        }
+      }
+    };
+
+  } catch (error) {
+
+    console.error(
+      "CREATE FEEDBACK SERVICE ERROR:",
+      error
+    );
+
+    return {
+      success: false,
+      statusCode: 500,
+      body: {
+        message: "Internal Server Error"
+      }
+    };
+  }
 };
 
+exports.getDoctorFeedbacks = async (doctorId) => {
+  try {
 
-if(!doctorId)
-return {
-statusCode:400,
-body:{message:"doctor_id required"}
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        body: {
+          message: "Valid doctor id is required."
+        }
+      };
+    }
+
+    const feedbacks =
+      await FeedbackModel.getDoctorFeedbacks(
+        doctorId
+      );
+
+    if (!feedbacks.length) {
+      return {
+        success: true,
+        statusCode: 200,
+        body: {
+          message: "No feedback found.",
+          summary: {
+            total_feedbacks: 0,
+            total_ratings: 0,
+            avg_rating: 0
+          },
+          data: []
+        }
+      };
+    }
+
+    const ratings = feedbacks.filter(
+      item => item.rating !== null
+    );
+
+    const avgRating =
+      ratings.length > 0
+        ? (
+            ratings.reduce(
+              (sum, item) =>
+                sum + Number(item.rating),
+              0
+            ) / ratings.length
+          ).toFixed(1)
+        : 0;
+
+    return {
+      success: true,
+      statusCode: 200,
+      body: {
+        message:
+          "Feedback fetched successfully.",
+        summary: {
+          total_feedbacks:
+            feedbacks.length,
+          total_ratings:
+            ratings.length,
+          avg_rating: avgRating
+        },
+        data: feedbacks
+      }
+    };
+
+  } catch (error) {
+
+    console.error(
+      "GET DOCTOR FEEDBACK SERVICE ERROR:",
+      error
+    );
+
+    return {
+      success: false,
+      statusCode: 500,
+      body: {
+        message: "Internal Server Error"
+      }
+    };
+  }
 };
 
+exports.getAllFeedbacks = async () => {
+  try {
 
-let {
-feedback_text,
-rating
-}=body;
+    const feedbacks =
+      await FeedbackModel.getAllFeedbacks();
 
+    return {
+      success: true,
+      statusCode: 200,
+      body: {
+        message:
+          "All feedback fetched successfully.",
+        data: feedbacks
+      }
+    };
 
-feedback_text=xss(feedback_text.trim());
-rating=rating?Number(rating):null;
+  } catch (error) {
 
+    console.error(
+      "GET ALL FEEDBACKS SERVICE ERROR:",
+      error
+    );
 
-if(rating && (rating<1||rating>5))
-return {
-statusCode:400,
-body:{message:"Rating must be between 1-5"}
+    return {
+      success: false,
+      statusCode: 500,
+      body: {
+        message: "Internal Server Error"
+      }
+    };
+  }
 };
 
-
-
-const exists=
-await FeedbackModel.checkUserFeedback(
-userId,
-doctorId
-);
-
-
-if(exists)
-return {
-statusCode:409,
-body:{message:"Feedback already submitted"}
-};
-
-
-
-await FeedbackModel.createFeedback(
-userId,
-doctorId,
-feedback_text,
-rating
-);
-
-
-
-const feedbacks=
-await FeedbackModel.getDoctorFeedbacks(
-doctorId
-);
-
-
-
-const ratings=
-feedbacks.filter(
-f=>f.rating!==null
-);
-
-
-
-const avg_rating=
-ratings.length
-?
-(
-ratings.reduce(
-(sum,f)=>sum+Number(f.rating),
-0
-)/ratings.length
-).toFixed(1)
-:0;
-
-return {
-
-statusCode:201,
-
-body:{
-
-message:"Feedback created successfully",
-
-data:{
- feedback_id: await FeedbackModel.createFeedback(
-  userId,
-  doctorId,
-  feedback_text,
-  rating
- )
-}
-
-}
-
-};
-
-
-
-}catch(error){
-
-return {
-statusCode:500,
-body:{message:error.message}
-};
-
-}
-
-};
-
-
-exports.getDoctorFeedbacks=async(doctorId)=>{
-
-try{
-
-
-if(!doctorId)
-return {
-statusCode:400,
-body:{message:"doctor_id required"}
-};
-
-
-
-const feedbacks=
-await FeedbackModel.getDoctorFeedbacks(
-doctorId
-);
-
-
-
-if(!feedbacks.length)
-return {
-statusCode:404,
-body:{message:"No feedback found"}
-};
-
-
-
-const ratings=
-feedbacks.filter(
-f=>f.rating!==null
-);
-
-
-
-const avg_rating=
-ratings.length
-?
-(
-ratings.reduce(
-(sum,f)=>sum+Number(f.rating),
-0
-)/ratings.length
-).toFixed(1)
-:0;
-
-
-
-return {
-statusCode:200,
-body:{
-message:"Feedback fetched successfully",
-summary:{
-total_feedbacks:feedbacks.length,
-total_ratings:ratings.length,
-avg_rating
-},
-data:feedbacks
-}
-};
-
-
-
-}catch(error){
-
-return {
-statusCode:500,
-body:{message:error.message}
-};
-
-}
-
-};
-
-exports.getAllFeedbacks=async()=>{
-
-try{
-
-const data=
-await FeedbackModel.getAllFeedbacks();
-
-
-return {
-statusCode:200,
-body:{
-message:"All feedback fetched successfully",
-data
-}
-};
-
-
-}catch(error){
-
-return {
-statusCode:500,
-body:{message:error.message}
-};
-
-}
-
-};
-
-exports.getAllDoctorsRatings=async()=>{
-
-try{
-
-const data=
-await FeedbackModel.getAllDoctorsRatingSummary();
-
-
-return {
-statusCode:200,
-body:{
-message:"Doctor ratings fetched successfully",
-data
-}
-};
-
-
-}catch(error){
-
-return {
-statusCode:500,
-body:{message:error.message}
-};
-
-}
-
+exports.getAllDoctorsRatings = async () => {
+  try {
+
+    const ratings =
+      await FeedbackModel.getAllDoctorsRatingSummary();
+
+    return {
+      success: true,
+      statusCode: 200,
+      body: {
+        message:
+          "Doctor ratings fetched successfully.",
+        data: ratings
+      }
+    };
+
+  } catch (error) {
+
+    console.error(
+      "GET ALL DOCTOR RATINGS SERVICE ERROR:",
+      error
+    );
+
+    return {
+      success: false,
+      statusCode: 500,
+      body: {
+        message: "Internal Server Error"
+      }
+    };
+  }
 };

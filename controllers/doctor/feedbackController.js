@@ -1,116 +1,139 @@
-const FeedbackService=require("../../services/doctor/feedbackService");
-const {createFeedbackValidation}=require("../../validation/doctor/feedbackValidator");
+const FeedbackService = require("../../services/doctor/feedbackService");
+const {
+  createFeedbackValidation,
+} = require("../../validation/doctor/feedbackValidator");
 
+exports.createFeedback = async (req, res) => {
+  try {
+    const userId = Number(req.user?.id);
+    const doctorId = Number(req.params.doctorId);
 
-exports.createFeedback=async(req,res)=>{
-try{
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user.",
+      });
+    }
 
-const error=createFeedbackValidation(req.body);
-if(error)
-return res.status(400).json({success:false,message:error});
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid doctor id is required.",
+      });
+    }
 
+    const error = createFeedbackValidation(req.body);
 
-const userId=req.user?.id;
-const doctorId=Number(req.params.doctorId);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error,
+      });
+    }
 
+    const result = await FeedbackService.createFeedback(
+      userId,
+      doctorId,
+      req.body
+    );
 
-const result=await FeedbackService.createFeedback(
-userId,
-doctorId,
-req.body
-);
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      data: result.body.data || null,
+    });
 
+  } catch (error) {
 
-return res.status(result.statusCode).json({
-success:result.statusCode<400,
-message:result.body.message,
-data:result.body.data||{}
-});
+    console.error("CREATE FEEDBACK ERROR:", error);
 
-
-}catch(error){
-
-return res.status(500).json({
-success:false,
-message:"Internal Server Error"
-});
-
-}
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      data: null,
+    });
+  }
 };
 
+exports.getDoctorFeedbacks = async (req, res) => {
+  try {
 
-exports.getDoctorFeedbacks=async(req,res)=>{
-try{
+    const doctorId = Number(req.params.doctor_id);
 
-const doctorId=Number(req.params.doctor_id);
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid doctor id is required.",
+      });
+    }
 
+    const result =
+      await FeedbackService.getDoctorFeedbacks(doctorId);
 
-const result=
-await FeedbackService.getDoctorFeedbacks(doctorId);
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.body.message,
+      summary: result.body.summary || {},
+      data: result.body.data || [],
+    });
 
+  } catch (error) {
 
-return res.status(result.statusCode).json({
-success:result.statusCode<400,
-message:result.body.message,
-summary:result.body.summary||{},
-data:result.body.data||[]
-});
+    console.error("GET DOCTOR FEEDBACKS ERROR:", error);
 
-
-}catch(error){
-
-return res.status(500).json({
-success:false,
-message:"Internal Server Error"
-});
-
-}
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      summary: {},
+      data: [],
+    });
+  }
 };
 
-exports.getAllFeedbacks=async(req,res)=>{
-try{
+exports.getAllFeedbacks = async (req, res) => {
+  try {
 
-const result=
-await FeedbackService.getAllFeedbacks();
+    const result =
+      await FeedbackService.getAllFeedbacks();
 
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      data: result.body.data || [],
+    });
 
-return res.status(result.statusCode).json({
-success:result.statusCode<400,
-message:result.body.message,
-data:result.body.data||[]
-});
+  } catch (error) {
 
+    console.error("GET ALL FEEDBACKS ERROR:", error);
 
-}catch(error){
-
-return res.status(500).json({
-success:false,
-message:"Internal Server Error"
-});
-
-}
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      data: [],
+    });
+  }
 };
 
-exports.getAllDoctorsRatings=async(req,res)=>{
-try{
+exports.getAllDoctorsRatings = async (req, res) => {
+  try {
 
-const result=
-await FeedbackService.getAllDoctorsRatings();
+    const result =
+      await FeedbackService.getAllDoctorsRatings();
 
+    return res.status(result.statusCode).json({
+      success: result.statusCode < 400,
+      message: result.body.message,
+      data: result.body.data || [],
+    });
 
-return res.status(result.statusCode).json({
-success:result.statusCode<400,
-message:result.body.message,
-data:result.body.data||[]
-});
+  } catch (error) {
 
+    console.error("GET ALL DOCTOR RATINGS ERROR:", error);
 
-}catch(error){
-
-return res.status(500).json({
-success:false,
-message:"Internal Server Error"
-});
-
-}
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      data: [],
+    });
+  }
 };
