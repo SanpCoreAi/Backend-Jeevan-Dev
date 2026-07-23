@@ -640,8 +640,8 @@ exports.getAppointments = async ({
 exports.getPatientDashboardCards = async ({
   doctorId,
   filter,
+  mode,
 }) => {
-
   let dateCondition = "";
 
   switch (filter) {
@@ -650,7 +650,8 @@ exports.getPatientDashboardCards = async ({
       break;
 
     case "week":
-      dateCondition = "YEARWEEK(slot_date, 1) = YEARWEEK(CURDATE(), 1)";
+      dateCondition =
+        "YEARWEEK(slot_date, 1) = YEARWEEK(CURDATE(), 1)";
       break;
 
     case "month":
@@ -659,7 +660,8 @@ exports.getPatientDashboardCards = async ({
       break;
 
     case "year":
-      dateCondition = "YEAR(slot_date) = YEAR(CURDATE())";
+      dateCondition =
+        "YEAR(slot_date) = YEAR(CURDATE())";
       break;
 
     default:
@@ -669,71 +671,68 @@ exports.getPatientDashboardCards = async ({
   const query = `
     SELECT
 
-      -- Total Online Patients
       COUNT(
         CASE
-          WHEN appointment_type = 'online'
+          WHEN appointment_type = ?
           AND ${dateCondition}
           THEN 1
         END
-      ) AS online_patient,
+      ) AS patient,
 
-      -- Total Offline Patients
       COUNT(
         CASE
-          WHEN appointment_type = 'offline'
-          AND ${dateCondition}
-          THEN 1
-        END
-      ) AS offline_patient,
-
-      -- Online Pending
-      COUNT(
-        CASE
-          WHEN appointment_type = 'online'
+          WHEN appointment_type = ?
           AND status = 'PENDING'
           AND ${dateCondition}
           THEN 1
         END
-      ) AS online_pending,
+      ) AS pending,
 
-      -- Offline Pending
       COUNT(
         CASE
-          WHEN appointment_type = 'offline'
-          AND status = 'PENDING'
-          AND ${dateCondition}
-          THEN 1
-        END
-      ) AS offline_pending,
-
-      -- Online Completed
-      COUNT(
-        CASE
-          WHEN appointment_type = 'online'
+          WHEN appointment_type = ?
           AND status = 'COMPLETED'
           AND ${dateCondition}
           THEN 1
         END
-      ) AS online_complete,
+      ) AS completed,
 
-      -- Offline Completed
-      COUNT(
-        CASE
-          WHEN appointment_type = 'offline'
-          AND status = 'COMPLETED'
-          AND ${dateCondition}
-          THEN 1
-        END
-      ) AS offline_complete
+      (
+        SELECT COUNT(*)
+        FROM appointments
+        WHERE doctor_id = ?
+        AND status = 'COMPLETED'
+      ) AS total_patient
 
     FROM appointments
     WHERE doctor_id = ?;
   `;
 
-  const [rows] = await db.query(query, [doctorId]);
+  const [rows] = await db.query(query, [
+    mode,
+    mode,
+    mode,
+    doctorId,
+    doctorId,
+  ]);
 
-  return rows[0];
+  const row = rows[0];
+
+  if (mode === "online") {
+    return {
+      online_patient: row.patient,
+      online_pending: row.pending,
+      online_complete: row.completed,
+      total_patient: row.total_patient,
+    };
+  }
+
+  return {
+    offline_patient: row.patient,
+    offline_pending: row.pending,
+    offline_complete: row.completed,
+    total_patient: row.total_patient,
+  };
 };
 
 exports.checkUserSameSlot = async (patientId, date, timeSlot) => {

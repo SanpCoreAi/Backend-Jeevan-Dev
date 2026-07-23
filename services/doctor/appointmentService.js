@@ -565,13 +565,20 @@ async ({ doctorId }) => {
 exports.getPatientDashboardCards = async ({
   doctorId,
   filter,
+  mode,
 }) => {
+  try {
+    const data = await Appointment.getPatientDashboardCards({
+      doctorId,
+      filter,
+      mode,
+    });
 
-  return await Appointment.getPatientDashboardCards({
-    doctorId,
-    filter,
-  });
-
+    return data;
+  } catch (error) {
+    console.error("Service Error - getPatientDashboardCards:", error);
+    throw error;
+  }
 };
 
 

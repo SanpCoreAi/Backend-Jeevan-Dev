@@ -529,12 +529,29 @@ exports.getPatientDashboardCards = async (req, res) => {
       });
     }
 
-    // query parameter
     const filter = req.query.filter || "day";
+    const mode = req.query.mode;
+
+    const validFilters = ["day", "week", "month", "year"];
+    if (!validFilters.includes(filter)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid filter. Allowed values: day, week, month, year",
+      });
+    }
+
+    const validModes = ["online", "offline"];
+    if (!validModes.includes(mode)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid mode. Allowed values: online, offline",
+      });
+    }
 
     const data = await appointmentService.getPatientDashboardCards({
       doctorId,
       filter,
+      mode,
     });
 
     return res.status(200).json({
@@ -543,7 +560,7 @@ exports.getPatientDashboardCards = async (req, res) => {
       data,
     });
   } catch (error) {
-    console.log(error);
+    console.error("Get Patient Dashboard Cards Error:", error);
 
     return res.status(500).json({
       success: false,
