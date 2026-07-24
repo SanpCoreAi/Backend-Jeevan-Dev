@@ -89,10 +89,8 @@ async function getDoctorSlots(doctorId, hospitalName, date) {
       ON s.id = ss.schedule_id
     WHERE ss.doctor_id = ?
       AND s.hospital_name = ?
-      AND DATE(CONVERT_TZ(ss.start_date, '+00:00', '+05:30')) >= ?
-    ORDER BY
-      DATE(CONVERT_TZ(ss.start_date, '+00:00', '+05:30')) ASC,
-      ss.start_time ASC
+      AND ss.start_date = ?
+    ORDER BY ss.start_time ASC
     `,
     [doctorId, hospitalName, date]
   );
