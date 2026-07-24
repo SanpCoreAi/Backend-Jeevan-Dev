@@ -14,11 +14,6 @@ async function findDoctors(filters = {}) {
   try {
     let sql = `
       SELECT
-        u.id,
-        u.full_name,
-        u.email,
-        u.phone_number,
-
         d.id AS doctor_id,
         d.user_id,
         d.username,
@@ -31,6 +26,11 @@ async function findDoctors(filters = {}) {
         d.gender,
         d.hospital_detail,
 
+        u.id,
+        u.full_name,
+        u.email,
+        u.phone_number,
+
         JSON_UNQUOTE(
           JSON_EXTRACT(d.hospital_detail,'$[0].hospitalName')
         ) AS hospital_name,
@@ -38,17 +38,16 @@ async function findDoctors(filters = {}) {
         (
           SELECT file_key
           FROM user_images
-          WHERE user_id IN (d.id,d.user_id)
+          WHERE user_id IN (d.id, d.user_id)
           ORDER BY id DESC
           LIMIT 1
         ) AS photo
 
-      FROM users u
+      FROM doctors d
+      LEFT JOIN users u
+        ON u.id = d.user_id
 
-      INNER JOIN doctors d
-        ON d.user_id = u.id
-
-      WHERE u.role_id = 2
+      WHERE 1 = 1
     `;
 
     const params = [];
@@ -73,17 +72,18 @@ async function findDoctors(filters = {}) {
       params.push(`%${filters.specialization.trim()}%`);
     }
 
-    sql += " ORDER BY u.created_at DESC";
+    sql += " ORDER BY d.id DESC";
 
     const [rows] = await db.execute(sql, params);
 
     return rows.map((doctor) => ({
       id: doctor.doctor_id,
-      doctorId: doctor.id,
+      doctorId: doctor.doctor_id,
+      userId: doctor.user_id,
 
-      fullName: doctor.full_name,
-      email: doctor.email,
-      phoneNumber: doctor.phone_number,
+      fullName: doctor.full_name || null,
+      email: doctor.email || null,
+      phoneNumber: doctor.phone_number || null,
 
       username: doctor.username,
       gender: doctor.gender,
