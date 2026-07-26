@@ -1,27 +1,30 @@
 const DoctorRatingModel = require("../../models/doctorRatingModel");
 
-class DoctorRatingService {
+const BASE_FILE_URL =
+  process.env.APP_BASE_URL || "http://localhost:4000/uploads";
 
-  static parseValue(value, fallback) {
-    if (!value) return fallback;
+function parseJSON(value, fallback = []) {
+  if (!value) return fallback;
 
-    if (typeof value === "string") {
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value.split(",").map(v => v.trim());
-      }
-    }
+  if (Array.isArray(value) || typeof value === "object") {
     return value;
   }
 
-  static async getDoctorProfileWithRating(doctorId) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
 
-    if (!doctorId) {
+exports.getDoctorProfileWithRating = async (doctorId) => {
+  try {
+
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
       return {
-        status: 400,
         success: false,
-        message: "doctorId is required"
+        statusCode: 400,
+        message: "Valid doctorId is required"
       };
     }
 
@@ -29,44 +32,68 @@ class DoctorRatingService {
 
     if (!doctor) {
       return {
-        status: 404,
         success: false,
+        statusCode: 404,
         message: "Doctor not found"
       };
     }
 
-    // Handle QR code URL formatting
-    const BASE_FILE_URL = "http://localhost:4000/uploads";
-    let qrUrl = null;
+    let qrCode = null;
+
     if (doctor.qr_code) {
-      if (doctor.qr_code.startsWith('data:') || doctor.qr_code.startsWith('http')) {
-        qrUrl = doctor.qr_code;
-      } else {
-        qrUrl = `${BASE_FILE_URL}/qr/${doctor.qr_code}`;
-      }
+      qrCode =
+        doctor.qr_code.startsWith("http") ||
+        doctor.qr_code.startsWith("data:")
+          ? doctor.qr_code
+          : `${BASE_FILE_URL}/qr/${doctor.qr_code}`;
     }
 
     return {
-      status: 200,
       success: true,
+      statusCode: 200,
+      message: "Doctor profile fetched successfully.",
       data: {
-        id: doctor.id,
+        doctorId: doctor.id,
+        userId: doctor.user_id,
         username: doctor.username,
         specialization: doctor.specialization,
         qualification: doctor.qualification,
-        experience: doctor.experience,
-        language: this.parseValue(doctor.language, []),
-        consultationFee: doctor.consultation_fee,
+        experience: Number(doctor.experience || 0),
+        consultationFee: Number(doctor.consultation_fee || 0),
         medicalLicenseNo: doctor.medical_license_no,
         bio: doctor.bio,
-        availability: this.parseValue(doctor.availability, []),
-        hospitalDetail: this.parseValue(doctor.hospital_detail, {}),
-        totalRatings: Number(doctor.total_ratings) || 0,
-        averageRating: doctor.avg_rating ? Number(doctor.avg_rating) : 0,
-        qr_code: qrUrl
+        age: doctor.age,
+        gender: doctor.gender,
+
+        language: parseJSON(doctor.language),
+
+        availability: parseJSON(doctor.availability),
+
+        hospitalDetail: parseJSON(doctor.hospital_detail),
+
+        averageRating: Number(doctor.avg_rating || 0).toFixed(1),
+
+        totalRatings: Number(doctor.total_ratings || 0),
+
+        positiveFeedbacks: Number(doctor.positive_feedbacks || 0),
+
+        negativeFeedbacks: Number(doctor.negative_feedbacks || 0),
+
+        qrCode
       }
     };
-  }
-}
 
-module.exports = DoctorRatingService;
+  } catch (error) {
+
+    console.error(
+      "GET DOCTOR PROFILE WITH RATING SERVICE ERROR:",
+      error
+    );
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
+    };
+  }
+};

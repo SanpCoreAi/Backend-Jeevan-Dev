@@ -1,40 +1,38 @@
 const DoctorRatingService = require("../../services/doctor/doctorRatingService");
 
-class DoctorRatingController {
+exports.getDoctorProfileWithRating = async (req, res) => {
+  try {
+    const doctorId = Number(req.params.doctorId);
 
-  static getDoctorProfileWithRating = async (req, res) => {
-    try {
-      const { doctorId } = req.params;
-
-      const result = await DoctorRatingService.getDoctorProfileWithRating(doctorId);
-
-      const statusCode = Number(result?.status) || 500;
-
-      if (!result?.success) {
-        return res.status(statusCode).json({
-          success: false,
-          statusCode,
-          message: result.message || "Something went wrong"
-        });
-      }
-
-      return res.status(statusCode).json({
-        success: true,
-        statusCode,
-        data: result.data
-      });
-
-    } catch (error) {
-      console.error("DoctorRatingController Error:", error);
-
-      return res.status(500).json({
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
+      return res.status(400).json({
         success: false,
-        statusCode: 500,
-        message: "Internal server error"
+        statusCode: 400,
+        message: "Valid doctorId is required"
       });
     }
-  };
 
-}
+    const result = await DoctorRatingService.getDoctorProfileWithRating(
+      doctorId
+    );
 
-module.exports = DoctorRatingController;
+    return res.status(result.statusCode).json({
+      success: result.success,
+      statusCode: result.statusCode,
+      message: result.message,
+      data: result.data || null
+    });
+
+  } catch (error) {
+    console.error(
+      "GET DOCTOR PROFILE WITH RATING CONTROLLER ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
