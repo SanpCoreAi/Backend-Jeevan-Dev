@@ -26,6 +26,31 @@ const getDoctorsSchema = Joi.object({
     .optional()
 }).unknown(false);
 
+
+const searchDoctorSchema = Joi.object({
+  search: Joi.string().trim().allow("").max(100).optional(),
+  q: Joi.string().trim().allow("").max(100).optional(),
+  keyword: Joi.string().trim().allow("").max(100).optional(),
+
+  page: Joi.number().integer().min(1).default(1),
+
+  limit: Joi.number().integer().min(1).max(50).default(10),
+
+  sortBy: Joi.string()
+    .valid(
+      "experience",
+      "consultationFee",
+      "avgRating",
+      "fullName"
+    )
+    .default("experience"),
+
+  order: Joi.string()
+    .valid("asc", "desc")
+    .default("desc")
+}).unknown(false);
+
 module.exports = {
-  getDoctorsSchema
+  getDoctorsSchema,
+  searchDoctorSchema
 };

@@ -1,39 +1,60 @@
-const { searchDoctorService } = require("../../services/doctor/serachDoctorService");
+const {
+  searchDoctorService
+} = require("../../services/doctor/serachDoctorService");
 
-async function searchDoctors(req, res) {
+const {
+  searchDoctorSchema
+} = require("../../validation/doctor/getDoctorsValidation");
+
+exports.searchDoctors = async (req, res) => {
   try {
-    const result = await searchDoctorService({
-      ...req.query,
-      search: req.query.search || req.query.q || req.query.keyword
-    });
 
-    const doctors = result.data || [];
+    const { error, value } = searchDoctorSchema.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true
+      }
+    );
 
-    if (!doctors.length) {
-      return res.status(404).json({
+    if (error) {
+      return res.status(400).json({
         success: false,
-        message: "No doctors found",
-        count: 0,
-        data: []
+        message: error.details[0].message
       });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Doctors fetched successfully",
+    const result = await searchDoctorService({
+      ...value,
+      search:
+        value.search ||
+        value.q ||
+        value.keyword
+    });
+
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.message,
       count: result.total,
       page: result.page,
       limit: result.limit,
-      data: doctors
+      data: result.data
     });
 
   } catch (error) {
-    console.error("Doctor search error:", error);
+
+    console.error(
+      "SEARCH DOCTORS CONTROLLER ERROR:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: "Internal server error"
+      message: "Internal Server Error",
+      count: 0,
+      page: 1,
+      limit: 10,
+      data: []
     });
   }
-}
-
-module.exports = { searchDoctors };
+};

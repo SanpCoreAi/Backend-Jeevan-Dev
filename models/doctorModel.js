@@ -503,21 +503,21 @@ exports.findAllWithUser = async () => {
         (
           SELECT JSON_ARRAYAGG(
             JSON_OBJECT(
-              'id', df.id,
-              'fileKey', df.file_key,
-              'folder', df.folder_name,
-              'createdAt', df.created_at
+              'id', ui.id,
+              'fileKey', ui.file_key,
+              'folder', ui.folder_name,
+              'createdAt', ui.created_at
             )
           )
-          FROM doctor_files df
-          WHERE df.doctor_id = d.user_id
+          FROM user_images ui
+          WHERE ui.user_id = d.user_id
         ),
         JSON_ARRAY()
       ) AS images,
 
       COALESCE(
         (
-          SELECT ROUND(AVG(f.rating), 1)
+          SELECT ROUND(AVG(f.rating),1)
           FROM feedbacks f
           WHERE f.doctor_id = d.user_id
         ),
@@ -568,6 +568,8 @@ exports.findAllWithUser = async () => {
 
     INNER JOIN users u
       ON u.id = d.user_id
+
+    WHERE d.is_deleted = 0
 
     ORDER BY d.id DESC
   `;

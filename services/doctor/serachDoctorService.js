@@ -4,7 +4,6 @@ const { findAllWithUser } = require("../../models/doctorModel");
 const BASE_FILE_URL =
   process.env.AWS_S3_BUCKET_URL || process.env.APP_BASE_URL;
 
-// सुरक्षित JSON parse
 const parseJSON = (value, fallback = []) => {
   if (!value) return fallback;
   if (Array.isArray(value)) return value;
@@ -15,7 +14,7 @@ const parseJSON = (value, fallback = []) => {
   }
 };
 
-// normalize string
+
 const normalize = (str) => {
   return String(str || "")
     .toLowerCase()
@@ -36,10 +35,8 @@ async function searchDoctorService(filters) {
   limit = Math.min(50, Math.max(1, Number(limit)));
   const offset = (page - 1) * limit;
 
-  // 🔹 Fetch all doctors
   let doctors = await findAllWithUser();
 
-  // 🔹 Normalize data
 doctors = doctors.map((d) => ({
   user_id: d.user_id,
   full_name: d.user_full_name,
@@ -69,7 +66,6 @@ doctors = doctors.map((d) => ({
   total_ratings: Number(d.total_ratings ?? 0),
 }));
 
-  // 🔍 FILTER LOGIC (FIXED)
 doctors = doctors.filter((d) => {
   if (!search) return true;
 
@@ -132,7 +128,6 @@ return words.every((word) => {
 });
 });
 
-  // 🔥 Remove duplicate doctors (by email)
   const seen = new Set();
   doctors = doctors.filter((d) => {
     if (seen.has(d.email)) return false;
@@ -158,48 +153,48 @@ return words.every((word) => {
       : normalize(b.full_name).localeCompare(normalize(a.full_name));
   });
 
-  const paginated = doctors.slice(offset, offset + limit);
+const paginated = doctors.slice(offset, offset + limit);
 
 return {
   success: true,
+  statusCode: 200,
+  message: doctors.length
+    ? "Doctors fetched successfully."
+    : "No doctors found.",
+
   total: doctors.length,
   page,
   limit,
+
   data: paginated.map((d) => ({
     userId: d.user_id,
+
     fullName: d.full_name,
     email: d.email,
     phoneNumber: d.phone_number,
+
     username: d.username,
     specialization: d.specialization,
     qualification: d.qualification,
+    medicalLicenseNo: d.medical_license_no,
+
     experience: d.experience,
     consultationFee: d.consultation_fee,
-    medicalLicenseNo: d.medical_license_no,
     bio: d.bio,
-
-    city: d.city,
-    state: d.state,
-    pinCode: d.pin_code,
-    district: d.district,
-    landmark: d.landmark,
 
     language: d.language,
     availability: d.availability,
     hospitalDetail: d.hospitalDetail,
 
-    avgRating:
-      d.avg_rating == null
-        ? "0.0"
-        : Number(d.avg_rating).toFixed(1),
-
-    totalFeedbacks: Number(d.total_feedbacks ?? 0),
-
-    totalRatings: Number(d.total_ratings ?? 0),
+    avgRating: Number(d.avg_rating || 0).toFixed(1),
+    totalFeedbacks: Number(d.total_feedbacks || 0),
+    totalRatings: Number(d.total_ratings || 0),
+    positiveFeedbacks: Number(d.positive_feedbacks || 0),
+    negativeFeedbacks: Number(d.negative_feedbacks || 0),
 
     profileImage:
-      d.images?.[0]?.fileKey
-        ? `${BASE_FILE_URL}/${d.images[0].fileKey}`
+      d.images?.length && d.images[0].fileKey
+        ? `${BASE_FILE_URL}/${encodeURI(d.images[0].fileKey)}`
         : null,
   })),
 };
