@@ -1,17 +1,28 @@
 const db = require("../config/db");
 
-function parseJSON(value) {
-  if (!value) return [];
-
-  try {
-    return typeof value === "string" ? JSON.parse(value) : value;
-  } catch {
-    return [];
+const parseJSON = (value, defaultValue = []) => {
+  if (value === null || value === undefined) {
+    return defaultValue;
   }
-}
 
-async function findDoctors(filters = {}) {
+  if (Array.isArray(value) || typeof value === "object") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return defaultValue;
+    }
+  }
+
+  return defaultValue;
+};
+
+exports.findDoctors = async (filters = {}) => {
   try {
+
     let sql = `
       SELECT
         d.id AS doctor_id,
@@ -26,25 +37,28 @@ async function findDoctors(filters = {}) {
         d.gender,
         d.hospital_detail,
 
-        u.id,
         u.full_name,
         u.email,
         u.phone_number,
 
         JSON_UNQUOTE(
-          JSON_EXTRACT(d.hospital_detail,'$[0].hospitalName')
+          JSON_EXTRACT(
+            d.hospital_detail,
+            '$[0].hospitalName'
+          )
         ) AS hospital_name,
 
         (
-          SELECT file_key
-          FROM user_images
-          WHERE user_id IN (d.id, d.user_id)
-          ORDER BY id DESC
+          SELECT ui.file_key
+          FROM user_images ui
+          WHERE ui.user_id = d.user_id
+          ORDER BY ui.id DESC
           LIMIT 1
         ) AS photo
 
       FROM doctors d
-      LEFT JOIN users u
+
+      INNER JOIN users u
         ON u.id = d.user_id
 
       WHERE 1 = 1
@@ -52,24 +66,24 @@ async function findDoctors(filters = {}) {
 
     const params = [];
 
-    if (filters.name?.trim()) {
+    if (filters.name) {
       sql += " AND u.full_name LIKE ?";
-      params.push(`%${filters.name.trim()}%`);
+      params.push(`%${filters.name}%`);
     }
 
-    if (filters.email?.trim()) {
+    if (filters.email) {
       sql += " AND u.email LIKE ?";
-      params.push(`%${filters.email.trim()}%`);
+      params.push(`%${filters.email}%`);
     }
 
-    if (filters.phone_number?.trim()) {
+    if (filters.phone_number) {
       sql += " AND u.phone_number LIKE ?";
-      params.push(`%${filters.phone_number.trim()}%`);
+      params.push(`%${filters.phone_number}%`);
     }
 
-    if (filters.specialization?.trim()) {
+    if (filters.specialization) {
       sql += " AND d.specialization LIKE ?";
-      params.push(`%${filters.specialization.trim()}%`);
+      params.push(`%${filters.specialization}%`);
     }
 
     sql += " ORDER BY d.id DESC";
@@ -77,35 +91,54 @@ async function findDoctors(filters = {}) {
     const [rows] = await db.execute(sql, params);
 
     return rows.map((doctor) => ({
+
       id: doctor.doctor_id,
+
       doctorId: doctor.doctor_id,
+
       userId: doctor.user_id,
 
-      fullName: doctor.full_name || null,
-      email: doctor.email || null,
-      phoneNumber: doctor.phone_number || null,
+      fullName: doctor.full_name,
+
+      email: doctor.email,
+
+      phoneNumber: doctor.phone_number,
 
       username: doctor.username,
+
       gender: doctor.gender,
+
       age: doctor.age,
 
       specialization: doctor.specialization,
+
       education: doctor.education,
+
       experience: doctor.experience,
+
       consultationFee: doctor.fee,
 
-      language: parseJSON(doctor.language),
+      language: parseJSON(doctor.language, []),
+
       hospitalName: doctor.hospital_name,
-      hospitalDetail: parseJSON(doctor.hospital_detail),
+
+      hospitalDetail: parseJSON(
+        doctor.hospital_detail,
+        []
+      ),
 
       photo: doctor.photo || null
-    }));
-  } catch (error) {
-    console.error("findDoctors Error:", error);
-    throw error;
-  }
-}
 
-module.exports = {
-  findDoctors
+    }));
+
+  } catch (error) {
+
+    console.error(
+      "FIND DOCTORS MODEL ERROR:",
+      error
+    );
+
+    throw error;
+
+  }
 };
