@@ -3,38 +3,56 @@ const AppointmentService = require("../../services/doctor/qrAppointmentService")
 exports.scanBook = async (req, res) => {
   try {
     const doctorId = Number(req.params.doctorId);
-    let hospital_name = req.body.hospital_name ?? req.body.hospitalName;
 
-    if (typeof hospital_name === "string") {
-      hospital_name = hospital_name.trim();
-    }
-
-    const date = new Date().toISOString().split("T")[0];
-
-    if (!hospital_name) {
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
       return res.status(400).json({
         success: false,
-        message: "hospital_name is required"
+        message: "Valid doctor id is required.",
       });
     }
 
-    const data = await AppointmentService.scanBook({
-      user: req.user,
-      doctorId,
-      hospitalName: hospital_name,
-      date   
-    });
+    let hospitalName =
+      req.body.hospital_name ??
+      req.body.hospitalName;
 
-    return res.status(201).json({
-      success: true,
-      message: "Appointment booked successfully",
-      data
+    if (typeof hospitalName === "string") {
+      hospitalName = hospitalName.trim();
+    }
+
+    if (!hospitalName) {
+      return res.status(400).json({
+        success: false,
+        message: "Hospital name is required.",
+      });
+    }
+
+    const result =
+      await AppointmentService.scanBook({
+        user: req.user,
+        doctorId,
+        hospitalName,
+        date: new Date()
+          .toISOString()
+          .split("T")[0],
+      });
+
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.body.message,
+      data: result.body.data || null,
     });
 
   } catch (error) {
-    return res.status(400).json({
+
+    console.error(
+      "SCAN BOOK APPOINTMENT CONTROLLER ERROR:",
+      error
+    );
+
+    return res.status(500).json({
       success: false,
-      message: error.message
+      message: "Internal Server Error",
+      data: null,
     });
   }
 };

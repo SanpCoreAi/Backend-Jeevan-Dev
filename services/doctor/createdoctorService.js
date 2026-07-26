@@ -1,21 +1,11 @@
 const DoctorModel = require("../../models/doctorModel");
-const safeJSON = require("../../utils/safeJson");
+const safeParse = require("../../utils/safeJson");
 const QRCode = require("qrcode");
 const path = require("path");
 const fs = require("fs");
 
-const BASE_FILE_URL = "http://localhost:4000/uploads";
+const BASE_FILE_URL = `${process.env.APP_BASE_URL}/uploads`;
 const S3_BASE_URL = process.env.AWS_S3_BUCKET_URL;
-
-function parseJSON(data, defaultValue = []) {
-  try {
-    if (!data) return defaultValue;
-    if (typeof data === "string") return JSON.parse(data);
-    return data;
-  } catch {
-    return defaultValue;
-  }
-}
 
 const qrFolder = path.join(__dirname, "../../uploads/qr");
 
@@ -23,7 +13,7 @@ if (!fs.existsSync(qrFolder)) {
   fs.mkdirSync(qrFolder, { recursive: true });
 }
 
-function buildAddress(hospital) {
+const buildAddress = (hospital) => {
   if (!hospital) return null;
 
   return [
@@ -35,288 +25,405 @@ function buildAddress(hospital) {
     hospital.city,
     hospital.district,
     hospital.state,
-    hospital.pinCode
+    hospital.pinCode,
   ]
     .filter(Boolean)
     .join(", ");
-}
+};
 
+exports.getProfile = async (userId) => {
+  try {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Valid user id is required.",
+      };
+    }
 
-async function getProfile(userId) {
-  const d = await DoctorModel.getBydoctorId(userId);
+    const doctor = await DoctorModel.getBydoctorId(userId);
 
-  if (!d) {
+    if (!doctor) {
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Doctor profile not found.",
+      };
+    }
+
+    let qrCode = doctor.qr_code || null;
+
+    if (doctor.id && !qrCode) {
+      try {
+        const hospitalDetail = safeParse(doctor.hospital_detail, []);
+
+        const hospitals = hospitalDetail.map((hospital) => ({
+          hospitalName: hospital.hospitalName,
+          address: buildAddress(hospital),
+        }));
+
+        const qrData = JSON.stringify({
+          doctorId: doctor.user_id,
+          hospitals,
+        });
+
+        const fileName = `qr_${doctor.id}.png`;
+        const filePath = path.join(qrFolder, fileName);
+
+        await QRCode.toFile(filePath, qrData);
+
+        await DoctorModel.updateDoctorQr(
+          doctor.id,
+          fileName
+        );
+
+        qrCode = fileName;
+
+      } catch (qrError) {
+        console.error("QR GENERATION ERROR:", qrError);
+      }
+    }
+
     return {
-      statusCode: 404,
+      success: true,
+      statusCode: 200,
+      message: "Doctor profile fetched successfully.",
+      data: {
+        id: doctor.user_id,
+
+        username: doctor.username,
+        specialization: doctor.specialization,
+        medicalLicenseNo: doctor.medical_license_no,
+        qualification: doctor.qualification,
+        experience: doctor.experience,
+        consultationFee: doctor.consultation_fee,
+        bio: doctor.bio,
+        age: doctor.age,
+        gender: doctor.gender,
+
+        language: safeParse(doctor.language, []),
+        availability: safeParse(doctor.availability, []),
+        hospitalDetail: safeParse(
+          doctor.hospital_detail,
+          []
+        ),
+
+        user: {
+          fullName: doctor.user_full_name,
+          email: doctor.user_email,
+          phoneNumber: doctor.user_phone_number,
+        },
+
+        image: doctor.image_file_key
+          ? {
+              url: S3_BASE_URL
+                ? `${S3_BASE_URL}/${encodeURI(
+                    doctor.image_file_key
+                  )}`
+                : null,
+            }
+          : null,
+
+        licenseFiles: safeParse(
+          doctor.files,
+          []
+        ).map((file) => ({
+          url: S3_BASE_URL
+            ? `${S3_BASE_URL}/${encodeURI(
+                file.fileKey
+              )}`
+            : null,
+        })),
+
+        avgRating: Number(doctor.avg_rating || 0),
+
+        qr_code:
+          qrCode && BASE_FILE_URL
+            ? `${BASE_FILE_URL}/qr/${qrCode}`
+            : null,
+      },
+    };
+  } catch (error) {
+    console.error("GET DOCTOR PROFILE SERVICE ERROR:", error);
+
+    return {
       success: false,
-      message: "User not found."
+      statusCode: 500,
+      message: "Internal Server Error",
     };
   }
+};
 
-  let qrCode = null;
-
-  if (d.id) {
-
-    qrCode = d.qr_code;
-
-    if (!qrCode) {
-
-      const hospitalDetail = parseJSON(d.hospital_detail);
-
-      const hospitals = hospitalDetail.map(h => ({
-        hospitalName: h.hospitalName,
-        address: buildAddress(h)
-      }));
-
-      const qrData = JSON.stringify({
-        doctorId: d.user_id,
-        hospitals
-      });
-
-      const fileName = `qr_${d.id}.png`;
-      const filePath = path.join(qrFolder, fileName);
-
-      await QRCode.toFile(filePath, qrData);
-
-      await DoctorModel.updateDoctorQr(d.id, fileName);
-
-      qrCode = fileName;
-    }
-  }
-
-  return {
-    statusCode: 200,
-    success: true,
-    message: "Doctor profile fetched successfully.",
-    data: {
-
-      id: d.user_id,
-
-      username: d.username,
-      specialization: d.specialization,
-      medicalLicenseNo: d.medical_license_no,
-      qualification: d.qualification,
-      experience: d.experience,
-      consultationFee: d.consultation_fee,
-      bio: d.bio,
-      age: d.age,
-      gender: d.gender,
-
-      language: parseJSON(d.language),
-      availability: parseJSON(d.availability),
-      hospitalDetail: parseJSON(d.hospital_detail),
-
-      user: {
-        fullName: d.user_full_name,
-        email: d.user_email,
-        phoneNumber: d.user_phone_number
-      },
-
-      image: d.image_file_key
-        ? {
-            url: `${S3_BASE_URL}/${encodeURI(d.image_file_key)}`
-          }
-        : null,
-
-      licenseFiles:
-        parseJSON(d.files)?.length
-          ? parseJSON(d.files).map(file => ({
-              url: `${S3_BASE_URL}/${encodeURI(file.fileKey)}`
-            }))
-          : [],
-
-      avgRating: Number(d.avg_rating || 0),
-
-      qr_code: qrCode
-        ? `${BASE_FILE_URL}/qr/${qrCode}`
-        : null
-    }
-  };
-}
-
-async function getDoctorPublicProfileById(userId) {
-  const doctor = await DoctorModel.getDoctorPublicProfileById(userId);
-
-  if (!doctor) {
-    return {
-      success: false,
-      message: "Doctor not found",
-      statusCode: 404
-    };
-  }
-
-  return {
-    success: true,
-    statusCode: 200,
-    data: {
-      id: doctor.id,
-      userId: doctor.user_id,
-      username: doctor.username,
-      specialization: doctor.specialization,
-      age: doctor.age,
-      gender: doctor.gender,
-      qualification: doctor.qualification,
-      experience: doctor.experience,
-      consultationFee: doctor.consultation_fee,
-      bio: doctor.bio,
-      language: parseJSON(doctor.language),
-      availability: parseJSON(doctor.availability),
-      hospitalDetail: parseJSON(doctor.hospital_detail),
-      user: {
-        fullName: doctor.user_full_name,
-        email: doctor.user_email,
-        phoneNumber: doctor.user_phone_number
-      },
-
-      image: doctor.image_file_key
-        ? {
-            url: doctor.image_file_key
-          }
-        : null,
-      avgRating: doctor.avg_rating == null? "0.0": Number(doctor.avg_rating).toFixed(1),
-      totalFeedbacks: Number(doctor.total_feedbacks ?? 0),
-      totalRatings: Number(doctor.total_ratings ?? 0)
-    }
-  };
-}
-
-async function updateProfile(userId, body) {
+exports.getDoctorPublicProfileById = async (userId) => {
   try {
 
-    if (!userId) {
-      return {
-        success: false,
-        statusCode: 401,
-        message: "Unauthorized user."
-      };
-    }
-
-    if (!body || Object.keys(body).length === 0) {
+    if (!Number.isInteger(userId) || userId <= 0) {
       return {
         success: false,
         statusCode: 400,
-        message: "At least one field is required."
+        message: "Valid user id is required.",
       };
     }
 
-    const doctor = await DoctorModel.getDoctorByUserId(userId);
+    const doctor =
+      await DoctorModel.getDoctorPublicProfileById(userId);
 
-    // CREATE
     if (!doctor) {
-
-      await DoctorModel.createDoctor(userId, body);
-
-      return {
-        success: true,
-        statusCode: 201,
-        message: "Doctor profile created successfully."
-      };
-    }
-
-    const result = await DoctorModel.updateDoctor(userId, body);
-
-    if (result.affectedRows === 0) {
       return {
         success: false,
-        statusCode: 400,
-        message: "Doctor profile update failed."
+        statusCode: 404,
+        message: "Doctor not found.",
       };
     }
 
     return {
       success: true,
       statusCode: 200,
-      message: "Doctor profile updated successfully."
+      message: "Doctor profile fetched successfully.",
+      data: {
+        id: doctor.id,
+        userId: doctor.user_id,
+
+        username: doctor.username,
+        specialization: doctor.specialization,
+        age: doctor.age,
+        gender: doctor.gender,
+        qualification: doctor.qualification,
+        experience: doctor.experience,
+        consultationFee: doctor.consultation_fee,
+        bio: doctor.bio,
+
+        language: safeParse(doctor.language, []),
+        availability: safeParse(doctor.availability, []),
+        hospitalDetail: safeParse(
+          doctor.hospital_detail,
+          []
+        ),
+
+        user: {
+          fullName: doctor.user_full_name,
+          email: doctor.user_email,
+          phoneNumber: doctor.user_phone_number,
+        },
+
+        image: doctor.image_file_key
+          ? {
+              url: S3_BASE_URL
+                ? `${S3_BASE_URL}/${encodeURI(
+                    doctor.image_file_key
+                  )}`
+                : null,
+            }
+          : null,
+
+        avgRating:
+          doctor.avg_rating == null
+            ? "0.0"
+            : Number(doctor.avg_rating).toFixed(1),
+
+        totalFeedbacks: Number(
+          doctor.total_feedbacks ?? 0
+        ),
+
+        totalRatings: Number(
+          doctor.total_ratings ?? 0
+        ),
+      },
     };
 
-  } catch (err) {
+  } catch (error) {
 
-    console.error(err);
+    console.error(
+      "GET PUBLIC DOCTOR PROFILE SERVICE ERROR:",
+      error
+    );
 
     return {
       success: false,
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     };
   }
-}
+};
 
-async function getAllDoctors() {
+exports.updateProfile = async (userId, body) => {
+  try {
 
-  const doctors = await DoctorModel.findAllWithUser();
-
-  return doctors.map((d) => {
-
-    let qrUrl = null;
-
-    if (d.qr_code) {
-      qrUrl = d.qr_code.startsWith("http") || d.qr_code.startsWith("data:")
-        ? d.qr_code
-        : `${BASE_FILE_URL}/qr/${d.qr_code}`;
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return {
+        success: false,
+        statusCode: 401,
+        message: "Unauthorized user.",
+      };
     }
 
-    const images = parseJSON(d.images, []).map((img) => ({
-      ...img,
-      url: `${S3_BASE_URL}/${encodeURI(img.fileKey)}`
-    }));
+    if (
+      !body ||
+      typeof body !== "object" ||
+      Object.keys(body).length === 0
+    ) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "At least one field is required.",
+      };
+    }
+
+    const doctor =
+      await DoctorModel.getDoctorByUserId(userId);
+
+    if (!doctor) {
+
+      await DoctorModel.createDoctor(
+        userId,
+        body
+      );
+
+      return {
+        success: true,
+        statusCode: 201,
+        message: "Doctor profile created successfully.",
+      };
+    }
+
+    const result =
+      await DoctorModel.updateDoctor(
+        userId,
+        body
+      );
+
+    if (
+      !result ||
+      result.affectedRows === 0
+    ) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Doctor profile update failed.",
+      };
+    }
 
     return {
-
-      doctorId: d.doctor_id,
-
-      userId: d.user_id,
-
-      username: d.username,
-
-      specialization: d.specialization,
-
-      qualification: d.qualification,
-
-      medicalLicenseNo: d.medical_license_no,
-
-      experience: d.experience,
-
-      consultationFee: d.consultation_fee,
-
-      bio: d.bio,
-
-      age: d.age,
-
-      gender: d.gender,
-
-      language: parseJSON(d.language),
-
-      availability: parseJSON(d.availability),
-
-      hospitalDetail: parseJSON(d.hospital_detail),
-
-      user: {
-
-        fullName: d.user_full_name,
-
-        email: d.user_email,
-
-        phoneNumber: d.user_phone_number
-      },
-
-      images,
-
-      avgRating: Number(d.avg_rating || 0),
-
-      totalFeedbacks: Number(d.total_feedbacks || 0),
-
-      totalRatings: Number(d.total_ratings || 0),
-
-      qr_code: qrUrl
+      success: true,
+      statusCode: 200,
+      message: "Doctor profile updated successfully.",
     };
 
-  });
+  } catch (error) {
 
-}
+    console.error(
+      "UPDATE DOCTOR PROFILE SERVICE ERROR:",
+      error
+    );
 
-module.exports = {
-  updateProfile,
-  getAllDoctors,
-  getProfile,
-  getDoctorPublicProfileById
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error",
+    };
+  }
+};
+
+exports.getAllDoctors = async () => {
+  try {
+
+    const doctors =
+      await DoctorModel.findAllWithUser() || [];
+
+    const data = doctors.map((doctor) => {
+
+      let qrUrl = null;
+
+      if (doctor.qr_code) {
+        qrUrl =
+          doctor.qr_code.startsWith("http") ||
+          doctor.qr_code.startsWith("data:")
+            ? doctor.qr_code
+            : `${BASE_FILE_URL}/qr/${doctor.qr_code}`;
+      }
+
+      const images = safeParse(
+        doctor.images,
+        []
+      ).map((image) => ({
+        ...image,
+        url: S3_BASE_URL
+          ? `${S3_BASE_URL}/${encodeURI(image.fileKey)}`
+          : null,
+      }));
+
+      return {
+
+        doctorId: doctor.doctor_id,
+
+        userId: doctor.user_id,
+
+        username: doctor.username,
+
+        specialization: doctor.specialization,
+
+        qualification: doctor.qualification,
+
+        medicalLicenseNo: doctor.medical_license_no,
+
+        experience: doctor.experience,
+
+        consultationFee: doctor.consultation_fee,
+
+        bio: doctor.bio,
+
+        age: doctor.age,
+
+        gender: doctor.gender,
+
+        language: safeParse(
+          doctor.language,
+          []
+        ),
+
+        availability: safeParse(
+          doctor.availability,
+          []
+        ),
+
+        hospitalDetail: safeParse(
+          doctor.hospital_detail,
+          []
+        ),
+
+        user: {
+          fullName: doctor.user_full_name,
+          email: doctor.user_email,
+          phoneNumber: doctor.user_phone_number,
+        },
+
+        images,
+
+        avgRating: Number(
+          doctor.avg_rating || 0
+        ),
+
+        totalFeedbacks: Number(
+          doctor.total_feedbacks || 0
+        ),
+
+        totalRatings: Number(
+          doctor.total_ratings || 0
+        ),
+
+        qr_code: qrUrl,
+      };
+    });
+
+    return data;
+
+  } catch (error) {
+
+    console.error(
+      "GET ALL DOCTORS SERVICE ERROR:",
+      error
+    );
+
+    throw error;
+  }
 };

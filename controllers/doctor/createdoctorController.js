@@ -1,111 +1,130 @@
 const DoctorService = require("../../services/doctor/createdoctorService");
-const {  updateDoctorSchema  } = require("../../validation/doctor/doctorValidation");
-const safeParse = require("../../utils/safeJson");
+const { updateDoctorSchema } = require("../../validation/doctor/doctorValidation");
 
-
-async function getDoctorProfile(req, res) {
+exports.getDoctorProfile = async (req, res) => {
   try {
-    const userId = req.user?.id;
+    const userId = Number(req.user?.id);
 
-    if (!userId) {
+    if (!Number.isInteger(userId) || userId <= 0) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized"
+        message: "Unauthorized user.",
+        data: null,
       });
     }
 
     const result = await DoctorService.getProfile(userId);
 
-    return res
-      .status(result.statusCode)
-      .json({
-        success: result.statusCode < 400,
-        message: result.message,
-        data: result.data || null
-      });
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.message,
+      data: result.data || null,
+    });
 
   } catch (error) {
-    console.error("Get Doctor Profile Error:", error);
+    console.error("GET DOCTOR PROFILE ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
+      data: null,
     });
   }
-}
+};
 
-async function getDoctorPublicProfileById(req, res) {
-  const userId = req.params.userId;
 
-  if (!userId) {
-    return res.status(400).json({
-      success: false,
-      message: "User ID is required"
-    });
-  }
-
-  const result = await DoctorService.getDoctorPublicProfileById(userId);
-
-  return res
-    .status(result.statusCode || 200)
-    .json(result);
-}
-
-async function updateDoctorProfile(req, res) {
+exports.getDoctorPublicProfileById = async (req, res) => {
   try {
+    const userId = Number(req.params.userId);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid user id is required.",
+        data: null,
+      });
+    }
+
+    const result =
+      await DoctorService.getDoctorPublicProfileById(userId);
+
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.message,
+      data: result.data || null,
+    });
+
+  } catch (error) {
+    console.error("GET PUBLIC DOCTOR PROFILE ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      data: null,
+    });
+  }
+};
+
+exports.updateDoctorProfile = async (req, res) => {
+  try {
+    const userId = Number(req.user?.id);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user.",
+      });
+    }
+
     const { error, value } = updateDoctorSchema.validate(req.body);
 
     if (error) {
       return res.status(400).json({
         success: false,
-        message: error.details[0].message
+        message: error.details[0].message,
       });
     }
 
     const result = await DoctorService.updateProfile(
-      req.user.id,
+      userId,
       value
     );
 
-    return res
-      .status(result.statusCode || (result.success ? 200 : 400))
-      .json(result);
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.message,
+    });
 
-  } catch (err) {
-    console.error("Update Doctor Error:", err);
+  } catch (error) {
+    console.error("UPDATE DOCTOR PROFILE ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
     });
   }
 };
 
-async function getAllDoctors(req, res) {
+exports.getAllDoctors = async (req, res) => {
   try {
 
-    const result = await DoctorService.getAllDoctors();
+    const doctors = await DoctorService.getAllDoctors();
 
     return res.status(200).json({
       success: true,
-      count: result.length,
-      data: result
+      message: "Doctors fetched successfully.",
+      count: doctors.length,
+      data: doctors,
     });
 
   } catch (error) {
-
-    console.error("Get All Doctors Error:", error);
+    console.error("GET ALL DOCTORS ERROR:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error",
+      count: 0,
+      data: [],
     });
   }
-}
-
-module.exports = {
-  getDoctorProfile,
-  getDoctorPublicProfileById,
-  updateDoctorProfile,
-  getAllDoctors,
 };
