@@ -2,8 +2,7 @@ const {
   searchDoctorService
 } = require("../../services/doctor/serachDoctorService");
 
-const {
-  searchDoctorSchema
+const {searchDoctorSchema
 } = require("../../validation/doctor/getDoctorsValidation");
 
 exports.searchDoctors = async (req, res) => {
