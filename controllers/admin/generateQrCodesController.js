@@ -65,3 +65,31 @@ exports.getAllQrCodes = async (req, res) => {
 
     }
 };
+
+exports.getDoctorQrCodes = async (req, res) => {
+    try {
+
+        const doctorId = Number(req.params.doctorId);
+
+        if (!doctorId || Number.isNaN(doctorId)) {
+            return res.status(400).json({
+                success: false,
+                message: "Valid doctorId is required."
+            });
+        }
+
+        const result = await QRService.getDoctorQrCodes(doctorId);
+
+        return res.status(result.statusCode).json(result);
+
+    } catch (error) {
+
+        console.error("Get Doctor QR Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error."
+        });
+
+    }
+};

@@ -167,3 +167,30 @@ exports.getAllQrCodes = async ({
         total: countRows[0].total
     };
 };
+
+exports.getDoctorQrCodes = async (doctorId) => {
+
+    const sql = `
+        SELECT
+            id,
+            qr_code,
+            qr_image,
+            CONCAT(
+                'http://localhost:4000/uploads/qrcodes/',
+                SUBSTRING_INDEX(qr_image,'/',-1)
+            ) AS qr_image_url,
+            CONCAT(
+                'http://localhost:4000/api/QR/scan/',
+                qr_code
+            ) AS qr_url,
+            status,
+            assigned_at
+        FROM qr_codes
+        WHERE doctor_user_id = ?
+        ORDER BY id DESC
+    `;
+
+    const [rows] = await db.execute(sql, [doctorId]);
+
+    return rows;
+};

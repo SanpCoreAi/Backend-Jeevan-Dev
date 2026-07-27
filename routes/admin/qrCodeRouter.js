@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const {
-    generateQrCodes, getAllQrCodes
+    generateQrCodes, getAllQrCodes, getDoctorQrCodes
 } = require("../../controllers/admin/generateQrCodesController");
 
 const { connectDoctorQr} = require("../../controllers/admin/connectQrController");
@@ -28,6 +28,12 @@ router.get(
     "/getAllQR",
     verifyToken,
     getAllQrCodes
+);
+
+router.get(
+    "/doctors/:doctorId/qrcodes",
+    verifyToken,
+    getDoctorQrCodes
 );
 
 module.exports = router;

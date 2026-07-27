@@ -114,3 +114,29 @@ exports.getAllQrCodes = async ({
 
     }
 };
+
+exports.getDoctorQrCodes = async (doctorId) => {
+
+    try {
+
+        const qrCodes = await QRModel.getDoctorQrCodes(doctorId);
+
+        return {
+            statusCode: 200,
+            success: true,
+            message: "Doctor QR Codes fetched successfully.",
+            data: qrCodes
+        };
+
+    } catch (error) {
+
+        console.error("Get Doctor QR Service Error:", error);
+
+        return {
+            statusCode: 500,
+            success: false,
+            message: "Failed to fetch doctor QR Codes."
+        };
+
+    }
+};

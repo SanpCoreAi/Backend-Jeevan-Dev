@@ -3,7 +3,7 @@ const QRModel = require("../../models/admin/qrModel");
 
 exports.connectDoctorQr = async ({
     doctorId,
-    qrCode
+    qrCodes
 }) => {
 
     const connection = await db.getConnection();
@@ -25,69 +25,69 @@ exports.connectDoctorQr = async ({
             };
         }
 
-        if (doctor.qr_code) {
-            await connection.rollback();
+        const connectedQrCodes = [];
 
-            return {
-                statusCode: 400,
-                success: false,
-                message: "QR Code already connected with this doctor."
-            };
+        for (const qrCode of qrCodes) {
+
+            // QR Exists
+            const qr = await QRModel.findQrCode(qrCode);
+
+            if (!qr) {
+                await connection.rollback();
+
+                return {
+                    statusCode: 404,
+                    success: false,
+                    message: `${qrCode} not found.`
+                };
+            }
+
+            // Already Assigned
+            if (qr.status !== "AVAILABLE") {
+                await connection.rollback();
+
+                return {
+                    statusCode: 400,
+                    success: false,
+                    message: `${qrCode} is already assigned.`
+                };
+            }
+
+            const qrImage = qr.qr_image;
+            const qrUrl = `http://localhost:4000/api/QR/scan/${qrCode}`;
+
+            // Update QR Status
+            await QRModel.updateQrStatus(
+                connection,
+                qrCode,
+                doctorId
+            );
+
+            // Update Doctor QR Details
+            await QRModel.assignQrToDoctor(
+                connection,
+                doctorId,
+                qrCode,
+                qrImage,
+                qrUrl
+            );
+
+            connectedQrCodes.push({
+                qrCode,
+                qrImage,
+                qrUrl
+            });
         }
-
-        // QR Check
-        const qr = await QRModel.findQrCode(qrCode);
-
-        if (!qr) {
-            await connection.rollback();
-
-            return {
-                statusCode: 404,
-                success: false,
-                message: "QR Code not found."
-            };
-        }
-
-        if (qr.status !== "AVAILABLE") {
-            await connection.rollback();
-
-            return {
-                statusCode: 400,
-                success: false,
-                message: "QR Code is already assigned."
-            };
-        }
-
-        const qrImage = qr.qr_image;
-        const qrUrl = `http://localhost:4000/api/QR/scan/${qrCode}`;
-
-        // Update Doctor
-        await QRModel.assignQrToDoctor(
-            connection,
-            doctorId,
-            qrCode,
-            qrImage,
-            qrUrl
-        );
-
-        // Update QR Status
-        await QRModel.updateQrStatus(
-            connection,
-            qrCode,
-            doctorId
-        );
 
         await connection.commit();
 
         return {
             statusCode: 200,
             success: true,
-            message: "QR Code connected successfully.",
+            message: `${connectedQrCodes.length} QR Codes connected successfully.`,
             data: {
                 doctorId,
-                qrCode,
-                qrImage,
-                qrUrl
+                qrCodes: connectedQrCodes
             }
         };
 

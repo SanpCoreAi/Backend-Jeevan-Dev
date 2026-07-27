@@ -11,7 +11,7 @@ exports.connectDoctorQr = async (req, res) => {
         }
 
         const doctorId = Number(req.params.doctorId);
-        const { qrCode } = req.body;
+        const { qrCodes } = req.body;
 
         if (!doctorId || Number.isNaN(doctorId)) {
             return res.status(400).json({
@@ -20,16 +20,27 @@ exports.connectDoctorQr = async (req, res) => {
             });
         }
 
-        if (!qrCode || typeof qrCode !== "string" || !qrCode.trim()) {
+        if (!Array.isArray(qrCodes) || qrCodes.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: "QR Code is required."
+                message: "QR Codes are required."
+            });
+        }
+
+        const invalidQr = qrCodes.find(
+            (code) => typeof code !== "string" || !code.trim()
+        );
+
+        if (invalidQr) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid QR Code."
             });
         }
 
         const result = await QRService.connectDoctorQr({
             doctorId,
-            qrCode: qrCode.trim(),
+            qrCodes: qrCodes.map(code => code.trim()),
             adminId: req.user.id
         });
 
@@ -43,5 +54,6 @@ exports.connectDoctorQr = async (req, res) => {
             success: false,
             message: "Internal server error."
         });
+
     }
 };
