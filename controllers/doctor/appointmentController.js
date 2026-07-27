@@ -85,16 +85,12 @@ exports.getDoctorAppointmentsForTable = async (req, res) => {
 
     let doctorId;
 
-
-    // Doctor token
     if (req.user.role === 2) {
 
       doctorId = req.user.id;
 
     }
 
-
-    // Assistant token
     else if (req.user.role === 3) {
 
       const user =
@@ -219,13 +215,12 @@ exports.getAppointmentById = async (req, res) => {
 
     let doctorId;
 
-    // Doctor token
     if (req.user.role === 2) {
 
       doctorId = req.user.id;
 
     } 
-    // Assistant token
+   
     else if (req.user.role === 3) {
 
       const user = await appointmentService.getUserById(req.user.id);
@@ -254,9 +249,7 @@ exports.getAppointmentById = async (req, res) => {
       doctorId
     );
 
-
     return res.status(200).json(result);
-
 
   } catch (error) {
 
@@ -276,16 +269,12 @@ exports.getTodayAppointments = async (req, res) => {
 
     let doctorId;
 
-
-    // Doctor token
     if (req.user.role === 2) {
 
       doctorId = req.user.id;
 
     }
 
-
-    // Assistant token
     else if (req.user.role === 3) {
 
       const user =
@@ -302,8 +291,6 @@ exports.getTodayAppointments = async (req, res) => {
         });
 
       }
-
-
       doctorId = user.doctor_id;
 
     }
@@ -318,14 +305,10 @@ exports.getTodayAppointments = async (req, res) => {
 
     }
 
-
-
     const {
       page = 1,
       limit = 10
     } = req.query;
-
-
 
     const result =
       await appointmentService
@@ -335,11 +318,7 @@ exports.getTodayAppointments = async (req, res) => {
         Number(limit)
       );
 
-
-
     return res.status(200).json(result);
-
-
 
   } catch(error) {
 
@@ -357,17 +336,14 @@ exports.getAppointmentPublicById = async (req, res) => {
 
     let patientId = req.params.patient_id;
 
-    // agar doctor/assistant token se access karna hai
     if (req.user) {
 
-      // Doctor
       if (req.user.role === 2) {
 
         patientId = req.params.patient_id;
 
       }
 
-      // Assistant
       else if (req.user.role === 3) {
 
         const user = await appointmentService.getUserById(
@@ -424,16 +400,12 @@ exports.getDashboardCards = async (req, res) => {
 
     let doctorId;
 
-
-    // Doctor token
     if (req.user.role === 2) {
 
       doctorId = req.user.id;
 
     }
 
-
-    // Assistant token
     else if (req.user.role === 3) {
 
       const user =
@@ -451,11 +423,9 @@ exports.getDashboardCards = async (req, res) => {
 
       }
 
-
       doctorId = user.doctor_id;
 
     }
-
 
     else {
 
@@ -466,14 +436,10 @@ exports.getDashboardCards = async (req, res) => {
 
     }
 
-
-
     const data =
       await appointmentService.getDashboardCards({
         doctorId
       });
-
-
 
     return res.status(200).json({
 

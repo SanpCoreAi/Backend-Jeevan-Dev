@@ -4,6 +4,7 @@ const Schedule = require("../../models/schedule");
 const User = require("../../models/usermodel");
 const { parse12to24, time24To12 } = require("../../utils/timeHelper");
 const { sendAppointmentEmail } = require("../../utils/sendEmail");
+const notificationService = require("../notification/notificationService");
 const dayjs = require("dayjs");
 
 exports.bookAppointment = async (
@@ -172,6 +173,14 @@ exports.bookAppointment = async (
 
     });
 
+    await notificationService.createNotification({
+    userId: patientId,
+    title: "Appointment Booked",
+    message: `Your appointment has been booked successfully. Token No: ${token}`,
+    type: "SUCCESS",
+    createdBy: doctorId
+});
+
   if (
     booking_type === "someone_else" &&
     patient
@@ -268,48 +277,37 @@ async function bookAppointmentByAssistant({
 
   const appointmentId =
     await Appointment.create({
-
-      appointment_token: token,
-
-      appointment_date,
-
-      start_time: null,
-
-      end_time: null,
-
-      patient_id: null,
-
-      doctor_id: doctorId,
-
-      schedule_id: null,
-
-      booking_type,
-
-      mode,
-
-      hospital_name,
-
-      reason_for_visit
+     appointment_token: token,
+     appointment_date,
+     start_time: null,
+     end_time: null,
+     patient_id: null,
+     doctor_id: doctorId,
+     schedule_id: null,
+     booking_type,
+     mode,
+     hospital_name,
+     reason_for_visit
 
     });
 
+await notificationService.createNotification({
+    userId: user.id,
+    title: "Appointment Booked",
+    message: `Appointment booked successfully. Token No: ${token}`,
+    type: "SUCCESS",
+    createdBy: doctorId
+});
+
   await Appointment.insertOtherPatient({
-
-    appointment_id: appointmentId,
-
-    user_id: user.id,
-
-    name: patient.name,
-
-    age: patient.age,
-
-    gender: patient.gender,
-
-    phone: patient.phone,
-
-    email: patient.email
-
-  });
+   appointment_id: appointmentId,
+   user_id: user.id,
+   name: patient.name,
+   age: patient.age,
+   gender: patient.gender,
+   phone: patient.phone,
+   email: patient.email
+ });
 
   return {
 
@@ -725,9 +723,16 @@ exports.cancelAppointment = async (
     appointment.start_time
   );
 
+  await notificationService.createNotification({
+    userId: patientId,
+    title: "Appointment Cancelled",
+    message: `Your appointment scheduled on ${appointment.slot_date} has been cancelled successfully.`,
+    type: "WARNING",
+    createdBy: patientId
+  });
+
   return {
     success: true,
     message: "Appointment cancelled successfully"
   };
-
 };

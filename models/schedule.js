@@ -97,11 +97,7 @@ async function getScheduleCountByDoctor(doctorId) {
   return rows[0].total;
 }
 
-async function getScheduleByDoctor(
-  doctorId,
-  limit,
-  offset
-) {
+async function getScheduleByDoctor(doctorId) {
   const [rows] = await db.query(
     `
     SELECT *
@@ -109,17 +105,11 @@ async function getScheduleByDoctor(
     WHERE doctor_id = ?
       AND end_date >= CURDATE()
     ORDER BY start_date ASC, id DESC
-    LIMIT ?
-    OFFSET ?
     `,
-    [
-      doctorId,
-      Number(limit),
-      Number(offset)
-    ]
+    [doctorId]
   );
 
-  return rows;
+  return rows.map(parseActiveDays);
 }
 
 async function findOverlappingScheduleForUpdate(data) {

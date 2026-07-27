@@ -2,6 +2,7 @@ const db = require("../../config/db");
 const model = require("../../models/prescriptionModel");
 const appointmentModel = require("../../models/appointModels");
 const AppError = require("../../utils/appError");
+const notificationService = require("../notification/notificationService");
 
 exports.save = async (
   appointmentId,
@@ -78,6 +79,14 @@ exports.save = async (
 
     await conn.commit();
 
+await notificationService.createNotification({
+  userId: appointment.patient_id,
+  title: "Prescription Uploaded",
+  message: "Your prescription has been uploaded successfully.",
+  type: "SUCCESS",
+  createdBy: appointment.doctor_id,
+});
+
   } catch (err) {
     await conn.rollback();
     throw err;
@@ -114,6 +123,15 @@ exports.update = async (appointmentId, medicines, remark, followUpDate, diagnosi
     }
 
     await conn.commit();
+
+  await notificationService.createNotification({
+  userId: appointment.patient_id,
+  title: "Prescription Updated",
+  message: "Your prescription has been updated successfully.",
+  type: "INFO",
+  createdBy: appointment.doctor_id,
+  
+});
   } catch (err) {
     await conn.rollback();
     throw err;
