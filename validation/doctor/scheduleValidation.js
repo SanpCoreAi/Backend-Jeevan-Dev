@@ -1,16 +1,139 @@
-const Joi = require('joi');
+const Joi = require("joi");
 
-const scheduleSchema = Joi.object({
-  location: Joi.string().required().trim().min(1).max(100),
-  startTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
-  endTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).required(),
-  slotDuration: Joi.number().integer().min(1).max(480).required(),
-  skipMinutes: Joi.number().integer().min(0).max(60).default(0),
-  days: Joi.array().items(Joi.number().integer().min(0).max(6)).min(1).max(7).required(),
-  startDate: Joi.date().allow(null).default(null),
-  endDate: Joi.date().allow(null).default(null),
-  note: Joi.string().allow('').max(500).default(''),
-  isActive: Joi.boolean().default(true),
+const createScheduleValidation = Joi.object({
+
+  location_id: Joi.number()
+    .integer()
+    .positive()
+    .allow(null),
+
+  hospital_name: Joi.string()
+    .trim()
+    .min(2)
+    .max(255)
+    .required(),
+
+  start_time: Joi.string()
+    .trim()
+    .required(),
+
+  end_time: Joi.string()
+    .trim()
+    .required(),
+
+  slot_duration: Joi.number()
+    .integer()
+    .min(1)
+    .max(240)
+    .required(),
+
+  break_minutes: Joi.number()
+    .integer()
+    .min(0)
+    .max(120)
+    .default(0),
+
+  active_days: Joi.array()
+    .items(
+      Joi.string().valid(
+        "Sun",
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat"
+      )
+    )
+    .min(1)
+    .required(),
+
+  start_date: Joi.date()
+    .required(),
+
+  end_date: Joi.date()
+    .min(Joi.ref("start_date"))
+    .required(),
+
+  note: Joi.string()
+    .trim()
+    .max(500)
+    .allow("", null),
+
+  offlinepatient_number: Joi.number()
+    .integer()
+    .min(1)
+    .allow(null)
+
 });
 
-module.exports = scheduleSchema;
+const updateScheduleValidation = Joi.object({
+
+  location_id: Joi.number()
+    .integer()
+    .positive()
+    .allow(null),
+
+  hospital_name: Joi.string()
+    .trim()
+    .min(2)
+    .max(255),
+
+  start_time: Joi.string(),
+
+  end_time: Joi.string(),
+
+  slot_duration: Joi.number()
+    .integer()
+    .min(1)
+    .max(240),
+
+  break_minutes: Joi.number()
+    .integer()
+    .min(0)
+    .max(120),
+
+  active_days: Joi.array().items(
+    Joi.string().valid(
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    )
+  ),
+
+  start_date: Joi.date(),
+
+  end_date: Joi.date(),
+
+  note: Joi.string()
+    .trim()
+    .max(500)
+    .allow("", null),
+
+  offlinepatient_number: Joi.number()
+    .integer()
+    .min(1)
+    .allow(null)
+
+}).min(1);
+
+const deleteScheduleValidation = Joi.object({
+
+  date: Joi.date().optional(),
+
+  slotId: Joi.number()
+    .integer()
+    .positive()
+    .optional()
+
+}).or("date", "slotId");
+
+module.exports = {
+  createScheduleValidation,
+  updateScheduleValidation,
+  deleteScheduleValidation
+};

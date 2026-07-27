@@ -1,38 +1,87 @@
 const ScheduleService = require("../../services/doctor/scheduleService");
 
+const {
+  createScheduleValidation,
+  updateScheduleValidation,
+  deleteScheduleValidation
+} = require("../../validation/doctor/scheduleValidation");
+
 exports.create = async (req, res) => {
-  const result = await ScheduleService.createSchedule(
-    req.user.id,
-    req.body
-  );
+  try {
+    const { error } = createScheduleValidation.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true
+    });
 
-  if (!result.success) {
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Validation failed",
+        errors: error.details.map(err => err.message)
+      });
+    }
+
+    const result = await ScheduleService.createSchedule(
+      req.user.id,
+      req.body
+    );
+
     return res
-      .status(result.statusCode || 400)
+      .status(result.statusCode || (result.success ? 201 : 400))
       .json(result);
-  }
 
-  res.status(201).json(result);
+  } catch (error) {
+    console.error("CREATE SCHEDULE CONTROLLER ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
 };
 
 exports.getAll = async (req, res) => {
-  const result = await ScheduleService.getAllSchedules(req.user.id);
-  res.json(result);
+  try {
+    const result = await ScheduleService.getAllSchedules(req.user.id);
+
+    return res
+      .status(result.statusCode || 200)
+      .json(result);
+
+  } catch (error) {
+    console.error("GET ALL SCHEDULES ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
 };
 
 exports.getByDoctorId = async (req, res) => {
   try {
-    const result = await ScheduleService.getScheduleByDoctorId(req.user.id);
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
 
-    if (!result.success) {
-      return res.status(404).json(result);
-    }
+    const result = await ScheduleService.getScheduleByDoctorId(
+      req.user.id,
+      page,
+      limit
+    );
 
-    res.json(result);
+    return res
+      .status(result.statusCode || (result.success ? 200 : 404))
+      .json(result);
+
   } catch (error) {
-    console.error("Schedule Error:", error);
-    res.status(500).json({
+    console.error("GET SCHEDULE ERROR:", error);
+
+    return res.status(500).json({
       success: false,
+      statusCode: 500,
       message: "Internal Server Error"
     });
   }
@@ -41,9 +90,16 @@ exports.getByDoctorId = async (req, res) => {
 exports.getSchedulePublicByDoctorId = async (req, res) => {
   try {
     const doctorId = Number(req.params.doctorId);
-
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
+
+    if (!doctorId) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Valid doctorId is required"
+      });
+    }
 
     const result =
       await ScheduleService.getSchedulePublicByDoctorId(
@@ -52,155 +108,175 @@ exports.getSchedulePublicByDoctorId = async (req, res) => {
         limit
       );
 
-    if (!result.success) {
-      return res
-        .status(result.statusCode || 404)
-        .json(result);
-    }
-
-    return res.status(200).json(result);
+    return res
+      .status(result.statusCode || (result.success ? 200 : 404))
+      .json(result);
 
   } catch (error) {
+    console.error("PUBLIC SCHEDULE ERROR:", error);
+
     return res.status(500).json({
       success: false,
-      message: error.message
+      statusCode: 500,
+      message: "Internal Server Error"
     });
   }
 };
 
 exports.getHospitals = async (req, res) => {
-
   try {
 
     let doctorId;
+    const role = Number(req.user.role || req.user.role_id);
 
-
-    const userRole = req.user.role || req.user.role_id;
-
-    // Doctor token
-    if (Number(userRole) === 2) {
+    if (role === 2) {
 
       doctorId = req.user.id;
 
-    }
+    } else if (role === 3) {
 
-
-    // Assistant token
-    else if (Number(userRole) === 3) {
-
-      const user =
-        await ScheduleService.getUserById(
-          req.user.id
-        );
-
+      const user = await ScheduleService.getUserById(req.user.id);
 
       if (!user || !user.doctor_id) {
-
         return res.status(404).json({
-          success:false,
-          message:"Doctor not found"
+          success: false,
+          statusCode: 404,
+          message: "Doctor not found"
         });
-
       }
-
 
       doctorId = user.doctor_id;
 
-    }
-
-
-    else {
+    } else {
 
       return res.status(403).json({
-        success:false,
-        message:"Unauthorized role"
+        success: false,
+        statusCode: 403,
+        message: "Unauthorized"
       });
 
     }
-
-
 
     const result =
       await ScheduleService.getHospitalNamesByDoctor(
         doctorId
       );
 
+    return res
+      .status(result.statusCode || 200)
+      .json(result);
 
-    return res.json(result);
+  } catch (error) {
 
-
-
-  } catch(error) {
+    console.error("GET HOSPITALS ERROR:", error);
 
     return res.status(500).json({
-      success:false,
-      message:error.message
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
     });
 
   }
-
 };
 
 exports.update = async (req, res) => {
   try {
-    const { id: scheduleId } = req.params;
-    const doctorId = req.user.id;
 
-    // Validate Schedule ID
-    if (!scheduleId || isNaN(scheduleId)) {
+    const scheduleId = Number(req.params.id);
+
+    if (!scheduleId) {
       return res.status(400).json({
         success: false,
-        message: "Valid schedule ID is required."
+        statusCode: 400,
+        message: "Valid scheduleId is required"
       });
     }
 
-    const result = await ScheduleService.updateSchedule(
-      doctorId,
-      Number(scheduleId),
-      req.body
-    );
+    const { error } = updateScheduleValidation.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true
+    });
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Validation failed",
+        errors: error.details.map(err => err.message)
+      });
+    }
+
+    const result =
+      await ScheduleService.updateSchedule(
+        req.user.id,
+        scheduleId,
+        req.body
+      );
 
     return res
       .status(result.statusCode || (result.success ? 200 : 400))
       .json(result);
 
   } catch (error) {
-    console.error("Update Schedule Error:", error);
+
+    console.error("UPDATE SCHEDULE ERROR:", error);
 
     return res.status(500).json({
       success: false,
+      statusCode: 500,
       message: "Internal Server Error"
     });
+
   }
 };
 
 exports.deleteSchedule = async (req, res) => {
   try {
-    const { scheduleId } = req.params;
 
-    if (!scheduleId || isNaN(scheduleId)) {
+    const scheduleId = Number(req.params.scheduleId);
+
+    if (!scheduleId) {
       return res.status(400).json({
         success: false,
-        message: "Valid schedule ID is required."
+        statusCode: 400,
+        message: "Valid scheduleId is required"
       });
     }
 
-    const result = await ScheduleService.deleteSchedule(
-      Number(scheduleId),
-      req.body,
-      req.user.id
-    );
+    const { error } = deleteScheduleValidation.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true
+    });
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Validation failed",
+        errors: error.details.map(err => err.message)
+      });
+    }
+
+    const result =
+      await ScheduleService.deleteSchedule(
+        scheduleId,
+        req.body,
+        req.user.id
+      );
 
     return res
       .status(result.statusCode || (result.success ? 200 : 400))
       .json(result);
 
   } catch (error) {
-    console.error("Delete Schedule Error:", error);
+
+    console.error("DELETE SCHEDULE ERROR:", error);
 
     return res.status(500).json({
       success: false,
+      statusCode: 500,
       message: "Internal Server Error"
     });
+
   }
 };

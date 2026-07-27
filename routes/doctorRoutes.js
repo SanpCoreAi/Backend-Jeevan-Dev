@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const doctorController = require("../controllers/doctor/createdoctorController");
 const { getDoctors } = require("../controllers/doctor/getdoctorController");
-// const { doctorSearch } = require("../controllers/doctor/serachDoctorController");
 const DoctorSearchController = require("../controllers/doctor/serachDoctorController");
 const { verifyToken } = require("../middlewares/authMiddleware");
 const DoctorRatingController = require("../controllers/doctor/doctorRatingController");

@@ -20,6 +20,7 @@ const assistantProfileRoutes = require("./routes/assistant/assistantProfileRoute
 const notificationRoutes = require("./routes/notification/notificationRoutes")
 const AppointmentGraph = require("./routes/Dashboard")
 const appointmentCron = require("./cron/appointmentCron");
+const qrCodeRouter = require("./routes/admin/qrCodeRouter")
 dotenv.config();
 
 const app = express();
@@ -48,6 +49,7 @@ app.use("/api/prescriptions", prescriptionRoutes);
 app.use( "/api/assistant", assistantProfileRoutes);
 app.use('/api/dashboard', AppointmentGraph);
 app.use('/api/notification', notificationRoutes);
+app.use("/api/QR", qrCodeRouter);
 
 app.use(notFound);
 app.use(errorHandler);

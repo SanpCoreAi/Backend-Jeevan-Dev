@@ -82,21 +82,40 @@ async function generateScheduleSlots(scheduleId, payload) {
 }
 
 async function createSchedule(doctorId, body) {
-  try {
+  let connection;
 
-    if (!body.start_time || !body.end_time) {
+  try {
+    connection = await db.getConnection();
+
+    await connection.beginTransaction();
+
+    if (!doctorId) {
+      await connection.rollback();
+
       return {
         success: false,
-        statusCode: 400,
-        message: "start_time and end_time are required"
+        statusCode: 401,
+        message: "Unauthorized"
       };
     }
 
-    if (!body.slot_duration || body.slot_duration <= 0) {
+    if (!body.start_time || !body.end_time) {
+      await connection.rollback();
+
       return {
         success: false,
         statusCode: 400,
-        message: "slot_duration must be greater than 0"
+        message: "start_time and end_time are required."
+      };
+    }
+
+    if (!body.slot_duration || Number(body.slot_duration) <= 0) {
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 400,
+        message: "slot_duration must be greater than zero."
       };
     }
 
@@ -104,113 +123,206 @@ async function createSchedule(doctorId, body) {
     const end24 = parse12to24(body.end_time);
 
     if (!start24 || !end24) {
+      await connection.rollback();
+
       return {
         success: false,
         statusCode: 400,
-        message: "Invalid time format"
+        message: "Invalid time format."
       };
     }
 
     if (start24 >= end24) {
-      const s = body.start_date ? new Date(body.start_date) : null;
-      const e = body.end_date ? new Date(body.end_date) : null;
+      const startDate = body.start_date ? new Date(body.start_date) : null;
+      const endDate = body.end_date ? new Date(body.end_date) : null;
 
-      if (!(s && e && s < e)) {
+      if (!(startDate && endDate && startDate < endDate)) {
+        await connection.rollback();
+
         return {
           success: false,
           statusCode: 400,
-          message: "End time must be greater than start time"
+          message: "End time must be greater than start time."
         };
       }
     }
 
-    const isDuplicate = await ScheduleModel.findOverlappingSchedule({
-      doctor_id: doctorId,
-      hospital_name: body.hospital_name ?? null,
-      start_time: start24,
-      end_time: end24,
-      start_date: body.start_date,
-      end_date: body.end_date
-    });
+    const duplicate = await ScheduleModel.findOverlappingSchedule(
+      {
+        doctor_id: doctorId,
+        hospital_name: body.hospital_name ?? null,
+        start_time: start24,
+        end_time: end24,
+        start_date: body.start_date,
+        end_date: body.end_date
+      },
+      connection
+    );
 
-    if (isDuplicate) {
+    if (duplicate) {
+      await connection.rollback();
+
       return {
         success: false,
         statusCode: 409,
-        message: "Schedule already exists for this hospital & time"
+        message: "Schedule already exists for selected hospital and timing."
       };
     }
 
-    const scheduleId = await ScheduleModel.createSchedule({
-      doctor_id: doctorId,
-      location_id: body.location_id ?? null,
-      hospital_name: body.hospital_name ?? null,
-      start_time: start24,
-      end_time: end24,
-      slot_duration: body.slot_duration,
-      break_minutes: body.break_minutes ?? 0,
-      active_days: body.active_days || [],
-      start_date: body.start_date,
-      end_date: body.end_date,
-      note: body.note ?? null,
-      offlinepatient_number: body.offlinepatient_number ?? null
-    });
+    const scheduleId = await ScheduleModel.createSchedule(
+      {
+        doctor_id: doctorId,
+        location_id: body.location_id ?? null,
+        hospital_name: body.hospital_name ?? null,
+        start_time: start24,
+        end_time: end24,
+        slot_duration: Number(body.slot_duration),
+        break_minutes: Number(body.break_minutes || 0),
+        active_days: body.active_days || [],
+        start_date: body.start_date,
+        end_date: body.end_date,
+        note: body.note ?? null,
+        offlinepatient_number: body.offlinepatient_number ?? null
+      },
+      connection
+    );
 
-    const totalSlots = await generateScheduleSlots(scheduleId, {
-      doctor_id: doctorId,
-      start_time: start24,
-      end_time: end24,
-      slot_duration: body.slot_duration,
-      break_minutes: body.break_minutes || 0,
-      start_date: body.start_date,
-      end_date: body.end_date,
-      active_days: body.active_days || []
-    });
+    const totalSlots = await generateScheduleSlots(
+      scheduleId,
+      {
+        doctor_id: doctorId,
+        start_time: start24,
+        end_time: end24,
+        slot_duration: Number(body.slot_duration),
+        break_minutes: Number(body.break_minutes || 0),
+        start_date: body.start_date,
+        end_date: body.end_date,
+        active_days: body.active_days || []
+      },
+      connection
+    );
 
     if (!totalSlots) {
+      await connection.rollback();
+
       return {
         success: false,
         statusCode: 400,
-        message: "No slots generated"
+        message: "Unable to generate schedule slots."
       };
     }
 
+    await connection.commit();
+
     return {
       success: true,
-      message: "Schedule created successfully",
+      statusCode: 201,
+      message: "Schedule created successfully.",
       data: {
         scheduleId,
         totalSlots
       }
     };
 
-  } catch (err) {
+  } catch (error) {
+
+    if (connection) {
+      await connection.rollback();
+    }
+
+    console.error("Create Schedule Service Error:", error);
+
     return {
       success: false,
       statusCode: 500,
-      message: err.message || "Schedule creation failed"
+      message: "Internal Server Error"
     };
+
+  } finally {
+
+    if (connection) {
+      connection.release();
+    }
+
   }
 }
 
-
 async function getAllSchedules(doctorId) {
-  const schedules = await ScheduleModel.getAllByDoctor(doctorId);
+  try {
 
-  return {
-    success: true,
-    data: schedules.map(s => ({
-      ...s,
-      start_time: time24To12(s.start_time),
-      end_time: time24To12(s.end_time),
+    if (!doctorId) {
+      return {
+        success: false,
+        statusCode: 401,
+        message: "Unauthorized"
+      };
+    }
+
+    const schedules = await ScheduleModel.getAllByDoctor(doctorId);
+
+    if (!Array.isArray(schedules) || schedules.length === 0) {
+      return {
+        success: true,
+        statusCode: 200,
+        message: "No schedules found.",
+        data: []
+      };
+    }
+
+    const data = schedules.map((schedule) => ({
+      scheduleId: schedule.id,
+      doctorId: schedule.doctor_id,
+      locationId: schedule.location_id,
+      hospitalName: schedule.hospital_name,
+      offlinepatient_number: schedule.offlinepatient_number,
+
+      timing: {
+        start: time24To12(schedule.start_time),
+        end: time24To12(schedule.end_time),
+        slotDuration: Number(schedule.slot_duration),
+        breakMinutes: Number(schedule.break_minutes)
+      },
+
+      availability: {
+        activeDays: Array.isArray(schedule.active_days)
+          ? schedule.active_days
+          : [],
+        startDate: formatDate(schedule.start_date),
+        endDate: formatDate(schedule.end_date)
+      },
+
+      note: schedule.note || null,
+
       slots: generateSlots12(
-        s.start_time,
-        s.end_time,
-        s.slot_duration,
-        s.break_minutes
-      )
-    }))
-  };
+        schedule.start_time,
+        schedule.end_time,
+        Number(schedule.slot_duration),
+        Number(schedule.break_minutes)
+      ),
+
+      createdAt: schedule.created_at || null,
+      updatedAt: schedule.updated_at || null
+    }));
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Schedules fetched successfully.",
+      count: data.length,
+      data
+    };
+
+  } catch (error) {
+
+    console.error("Get All Schedules Service Error:", error);
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
+    };
+
+  }
 }
 
 function formatDate(date) {
@@ -224,130 +336,311 @@ async function getScheduleByDoctorId(
   page = 1,
   limit = 10
 ) {
-  const offset = (page - 1) * limit;
+  try {
 
-  const total =
-    await ScheduleModel.getScheduleCountByDoctor(
-      doctorId
+    if (!doctorId) {
+      return {
+        success: false,
+        statusCode: 401,
+        message: "Unauthorized"
+      };
+    }
+
+    page = Math.max(1, Number(page) || 1);
+    limit = Math.max(1, Math.min(100, Number(limit) || 10));
+
+    const offset = (page - 1) * limit;
+
+    const totalRecords =
+      await ScheduleModel.getScheduleCountByDoctor(
+        doctorId
+      );
+
+    if (totalRecords === 0) {
+      return {
+        success: true,
+        statusCode: 200,
+        message: "No schedules found.",
+        pagination: {
+          totalRecords: 0,
+          totalPages: 0,
+          currentPage: page,
+          limit,
+          hasNextPage: false,
+          hasPreviousPage: false
+        },
+        count: 0,
+        data: []
+      };
+    }
+
+    const schedules =
+      await ScheduleModel.getScheduleByDoctor(
+        doctorId,
+        limit,
+        offset
+      );
+
+    const today = new Date().toLocaleDateString(
+      "en-CA",
+      {
+        timeZone: "Asia/Kolkata"
+      }
     );
 
-  const schedules =
-    await ScheduleModel.getScheduleByDoctor(
-      doctorId,
-      limit,
-      offset
+    const response = [];
+
+    for (const schedule of schedules) {
+
+      const slots =
+        await ScheduleModel.getSlotsByScheduleId(
+          schedule.id
+        );
+
+      const upcomingSlots = slots
+        .filter((slot) => {
+          const slotDate =
+            normalizeDateValue(slot.start_date);
+
+          return (
+            slotDate &&
+            slotDate >= today
+          );
+        })
+        .map((slot) => ({
+          slotId: slot.id,
+          date: formatDate(slot.start_date),
+          start: time24To12(slot.start_time),
+          end: time24To12(slot.end_time),
+          status: slot.status
+        }));
+
+      response.push({
+
+        scheduleId: schedule.id,
+
+        doctorId: schedule.doctor_id,
+
+        locationId: schedule.location_id,
+
+        hospitalName: schedule.hospital_name,
+
+        offlinepatient_number:
+          schedule.offlinepatient_number,
+
+        timing: {
+          start: time24To12(schedule.start_time),
+          end: time24To12(schedule.end_time),
+          slotDuration: Number(schedule.slot_duration),
+          breakMinutes: Number(schedule.break_minutes)
+        },
+
+        availability: {
+          activeDays:
+            Array.isArray(schedule.active_days)
+              ? schedule.active_days
+              : [],
+          startDate: formatDate(schedule.start_date),
+          endDate: formatDate(schedule.end_date),
+
+          status:
+            upcomingSlots.some(
+              s =>
+                String(s.status).toLowerCase() ===
+                "active"
+            )
+              ? "active"
+              : "inactive"
+        },
+
+        note: schedule.note || null,
+
+        totalSlots: upcomingSlots.length,
+
+        slots: upcomingSlots,
+
+        createdAt: schedule.created_at || null,
+
+        updatedAt: schedule.updated_at || null
+
+      });
+    }
+
+    return {
+
+      success: true,
+
+      statusCode: 200,
+
+      message: "Schedules fetched successfully.",
+
+      pagination: {
+
+        totalRecords,
+
+        totalPages: Math.ceil(
+          totalRecords / limit
+        ),
+
+        currentPage: page,
+
+        limit,
+
+        hasNextPage:
+          page <
+          Math.ceil(totalRecords / limit),
+
+        hasPreviousPage:
+          page > 1
+      },
+
+      count: response.length,
+
+      data: response
+
+    };
+
+  } catch (error) {
+
+    console.error(
+      "Get Schedule By Doctor Error:",
+      error
     );
 
-  if (!schedules.length) {
     return {
       success: false,
-      message: "No schedules found"
+      statusCode: 500,
+      message: "Internal Server Error"
     };
+
   }
-
-  const finalData = [];
-
-  for (const s of schedules) {
-
-    const slotsFromDB =
-      await ScheduleModel.getSlotsByScheduleId(s.id);
-
-    const today = new Date().toLocaleDateString("en-CA", {
-      timeZone: "Asia/Kolkata"
-    });
-
-    const formattedSlots = slotsFromDB
-      .filter(slot => {
-        const slotDate = normalizeDateValue(slot.start_date);
-        return !slotDate || slotDate >= today;
-      })
-      .map(slot => ({
-        start: time24To12(slot.start_time),
-        end: time24To12(slot.end_time),
-        status: slot.status,
-        date: formatDate(slot.start_date)
-      }));
-
-    const scheduleStatus =
-      formattedSlots.some(
-        slot => slot.status === "active"
-      )
-        ? "active"
-        : "inactive";
-
-    finalData.push({
-      scheduleId: s.id,
-      doctorId: s.doctor_id,
-      hospitalName: s.hospital_name,
-      offlinepatient_number: s.offlinepatient_number,
-
-      timing: {
-        start: time24To12(s.start_time),
-        end: time24To12(s.end_time),
-        slotDuration: s.slot_duration,
-        breakMinutes: s.break_minutes
-      },
-
-      availability: {
-        activeDays: s.active_days,
-        startDate: formatDate(s.start_date),
-        endDate: formatDate(s.end_date),
-        status: scheduleStatus
-      },
-
-      slots: formattedSlots
-    });
-  }
-
-  return {
-    success: true,
-
-    pagination: {
-      totalRecords: total,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
-      limit,
-      hasNextPage: page < Math.ceil(total / limit),
-      hasPreviousPage: page > 1
-    },
-
-    count: finalData.length,
-
-    data: finalData
-  };
 }
 
 
 async function getSchedulePublicByDoctorId(
   doctorId,
-  page,
- limit
+  page = 1,
+  limit = 10
 ) {
-  return getScheduleByDoctorId(
-    doctorId,
-    page,
-    limit
-  );
-}
-
-async function updateSchedule(doctorId, scheduleId, body) {
   try {
 
-    if (!scheduleId) {
+    if (!doctorId || isNaN(Number(doctorId))) {
       return {
         success: false,
         statusCode: 400,
-        message: "Schedule ID is required."
+        message: "Valid doctorId is required."
       };
     }
 
-    const schedules = await ScheduleModel.getScheduleByDoctor(doctorId);
+    page = Math.max(1, Number(page) || 1);
+    limit = Math.max(1, Math.min(100, Number(limit) || 10));
+
+    const result = await getScheduleByDoctorId(
+      Number(doctorId),
+      page,
+      limit
+    );
+
+    if (!result.success) {
+      return result;
+    }
+
+    const publicSchedules = result.data
+      .map((schedule) => {
+
+        const activeSlots = (schedule.slots || []).filter(
+          (slot) =>
+            String(slot.status).toLowerCase() === "active"
+        );
+
+        return {
+          scheduleId: schedule.scheduleId,
+
+          hospitalName: schedule.hospitalName,
+
+          offlinepatient_number:
+            schedule.offlinepatient_number,
+
+          timing: schedule.timing,
+
+          availability: {
+            activeDays: schedule.availability.activeDays,
+            startDate: schedule.availability.startDate,
+            endDate: schedule.availability.endDate,
+            status: schedule.availability.status
+          },
+
+          totalSlots: activeSlots.length,
+
+          slots: activeSlots
+        };
+      })
+      .filter(
+        (schedule) =>
+          schedule.availability.status === "active"
+      );
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Public schedules fetched successfully.",
+      pagination: result.pagination,
+      count: publicSchedules.length,
+      data: publicSchedules
+    };
+
+  } catch (error) {
+
+    console.error(
+      "Get Public Schedule Service Error:",
+      error
+    );
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
+    };
+
+  }
+}
+
+async function updateSchedule(doctorId, scheduleId, body) {
+  let connection;
+
+  try {
+    if (!doctorId) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Doctor ID is required."
+      };
+    }
+
+    if (!scheduleId || isNaN(Number(scheduleId))) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Valid schedule ID is required."
+      };
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    const schedules = await ScheduleModel.getScheduleByDoctor(
+      doctorId,
+      1000,
+      0
+    );
 
     const existing = schedules.find(
-      schedule => Number(schedule.id) === Number(scheduleId)
+      s => Number(s.id) === Number(scheduleId)
     );
 
     if (!existing) {
+      await connection.rollback();
+
       return {
         success: false,
         statusCode: 404,
@@ -355,22 +648,21 @@ async function updateSchedule(doctorId, scheduleId, body) {
       };
     }
 
-    const [inactiveSlots] = await db.query(
+    const [inactiveSlots] = await connection.query(
       `
       SELECT id
       FROM schedule_slots
       WHERE doctor_id = ?
         AND schedule_id = ?
-        AND LOWER(status) = 'inactive'
+        AND LOWER(status)='inactive'
       LIMIT 1
       `,
-      [
-        doctorId,
-        scheduleId
-      ]
+      [doctorId, scheduleId]
     );
 
-    if (inactiveSlots.length > 0) {
+    if (inactiveSlots.length) {
+      await connection.rollback();
+
       return {
         success: false,
         statusCode: 400,
@@ -387,7 +679,7 @@ async function updateSchedule(doctorId, scheduleId, body) {
       body.end_time = parse12to24(body.end_time);
     }
 
-    const isOverlap =
+    const overlap =
       await ScheduleModel.findOverlappingScheduleForUpdate({
 
         doctor_id: doctorId,
@@ -408,55 +700,65 @@ async function updateSchedule(doctorId, scheduleId, body) {
 
         end_date:
           body.end_date ?? existing.end_date
-
       });
 
-    if (isOverlap) {
+    if (overlap) {
+
+      await connection.rollback();
+
       return {
         success: false,
         statusCode: 409,
         message:
-          "Another schedule already exists for the selected time."
+          "Another schedule already exists for selected time."
       };
     }
 
-    const updated = await ScheduleModel.update(
-      doctorId,
-      scheduleId,
-      {
-        location_id:
-          body.location_id ?? existing.location_id,
+    const updated =
+      await ScheduleModel.update(
+        doctorId,
+        scheduleId,
+        {
+          location_id:
+            body.location_id ?? existing.location_id,
 
-        hospital_name:
-          body.hospital_name ?? existing.hospital_name,
+          hospital_name:
+            body.hospital_name ?? existing.hospital_name,
 
-        start_time:
-          body.start_time ?? existing.start_time,
+          start_time:
+            body.start_time ?? existing.start_time,
 
-        end_time:
-          body.end_time ?? existing.end_time,
+          end_time:
+            body.end_time ?? existing.end_time,
 
-        slot_duration:
-          body.slot_duration ?? existing.slot_duration,
+          slot_duration:
+            body.slot_duration ?? existing.slot_duration,
 
-        break_minutes:
-          body.break_minutes ?? existing.break_minutes,
+          break_minutes:
+            body.break_minutes ?? existing.break_minutes,
 
-        active_days:
-          body.active_days ?? existing.active_days,
+          active_days:
+            body.active_days ?? existing.active_days,
 
-        start_date:
-          body.start_date ?? existing.start_date,
+          start_date:
+            body.start_date ?? existing.start_date,
 
-        end_date:
-          body.end_date ?? existing.end_date,
+          end_date:
+            body.end_date ?? existing.end_date,
 
-        note:
-          body.note ?? existing.note
-      }
-    );
+          note:
+            body.note ?? existing.note,
+
+          offlinepatient_number:
+            body.offlinepatient_number ??
+            existing.offlinepatient_number
+        }
+      );
 
     if (!updated) {
+
+      await connection.rollback();
+
       return {
         success: false,
         statusCode: 400,
@@ -469,14 +771,28 @@ async function updateSchedule(doctorId, scheduleId, body) {
       scheduleId
     );
 
-    const totalSlots = await generateScheduleSlots(
-      scheduleId,
-      {
-        ...existing,
-        ...body
-      }
-    );
+    const totalSlots =
+      await generateScheduleSlots(
+        scheduleId,
+        {
+          ...existing,
+          ...body,
+          doctor_id: doctorId
+        }
+      );
 
+    if (!totalSlots) {
+
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 400,
+        message: "No slots generated."
+      };
+    }
+
+    await connection.commit();
 
     return {
       success: true,
@@ -490,41 +806,72 @@ async function updateSchedule(doctorId, scheduleId, body) {
 
   } catch (error) {
 
-    console.error("Update Schedule Service Error:", error);
+    if (connection) {
+      await connection.rollback();
+    }
+
+    console.error(
+      "Update Schedule Service Error:",
+      error
+    );
 
     return {
       success: false,
       statusCode: 500,
-      message: error.message || "Internal Server Error"
+      message: "Internal Server Error"
     };
+
+  } finally {
+
+    if (connection) {
+      connection.release();
+    }
+
   }
 }
 
 
 async function deleteSchedule(scheduleId, body, doctorId) {
+  let connection;
+
   try {
-    if (!scheduleId) {
+
+    if (!doctorId) {
       return {
         success: false,
         statusCode: 400,
-        message: "Schedule ID is required."
+        message: "Doctor ID is required."
       };
     }
 
+    if (!scheduleId || isNaN(Number(scheduleId))) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Valid schedule ID is required."
+      };
+    }
+
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
     const { date, slotId } = body || {};
 
-    const [schedule] = await db.query(
+    const [schedule] = await connection.query(
       `
       SELECT id
       FROM schedules
       WHERE id = ?
-        AND doctor_id = ?
+      AND doctor_id = ?
       LIMIT 1
       `,
       [scheduleId, doctorId]
     );
 
-    if (schedule.length === 0) {
+    if (!schedule.length) {
+
+      await connection.rollback();
+
       return {
         success: false,
         statusCode: 404,
@@ -534,33 +881,40 @@ async function deleteSchedule(scheduleId, body, doctorId) {
 
     if (!date && !slotId) {
 
-      const [inactiveSlots] = await db.query(
+      const [inactive] = await connection.query(
         `
         SELECT id
         FROM schedule_slots
         WHERE doctor_id = ?
-          AND schedule_id = ?
-          AND LOWER(status) = 'inactive'
+        AND schedule_id = ?
+        AND LOWER(status)='inactive'
         LIMIT 1
         `,
         [doctorId, scheduleId]
       );
 
-      if (inactiveSlots.length > 0) {
+      if (inactive.length) {
+
+        await connection.rollback();
+
         return {
           success: false,
           statusCode: 400,
           message:
-            "Schedule cannot be deleted because it contains inactive slots."
+            "Schedule cannot be deleted because inactive slots exist."
         };
       }
 
-      const result = await SlotModel.deleteCompleteSchedule({
-        doctorId,
-        scheduleId
-      });
+      const result =
+        await SlotModel.deleteCompleteSchedule({
+          doctorId,
+          scheduleId
+        });
 
-      if (result.affectedRows === 0) {
+      if (!result.affectedRows) {
+
+        await connection.rollback();
+
         return {
           success: false,
           statusCode: 400,
@@ -568,19 +922,25 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         };
       }
 
+      await connection.commit();
+
       return {
         success: true,
         statusCode: 200,
         message: "Schedule deleted successfully.",
-        deleted: result.affectedRows
+        deletedSchedules: result.affectedRows
       };
     }
 
     if (date && !slotId) {
 
-      const targetDate = new Date(date);
+      const formattedDate =
+        normalizeDateValue(date);
 
-      if (isNaN(targetDate.getTime())) {
+      if (!formattedDate) {
+
+        await connection.rollback();
+
         return {
           success: false,
           statusCode: 400,
@@ -588,123 +948,145 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         };
       }
 
-      const dateStr = targetDate.toISOString().slice(0, 10);
+      const [inactive] =
+        await connection.query(
+          `
+          SELECT id
+          FROM schedule_slots
+          WHERE doctor_id=?
+          AND schedule_id=?
+          AND DATE(start_date)=?
+          AND LOWER(status)='inactive'
+          LIMIT 1
+          `,
+          [
+            doctorId,
+            scheduleId,
+            formattedDate
+          ]
+        );
 
-      const [activeSlots] = await db.query(
-        `
-        SELECT id
-        FROM schedule_slots
-        WHERE doctor_id = ?
-          AND schedule_id = ?
-          AND DATE(start_date) = ?
-          AND LOWER(status) = 'active'
-        `,
-        [doctorId, scheduleId, dateStr]
-      );
+      if (inactive.length) {
 
-      if (activeSlots.length === 0) {
+        await connection.rollback();
+
         return {
           success: false,
-          statusCode: 404,
-          message: "No active slots found for selected date."
+          statusCode: 400,
+          message:
+            "Date contains inactive slots."
         };
       }
 
-const [inactive] = await db.query(
-  `
-  SELECT COUNT(*) AS total
-  FROM schedule_slots
-  WHERE doctor_id = ?
-    AND schedule_id = ?
-    AND DATE(start_date) = ?
-    AND LOWER(status) = 'inactive'
-  `,
-  [doctorId, scheduleId, dateStr]
-);
+      const result =
+        await SlotModel.deleteSlotsByDate({
+          doctorId,
+          scheduleId,
+          date: formattedDate
+        });
 
-if (inactive[0].total > 0) {
-  return {
-    success: false,
-    statusCode: 400,
-    message:
-      "Slots cannot be deleted because this date contains inactive slot(s)."
-  };
-}
+      if (!result.affectedRows) {
 
-const result = await SlotModel.deleteSlotsByDate({
-  doctorId,
-  scheduleId,
-  date: dateStr
-});
+        await connection.rollback();
 
-if (result.affectedRows === 0) {
-  return {
-    success: false,
-    statusCode: 400,
-    message: "No slots were deleted."
-  };
-}
+        return {
+          success: false,
+          statusCode: 404,
+          message: "No slots found."
+        };
+      }
 
-return {
-  success: true,
-  statusCode: 200,
-  message: "Date slots deleted successfully.",
-  deletedSlots: result.affectedRows
-};
+      await connection.commit();
 
+      return {
+        success: true,
+        statusCode: 200,
+        message:
+          "Schedule date deleted successfully.",
+        deletedSlots: result.affectedRows
+      };
     }
 
-if (slotId) {
+    /* =====================================================
+       DELETE SINGLE SLOT
+    ===================================================== */
 
-  const [slot] = await db.query(
-    `
-    SELECT id, status
-    FROM schedule_slots
-    WHERE id = ?
-      AND doctor_id = ?
-      AND schedule_id = ?
-    LIMIT 1
-    `,
-    [slotId, doctorId, scheduleId]
-  );
+    if (slotId) {
 
-  if (slot.length === 0) {
-    return {
-      success: false,
-      statusCode: 404,
-      message: "Slot not found."
-    };
-  }
+      const [slot] =
+        await connection.query(
+          `
+          SELECT id,status
+          FROM schedule_slots
+          WHERE id=?
+          AND doctor_id=?
+          AND schedule_id=?
+          LIMIT 1
+          `,
+          [
+            slotId,
+            doctorId,
+            scheduleId
+          ]
+        );
 
-  if (slot[0].status.toLowerCase() === "inactive") {
-    return {
-      success: false,
-      statusCode: 400,
-      message: "Inactive slot cannot be deleted."
-    };
-  }
+      if (!slot.length) {
 
-  const result = await SlotModel.deleteSingleSlot({
-    doctorId,
-    scheduleId,
-    slotId
-  });
+        await connection.rollback();
 
-  if (result.affectedRows === 0) {
-    return {
-      success: false,
-      statusCode: 400,
-      message: "Slot deletion failed."
-    };
-  }
+        return {
+          success: false,
+          statusCode: 404,
+          message: "Slot not found."
+        };
+      }
 
-  return {
-    success: true,
-    statusCode: 200,
-    message: "Slot deleted successfully.",
-    deletedSlots: result.affectedRows
-  };
-}
+      if (
+        String(slot[0].status).toLowerCase() ===
+        "inactive"
+      ) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "Inactive slot cannot be deleted."
+        };
+      }
+
+      const result =
+        await SlotModel.deleteSingleSlot({
+          doctorId,
+          scheduleId,
+          slotId
+        });
+
+      if (!result.affectedRows) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "Slot deletion failed."
+        };
+      }
+
+      await connection.commit();
+
+      return {
+        success: true,
+        statusCode: 200,
+        message:
+          "Slot deleted successfully.",
+        deletedSlots: result.affectedRows
+      };
+    }
+
+    await connection.rollback();
 
     return {
       success: false,
@@ -713,13 +1095,28 @@ if (slotId) {
     };
 
   } catch (error) {
-    console.error("Delete Schedule Service Error:", error);
+
+    if (connection) {
+      await connection.rollback();
+    }
+
+    console.error(
+      "Delete Schedule Service Error:",
+      error
+    );
 
     return {
       success: false,
       statusCode: 500,
       message: "Internal Server Error"
     };
+
+  } finally {
+
+    if (connection) {
+      connection.release();
+    }
+
   }
 }
 
@@ -735,70 +1132,113 @@ async function getUserById(id){
 
 
 async function getHospitalNamesByDoctor(doctorId) {
-
-  const [rows] = await db.query(
-    `
-    SELECT hospital_detail 
-    FROM doctors 
-    WHERE user_id = ?
-    `,
-    [doctorId]
-  );
-
-
-  if (!rows.length || !rows[0].hospital_detail) {
-
-    return {
-      success:true,
-      data:[]
-    };
-
-  }
-
-
-  let hospitals;
-
   try {
 
-    hospitals =
-      JSON.parse(
-        rows[0].hospital_detail
-      );
+    if (!doctorId) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Doctor ID is required."
+      };
+    }
 
-  } catch {
+    const [rows] = await db.query(
+      `
+      SELECT hospital_detail
+      FROM doctors
+      WHERE user_id = ?
+      LIMIT 1
+      `,
+      [doctorId]
+    );
+
+    if (!rows.length) {
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Doctor not found."
+      };
+    }
+
+    if (!rows[0].hospital_detail) {
+      return {
+        success: true,
+        statusCode: 200,
+        message: "No hospitals found.",
+        count: 0,
+        data: []
+      };
+    }
+
+    let hospitals = [];
+
+    try {
+      hospitals =
+        typeof rows[0].hospital_detail === "string"
+          ? JSON.parse(rows[0].hospital_detail)
+          : rows[0].hospital_detail;
+    } catch (error) {
+      return {
+        success: false,
+        statusCode: 500,
+        message: "Invalid hospital detail format."
+      };
+    }
+
+    if (!Array.isArray(hospitals)) {
+      hospitals = [];
+    }
+
+    const uniqueHospitals = [];
+    const seen = new Set();
+
+    for (const hospital of hospitals) {
+
+      const item = {
+        hospitalName: hospital?.hospitalName || "",
+        landmark: hospital?.landmark || "",
+        areaLocality: hospital?.areaLocality || "",
+        streetName: hospital?.streetName || "",
+        city: hospital?.city || "",
+        district: hospital?.district || "",
+        state: hospital?.state || "",
+        pinCode: hospital?.pinCode || ""
+      };
+
+      const key = JSON.stringify(item).toLowerCase();
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueHospitals.push(item);
+      }
+    }
+
+    uniqueHospitals.sort((a, b) =>
+      a.hospitalName.localeCompare(b.hospitalName)
+    );
 
     return {
-      success:true,
-      data:[]
+      success: true,
+      statusCode: 200,
+      message: "Hospital list fetched successfully.",
+      count: uniqueHospitals.length,
+      data: uniqueHospitals
+    };
+
+  } catch (error) {
+
+    console.error(
+      "Get Hospital Names Service Error:",
+      error
+    );
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
     };
 
   }
-
-
-
-  return {
-
-    success:true,
-
-    data:
-      hospitals.map(h => ({
-
-        hospitalName:
-          h.hospitalName || "",
-
-        landmark:
-          h.landmark || "",
-
-        city:
-          h.city || "",
-
-        state:
-          h.state || ""
-
-      }))
-
-  };
-
 }
 
 module.exports = {
