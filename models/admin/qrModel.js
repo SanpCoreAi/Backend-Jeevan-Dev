@@ -38,10 +38,6 @@ exports.bulkInsert = async (qrData) => {
     };
 };
 
-/* ===========================
-   CONNECT QR METHODS
-=========================== */
-
 exports.findDoctorByUserId = async (doctorId) => {
 
     const sql = `

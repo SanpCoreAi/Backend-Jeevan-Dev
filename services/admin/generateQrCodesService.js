@@ -3,6 +3,20 @@ const QRCode = require("qrcode");
 const fs = require("fs");
 const path = require("path");
 
+function generateQrCode() {
+
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let random = "";
+
+    for (let i = 0; i < 8; i++) {
+        random += chars.charAt(
+            Math.floor(Math.random() * chars.length)
+        );
+    }
+
+    return `DR-${random}`;
+}
+
 exports.generateQrCodes = async (count) => {
     try {
 
@@ -24,29 +38,37 @@ exports.generateQrCodes = async (count) => {
             fs.mkdirSync(uploadDir, { recursive: true });
         }
 
-        const qrData = [];
+const qrData = [];
 
-        for (let i = 1; i <= count; i++) {
+for (let i = 0; i < count; i++) {
 
-            lastNumber++;
+    let qrCode;
+    let exists = true;
 
-            const qrCode = `QR${String(lastNumber).padStart(6, "0")}`;
+    while (exists) {
 
-            const imageName = `${qrCode}.png`;
+        qrCode = generateQrCode();
 
-            const imagePath = `uploads/qrcodes/${imageName}`;
+        const qr = await QRModel.findQrCode(qrCode);
 
-            // QR Image Generate
-            await QRCode.toFile(
-                path.join(uploadDir, imageName),
-                qrCode
-            );
-
-            qrData.push({
-                qrCode,
-                imagePath
-            });
+        if (!qr) {
+            exists = false;
         }
+    }
+
+    const imageName = `${qrCode}.png`;
+    const imagePath = `uploads/qrcodes/${imageName}`;
+
+    await QRCode.toFile(
+        path.join(uploadDir, imageName),
+        qrCode
+    );
+
+    qrData.push({
+        qrCode,
+        imagePath
+    });
+}
 
         const result = await QRModel.bulkInsert(qrData);
 
