@@ -93,3 +93,30 @@ exports.getDoctorQrCodes = async (req, res) => {
 
     }
 };
+
+exports.getAllQrDetails = async (req, res) => {
+    try {
+
+        const page = Math.max(Number(req.query.page) || 1, 1);
+        const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+        const status = req.query.status?.trim().toUpperCase() || "";
+
+        const result = await QRService.getAllQrDetails({
+            page,
+            limit,
+            status
+        });
+
+        return res.status(result.statusCode).json(result);
+
+    } catch (error) {
+
+        console.error("Get QR Details Error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error."
+        });
+
+    }
+};

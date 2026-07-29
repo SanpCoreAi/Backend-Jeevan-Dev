@@ -140,3 +140,45 @@ exports.getDoctorQrCodes = async (doctorId) => {
 
     }
 };
+
+exports.getAllQrDetails = async ({
+    page,
+    limit,
+    status
+}) => {
+
+    try {
+
+        const offset = (page - 1) * limit;
+
+        const { rows, total } = await QRModel.getAllQrDetails({
+            limit,
+            offset,
+            status
+        });
+
+        return {
+            statusCode: 200,
+            success: true,
+            message: "QR details fetched successfully.",
+            data: rows,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
+
+    } catch (error) {
+
+        console.error("Get QR Details Service Error:", error);
+
+        return {
+            statusCode: 500,
+            success: false,
+            message: "Failed to fetch QR details."
+        };
+
+    }
+};

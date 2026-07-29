@@ -194,3 +194,68 @@ exports.getDoctorQrCodes = async (doctorId) => {
 
     return rows;
 };
+
+exports.getAllQrDetails = async ({
+    limit,
+    offset,
+    status
+}) => {
+
+    let where = "";
+    const params = [];
+
+    if (status) {
+        where = "WHERE q.status = ?";
+        params.push(status);
+    }
+
+    const countSql = `
+        SELECT COUNT(*) AS total
+        FROM qr_codes q
+        ${where}
+    `;
+
+    const [countRows] = await db.execute(countSql, params);
+
+    const sql = `
+        SELECT
+            q.id,
+            q.qr_code,
+            q.qr_image,
+            CONCAT('http://localhost:4000/', q.qr_image) AS qr_image_url,
+            CONCAT('http://localhost:4000/api/QR/scan/', q.qr_code) AS qr_url,
+            q.status,
+            q.doctor_user_id,
+            q.assigned_at,
+            q.created_at,
+
+            d.id AS doctor_id,
+            d.specialization,
+            d.qualification,
+
+            u.full_name,
+            u.email,
+            u.phone_number
+
+        FROM qr_codes q
+
+        LEFT JOIN doctors d
+            ON q.doctor_user_id = d.user_id
+
+        LEFT JOIN users u
+            ON d.user_id = u.id
+
+        ${where}
+
+        ORDER BY q.id DESC
+        LIMIT ${Number(limit)}
+        OFFSET ${Number(offset)}
+    `;
+
+    const [rows] = await db.execute(sql, params);
+
+    return {
+        rows,
+        total: countRows[0].total
+    };
+};
