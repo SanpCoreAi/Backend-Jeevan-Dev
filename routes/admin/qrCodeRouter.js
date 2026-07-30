@@ -15,8 +15,6 @@ const {
     connectDoctorQrValidation
 } = require("../../validation/admin/qrValidation");
 
-
-
 router.post(
     "/generate",
     verifyToken,
