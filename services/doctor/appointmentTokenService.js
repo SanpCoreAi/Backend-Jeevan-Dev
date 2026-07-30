@@ -2,302 +2,692 @@ const model = require("../../models/appointModels");
 const prescriptionModel = require("../../models/prescriptionModel");
 const db = require("../../config/db");
 
-
+// =============================================
+// Verify Appointment Token
+// =============================================
 exports.verifyToken = async ({
   doctorId,
   appointmentId,
-  token,
+  token
 }) => {
-
-  const data = await model.getByToken({
-    doctorId,
-    appointmentId,
-    token,
-  });
-
-  if (!data) {
-    throw new Error("Invalid appointment or token");
-  }
-
-  if (data.status !== "PENDING") {
-    throw new Error(
-      "Appointment already started or completed"
-    );
-  }
-
-  const result = await model.start(
-    appointmentId
-  );
-
-  if (result.affectedRows === 0) {
-    throw new Error(
-      "Failed to start appointment"
-    );
-  }
-
-  data.status = "IN_PROGRESS";
-
-  return data;
-};
-
-// START APPOINTMENT
-exports.start = async (id) => {
-
-  const appt = await model.getById(id);
-
-  if (!appt) {
-    throw new Error("Appointment not found");
-  }
-
-  if (appt.status === "COMPLETED") {
-    throw new Error("Appointment already completed");
-  }
-
-  // already running
-  if (appt.status === "IN_PROGRESS") {
-    return {
-      message: "Appointment already in progress"
-    };
-  }
-
-  await model.start(id);
-
-  return {
-    message: "Appointment started successfully"
-  };
-};
-
-
-exports.complete = async (id) => {
-
-  // appointment fetch
-  const appt = await model.getById(id);
-
-  if (!appt) {
-    throw new Error("Appointment not found");
-  }
-
-  // already completed
-  if (appt.status === "COMPLETED") {
-    return {
-      message: "Appointment already completed"
-    };
-  }
-
-  // pending check
-  if (appt.status === "PENDING") {
-    throw new Error("Start appointment first");
-  }
-
-  // update status
-  const result = await model.complete(id);
-
-  // check affected rows
-  if (result.affectedRows === 0) {
-    throw new Error("Failed to complete appointment");
-  }
-
-  return {
-    message: "Appointment completed successfully"
-  };
-};
-
-exports.completeByToken = async (token) => {
-  const data = await model.getByToken(token);
-
-  if (!data) {
-    throw new Error("Invalid token");
-  }
-
-  if (data.status === "COMPLETED") {
-    return {
-      message: "Appointment already completed"
-    };
-  }
-
-  if (data.status === "PENDING") {
-    throw new Error("Start appointment first");
-  }
-
-  const result = await model.complete(data.appointment_id);
-
-  if (result.affectedRows === 0) {
-    throw new Error("Failed to complete appointment");
-  }
-
-  return {
-    message: "Appointment completed successfully"
-  };
-};
-
-
-// EDIT PRESCRIPTION
-exports.editPrescription = async (appointment_id, medicines) => {
-
-  const appt = await model.getById(appointment_id);
-
-  if (!appt) {
-    throw new Error("Appointment not found");
-  }
-
-  if (appt.status !== "COMPLETED") {
-    throw new Error("Only completed appointments can be edited");
-  }
-
-  if (!appt.completed_at) {
-    throw new Error("Completion time missing");
-  }
-
-  const now = new Date();
-  const completedTime = new Date(appt.completed_at);
-
-  const diffInMinutes = (now - completedTime) / (1000 * 60);
-
-  if (diffInMinutes > 15) {
-    throw new Error("Edit allowed only within 15 minutes after completion");
-  }
-
-  const conn = await db.getConnection();
 
   try {
 
-    await conn.beginTransaction();
+    const appointment =
+      await model.getByToken({
+        doctorId,
+        appointmentId,
+        token
+      });
 
-    await prescriptionModel.deleteByAppointment(
-      appointment_id,
-      conn
-    );
-
-    for (const med of medicines) {
-
-      await prescriptionModel.insert(
-        appointment_id,
-        med,
-        null,
-        null,
-        null,
-        conn
-      );
+    if (!appointment) {
+      return {
+        success: false,
+        message: "Invalid appointment or token."
+      };
     }
 
-    await conn.commit();
+    if (appointment.status === "COMPLETED") {
+      return {
+        success: false,
+        message: "Appointment already completed."
+      };
+    }
+
+    if (appointment.status === "IN_PROGRESS") {
+      return {
+        success: true,
+        message: "Appointment already in progress.",
+        data: appointment
+      };
+    }
+
+    const result =
+      await model.start(
+        appointment.appointment_id
+      );
+
+    if (result.affectedRows === 0) {
+      return {
+        success: false,
+        message: "Failed to start appointment."
+      };
+    }
+
+    appointment.status = "IN_PROGRESS";
 
     return {
-      message: "Prescription updated successfully"
+      success: true,
+      message: "Appointment started successfully.",
+      data: appointment
     };
 
-  } catch (err) {
+  } catch (error) {
 
-    await conn.rollback();
-    throw err;
+    console.error(
+      "VERIFY TOKEN SERVICE ERROR:",
+      error
+    );
+
+    return {
+      success: false,
+      message: "Internal server error."
+    };
+
+  }
+
+};
+
+// =============================================
+// Start Appointment
+// =============================================
+exports.start = async (appointmentId) => {
+
+  try {
+
+    const appointment =
+      await model.getById(
+        appointmentId
+      );
+
+    if (!appointment) {
+      return {
+        success: false,
+        message: "Appointment not found."
+      };
+    }
+
+    if (appointment.status === "COMPLETED") {
+      return {
+        success: false,
+        message: "Appointment already completed."
+      };
+    }
+
+    if (appointment.status === "IN_PROGRESS") {
+      return {
+        success: true,
+        message: "Appointment already in progress."
+      };
+    }
+
+    const result =
+      await model.start(
+        appointmentId
+      );
+
+    if (result.affectedRows === 0) {
+      return {
+        success: false,
+        message: "Failed to start appointment."
+      };
+    }
+
+    return {
+      success: true,
+      message: "Appointment started successfully."
+    };
+
+  } catch (error) {
+
+    console.error(
+      "START APPOINTMENT SERVICE ERROR:",
+      error
+    );
+
+    return {
+      success: false,
+      message: "Internal server error."
+    };
+
+  }
+
+};
+
+// =============================================
+// Complete Appointment
+// =============================================
+exports.complete = async (appointmentId) => {
+
+  try {
+
+    const appointment =
+      await model.getById(
+        appointmentId
+      );
+
+    if (!appointment) {
+      return {
+        success: false,
+        message: "Appointment not found."
+      };
+    }
+
+    if (appointment.status === "COMPLETED") {
+      return {
+        success: true,
+        message: "Appointment already completed."
+      };
+    }
+
+    if (appointment.status === "PENDING") {
+      return {
+        success: false,
+        message: "Start appointment first."
+      };
+    }
+
+    const result =
+      await model.complete(
+        appointmentId
+      );
+
+    if (result.affectedRows === 0) {
+      return {
+        success: false,
+        message: "Failed to complete appointment."
+      };
+    }
+
+    return {
+      success: true,
+      message: "Appointment completed successfully."
+    };
+
+  } catch (error) {
+
+    console.error(
+      "COMPLETE APPOINTMENT SERVICE ERROR:",
+      error
+    );
+
+    return {
+      success: false,
+      message: "Internal server error."
+    };
+
+  }
+
+};
+
+// =============================================
+// Complete Appointment By Token
+// =============================================
+exports.completeByToken = async (token) => {
+
+  try {
+
+    const appointment =
+      await model.getByTokenOnly(
+        token
+      );
+
+    if (!appointment) {
+      return {
+        success: false,
+        message: "Invalid appointment token."
+      };
+    }
+
+    if (appointment.status === "COMPLETED") {
+      return {
+        success: true,
+        message: "Appointment already completed."
+      };
+    }
+
+    if (appointment.status === "PENDING") {
+      return {
+        success: false,
+        message: "Start appointment first."
+      };
+    }
+
+    const result =
+      await model.complete(
+        appointment.appointment_id
+      );
+
+    if (result.affectedRows === 0) {
+      return {
+        success: false,
+        message: "Failed to complete appointment."
+      };
+    }
+
+    return {
+      success: true,
+      message: "Appointment completed successfully."
+    };
+
+  } catch (error) {
+
+    console.error(
+      "COMPLETE BY TOKEN SERVICE ERROR:",
+      error
+    );
+
+    return {
+      success: false,
+      message: "Internal server error."
+    };
+
+  }
+
+};
+
+// =============================================
+// Edit Prescription
+// =============================================
+exports.editPrescription = async (
+  appointmentId,
+  medicines
+) => {
+
+  const connection =
+    await db.getConnection();
+
+  try {
+
+    const appointment =
+      await model.getById(
+        appointmentId
+      );
+
+    if (!appointment) {
+
+      connection.release();
+
+      return {
+        success: false,
+        message: "Appointment not found."
+      };
+
+    }
+
+    if (
+      appointment.status !==
+      "COMPLETED"
+    ) {
+
+      connection.release();
+
+      return {
+        success: false,
+        message:
+          "Prescription can be edited only after appointment completion."
+      };
+
+    }
+
+    if (!appointment.completed_at) {
+
+      connection.release();
+
+      return {
+        success: false,
+        message:
+          "Appointment completion time not found."
+      };
+
+    }
+
+    const completedAt =
+      new Date(
+        appointment.completed_at
+      );
+
+    const now = new Date();
+
+    const diffMinutes =
+      (now - completedAt) /
+      (1000 * 60);
+
+    if (diffMinutes > 15) {
+
+      connection.release();
+
+      return {
+        success: false,
+        message:
+          "Prescription can only be edited within 15 minutes."
+      };
+
+    }
+
+    await connection.beginTransaction();
+
+    await prescriptionModel.deleteByAppointment(
+      appointmentId,
+      connection
+    );
+
+    for (const medicine of medicines) {
+
+      await prescriptionModel.insert(
+        appointmentId,
+        medicine,
+        null,
+        null,
+        null,
+        connection
+      );
+
+    }
+
+    await connection.commit();
+
+    return {
+      success: true,
+      message:
+        "Prescription updated successfully."
+    };
+
+  } catch (error) {
+
+    console.error(
+      "EDIT PRESCRIPTION SERVICE ERROR:",
+      error
+    );
+
+    try {
+      await connection.rollback();
+    } catch (_) {}
+
+    return {
+      success: false,
+      message:
+        "Internal server error."
+    };
 
   } finally {
 
-    conn.release();
-  }
-};
+    connection.release();
 
-
-// GET DETAILS
-exports.getDetails = async (id) => {
-
-  const appt = await model.getById(id);
-
-  if (!appt) {
-    throw new Error("Appointment not found");
   }
 
-  const prescriptions =
-    await prescriptionModel.getByAppointment(id, db);
-
-  return {
-    appt,
-    prescriptions
-  };
 };
+// =============================================
+// Get Appointment Details
+// =============================================
+exports.getDetails = async (
+  appointmentId
+) => {
 
+  try {
 
-// GET FULL PRESCRIPTION
-exports.getFullPrescription = async (appointment_id) => {
+    const appointment =
+      await model.getById(
+        appointmentId
+      );
 
-  const appointment =
-    await prescriptionModel.getAppointmentFullDataById(
-      appointment_id
+    if (!appointment) {
+
+      return {
+        success: false,
+        message: "Appointment not found."
+      };
+
+    }
+
+    const prescriptions =
+      await prescriptionModel.getByAppointment(
+        appointmentId,
+        db
+      );
+
+    return {
+
+      success: true,
+
+      message:
+        "Appointment details fetched successfully.",
+
+      data: {
+
+        appointment,
+
+        prescriptions
+
+      }
+
+    };
+
+  } catch (error) {
+
+    console.error(
+      "GET DETAILS SERVICE ERROR:",
+      error
     );
 
-  if (!appointment) {
-    throw new Error("Appointment not found");
+    return {
+
+      success: false,
+
+      message:
+        "Internal server error."
+
+    };
+
   }
 
-  const medicines =
-    await prescriptionModel.getPrescriptionMedicines(
-      appointment.appointment_id
+};
+
+
+// =============================================
+// Get Full Prescription
+// =============================================
+exports.getFullPrescription = async (
+  appointmentId
+) => {
+
+  try {
+
+    const appointment =
+      await prescriptionModel.getAppointmentFullDataById(
+        appointmentId
+      );
+
+    if (!appointment) {
+
+      return {
+
+        success: false,
+
+        message:
+          "Appointment not found."
+
+      };
+
+    }
+
+    const medicines =
+      await prescriptionModel.getPrescriptionMedicines(
+        appointment.appointment_id
+      );
+
+    return {
+
+      success: true,
+
+      message:
+        "Prescription fetched successfully.",
+
+      data: {
+
+        doctor: {
+
+          id: appointment.doctor_id,
+          name: appointment.doctor_name,
+          mobile: appointment.doctor_mobile,
+          qualification:
+            appointment.qualification,
+          specialization:
+            appointment.specialization,
+          medical_license_no:
+            appointment.medical_license_no,
+          qr_code:
+            appointment.qr_code,
+
+          hospital_detail:
+            appointment.hospital_detail
+              ? JSON.parse(
+                  appointment.hospital_detail
+                )
+              : [],
+
+          availability:
+            appointment.availability
+              ? JSON.parse(
+                  appointment.availability
+                )
+              : []
+
+        },
+
+        patient: {
+
+          id: appointment.patient_id,
+          name: appointment.patient_name,
+          age: appointment.age,
+          gender: appointment.gender,
+          height: appointment.height,
+          weight: appointment.weight
+
+        },
+
+        appointment: {
+
+          id: appointment.appointment_id,
+          token_number:
+            appointment.token_number,
+          date:
+            appointment.slot_date,
+          start_time:
+            appointment.start_time,
+          end_time:
+            appointment.end_time,
+          status:
+            appointment.status,
+          hospital_name:
+            appointment.hospital_name
+
+        },
+
+        prescription:
+          medicines.length > 0
+            ? {
+
+                follow_up_date:
+                  medicines[0].follow_up_date,
+
+                remark:
+                  medicines[0].remark,
+
+                diagnosis:
+                  medicines[0].diagnosis,
+
+                medicines:
+                  medicines.map((medicine) => ({
+
+                    id: medicine.id,
+                    medicine_name:
+                      medicine.medicine_name,
+                    dose:
+                      medicine.dose,
+                    frequency:
+                      medicine.frequency,
+                    duration:
+                      medicine.duration,
+                    instructions:
+                      medicine.instructions
+
+                  }))
+
+              }
+            : null
+
+      }
+
+    };
+
+  } catch (error) {
+
+    console.error(
+      "GET FULL PRESCRIPTION SERVICE ERROR:",
+      error
     );
 
-  return {
+    return {
 
-    doctor: {
-      id: appointment.doctor_id,
-      name: appointment.doctor_name,
-      mobile: appointment.doctor_mobile,
-      qualification: appointment.qualification,
-      specialization: appointment.specialization,
-      medical_license_no: appointment.medical_license_no,
-      qr_code: appointment.qr_code,
+      success: false,
 
-      hospital_detail: appointment.hospital_detail
-        ? JSON.parse(appointment.hospital_detail)
-        : [],
+      message:
+        "Internal server error."
 
-      availability: appointment.availability
-        ? JSON.parse(appointment.availability)
-        : []
-    },
+    };
 
-    patient: {
-      id: appointment.patient_id,
-      name: appointment.patient_name,
-      age: appointment.age,
-      gender: appointment.gender,
-      height: appointment.height,
-      weight: appointment.weight
-    },
+  }
 
-    appointment: {
-      id: appointment.appointment_id,
-      token_number: appointment.token_number,
-      date: appointment.slot_date,
-      start_time: appointment.start_time,
-      end_time: appointment.end_time,
-      status: appointment.status,
-      hospital_name: appointment.hospital_name
-    },
-
-    prescription: medicines.length > 0
-      ? {
-          follow_up_date: medicines[0].follow_up_date,
-          remark: medicines[0].remark,
-          diagnosis: medicines[0].diagnosis,
-
-          medicines: medicines.map(m => ({
-            id: m.id,
-            medicine_name: m.medicine_name,
-            dose: m.dose,
-            frequency: m.frequency,
-            duration: m.duration,
-            instructions: m.instructions
-          }))
-        }
-      : null
-  };
 };
 
+// =============================================
+// Revisit Patient
+// =============================================
+exports.revisit = async (
+  patientId,
+  doctorId
+) => {
 
-// REVISIT
-exports.revisit = async (patientId, doctorId) => {
+  try {
 
-  return await model.revisit(
-    patientId,
-    doctorId
-  );
+    const appointment =
+      await model.revisit(
+        patientId,
+        doctorId
+      );
+
+    if (!appointment) {
+
+      return {
+
+        success: false,
+
+        message:
+          "No previous appointment found."
+
+      };
+
+    }
+
+    return {
+
+      success: true,
+
+      message:
+        "Last appointment fetched successfully.",
+
+      data: appointment
+
+    };
+
+  } catch (error) {
+
+    console.error(
+      "REVISIT SERVICE ERROR:",
+      error
+    );
+
+    return {
+
+      success: false,
+
+      message:
+        "Internal server error."
+
+    };
+
+  }
+
 };
+

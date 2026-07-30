@@ -1,145 +1,340 @@
-const service = require("../../services/doctor/appointmentTokenService");
+const appointmentTokenService = require("../../services/doctor/appointmentTokenService");
 
+const {
+  verifyTokenValidation,
+  appointmentIdValidation,
+  completeByTokenValidation,
+  revisitValidation,
+  getPrescriptionValidation,
+  editPrescriptionValidation
+} = require("../../validation/doctor/appointmentTokenValidation");
 
 exports.verifyToken = async (req, res) => {
   try {
-    const doctorId = req.user.id;
-    const { appointmentId, token } = req.params;
 
-    const data = await service.verifyToken({
-      doctorId,
-      appointmentId,
-      token,
-    });
+    const { error, value } =
+      verifyTokenValidation.validate(req.params);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+    }
+
+    const doctorId = req.user.id;
+
+    const data =
+      await appointmentTokenService.verifyToken({
+        doctorId,
+        appointmentId: value.appointmentId,
+        token: value.token
+      });
 
     return res.status(200).json({
       success: true,
-      message: "Appointment started successfully",
-      data,
+      message: "Appointment started successfully.",
+      data
     });
 
-  } catch (err) {
+  } catch (error) {
+
+    console.error(
+      "VERIFY TOKEN ERROR:",
+      error
+    );
+
     return res.status(400).json({
       success: false,
-      message: err.message,
+      message: error.message
     });
+
   }
 };
 
-exports.start = async (req, res, next) => {
+exports.start = async (req, res) => {
   try {
-    const result = await service.start(req.params.id);
 
-    res.status(200).json({
+    const { error, value } =
+      appointmentIdValidation.validate(req.params);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+    }
+
+    const result =
+      await appointmentTokenService.start(
+        value.id
+      );
+
+    return res.status(200).json({
       success: true,
       message: result.message
     });
 
-  } catch (err) {
-    next(err);
+  } catch (error) {
+
+    console.error(
+      "START APPOINTMENT ERROR:",
+      error
+    );
+
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+
   }
 };
 
 exports.getDetails = async (req, res) => {
   try {
-    const data = await service.getDetails(req.params.id);
-    res.json(data);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
+
+    const { error, value } =
+      appointmentIdValidation.validate(req.params);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+    }
+
+    const data =
+      await appointmentTokenService.getDetails(
+        value.id
+      );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Appointment details fetched successfully.",
+      data
+    });
+
+  } catch (error) {
+
+    console.error(
+      "GET APPOINTMENT DETAILS ERROR:",
+      error
+    );
+
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+
   }
 };
 
-exports.complete = async (req, res, next) => {
+exports.complete = async (req, res) => {
   try {
-    const result = await service.complete(req.params.id);
 
-    res.status(200).json({
+    const { error, value } =
+      appointmentIdValidation.validate(req.params);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+    }
+
+    const result =
+      await appointmentTokenService.complete(
+        value.id
+      );
+
+    return res.status(200).json({
       success: true,
       message: result.message
     });
 
-  } catch (err) {
-    next(err);
+  } catch (error) {
+
+    console.error(
+      "COMPLETE APPOINTMENT ERROR:",
+      error
+    );
+
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+
   }
 };
 
-exports.completeByToken = async (req, res, next) => {
-  try {
-    const { token } = req.params;
-    const result = await service.completeByToken(token);
 
-    res.status(200).json({
+exports.completeByToken = async (req, res) => {
+  try {
+
+    const { error, value } =
+      completeByTokenValidation.validate(req.params);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+    }
+
+    const result =
+      await appointmentTokenService.completeByToken(
+        value.token
+      );
+
+    return res.status(200).json({
       success: true,
       message: result.message
     });
-  } catch (err) {
-    next(err);
+
+  } catch (error) {
+
+    console.error(
+      "COMPLETE APPOINTMENT BY TOKEN ERROR:",
+      error
+    );
+
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+
   }
 };
 
 exports.editPrescription = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { medicines } = req.body;
 
-    if (!medicines || medicines.length === 0) {
+    const {
+      error: paramsError,
+      value: paramsValue
+    } = appointmentIdValidation.validate(req.params);
+
+    if (paramsError) {
       return res.status(400).json({
         success: false,
-        message: "Medicines required"
+        message: paramsError.details[0].message
       });
     }
 
-    const result = await service.editPrescription(id, medicines);
+    const {
+      error: bodyError,
+      value: bodyValue
+    } = editPrescriptionValidation.validate(req.body);
 
-    res.json({
+    if (bodyError) {
+      return res.status(400).json({
+        success: false,
+        message: bodyError.details[0].message
+      });
+    }
+
+    const result =
+      await appointmentTokenService.editPrescription(
+        paramsValue.id,
+        bodyValue.medicines
+      );
+
+    return res.status(200).json({
       success: true,
       message: result.message
     });
 
-  } catch (err) {
-    res.status(400).json({
+  } catch (error) {
+
+    console.error(
+      "EDIT PRESCRIPTION ERROR:",
+      error
+    );
+
+    return res.status(400).json({
       success: false,
-      message: err.message
+      message: error.message
     });
+
   }
 };
 
 exports.revisit = async (req, res) => {
   try {
-    const data = await service.revisit(
-      req.params.patientId,
-      req.params.doctorId
-    );
-    res.json(data);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
 
+    const { error, value } =
+      revisitValidation.validate(req.params);
 
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+    }
 
-exports.getPrescription = async (req, res) => {
-  try {
-    const { appointment_id } = req.query;
+    const data =
+      await appointmentTokenService.revisit(
+        value.patientId,
+        value.doctorId
+      );
 
-if (!appointment_id) {
-  return res.status(400).json({
-    success: false,
-    message: "appointment_id is required"
-  });
-}
-
-const data = await service.getFullPrescription(appointment_id);
-
-    res.json({
+    return res.status(200).json({
       success: true,
+      message: "Last appointment fetched successfully.",
       data
     });
 
-  } catch (err) {
-    res.status(500).json({
+  } catch (error) {
+
+    console.error(
+      "REVISIT PATIENT ERROR:",
+      error
+    );
+
+    return res.status(400).json({
       success: false,
-      message: err.message
+      message: error.message
     });
+
+  }
+};
+
+exports.getPrescription = async (req, res) => {
+  try {
+
+    const { error, value } =
+      getPrescriptionValidation.validate(req.query);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+    }
+
+    const data =
+      await appointmentTokenService.getFullPrescription(
+        value.appointment_id
+      );
+
+    return res.status(200).json({
+      success: true,
+      message: "Prescription fetched successfully.",
+      data
+    });
+
+  } catch (error) {
+
+    console.error(
+      "GET PRESCRIPTION ERROR:",
+      error
+    );
+
+    return res.status(400).json({
+      success: false,
+      message: error.message
+    });
+
   }
 };

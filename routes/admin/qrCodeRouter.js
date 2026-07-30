@@ -9,6 +9,11 @@ const {
 const { connectDoctorQr} = require("../../controllers/admin/connectQrController");
 const {allowRoles}=require("../../middlewares/role");
 const { verifyToken } = require("../../middlewares/authMiddleware");
+const {validate} = require("../../middlewares/validate");
+
+const {
+    connectDoctorQrValidation
+} = require("../../validation/admin/qrValidation");
 
 
 
@@ -21,6 +26,7 @@ router.post(
 router.put(
   "/doctors/:doctorId/connect-qr",
   verifyToken,
+  validate(connectDoctorQrValidation),
   connectDoctorQr
 );
 
