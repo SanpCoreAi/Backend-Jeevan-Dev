@@ -9,7 +9,6 @@ router.get("/getAllSchedules", verifyToken, allowRoles(2,3), ctrl.getAll);
 
 router.get("/getScheduleById", verifyToken, allowRoles(2,3), ctrl.getByDoctorId);
 
-// public endpoint - no authentication required
 router.get("/getSchedulePublicByDoctorId/:doctorId", ctrl.getSchedulePublicByDoctorId);
 
 router.get('/getHospitalsName', verifyToken,allowRoles(2,3), ctrl.getHospitals);

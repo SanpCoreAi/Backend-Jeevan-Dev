@@ -1,40 +1,71 @@
 const multer = require("multer");
-const { PutObjectCommand } = require("@aws-sdk/client-s3");
+const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const { v4: uuidv4 } = require("uuid");
+const path = require("path");
+
 const s3 = require("../../config/s3");
 const DoctorFileModel = require("../../models/upload-file/doctorFileModel");
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/png"];
 
-// Multer
+const ALLOWED_TYPES = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+];
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_FILE_SIZE },
-
+  limits: {
+    fileSize: MAX_FILE_SIZE,
+  },
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_TYPES.includes(file.mimetype)) {
-      return cb(new Error("Only PDF, JPG, PNG allowed"));
+      return cb(new Error("Only PDF, JPG and PNG files are allowed."));
     }
+
     cb(null, true);
   },
 });
 
-// Upload + DB Save (FULL FLOW)
-async function uploadDoctorFile({ doctorId, file, folder }) {
-  if (!doctorId || !file || !folder) {
+const uploadDoctorFile = async ({
+  doctorId,
+  file,
+  folder,
+}) => {
+  if (!doctorId) {
     return {
       success: false,
-      message: "doctorId, file and folder are required",
+      statusCode: 401,
+      message: "Doctor id is required.",
     };
   }
 
+  if (!file) {
+    return {
+      success: false,
+      statusCode: 400,
+      message: "File is required.",
+    };
+  }
+
+  if (!folder) {
+    return {
+      success: false,
+      statusCode: 400,
+      message: "Folder is required.",
+    };
+  }
+
+  let fileKey = null;
+
   try {
     const cleanFolder = folder.replace(/^\/+|\/+$/g, "");
-    const ext = file.originalname.split(".").pop();
-    const fileKey = `${cleanFolder}/${uuidv4()}.${ext}`;
 
-    // Upload to S3
+    const extension = path.extname(file.originalname);
+
+    fileKey = `${cleanFolder}/${uuidv4()}${extension}`;
+
     await s3.send(
       new PutObjectCommand({
         Bucket: process.env.AWS_BUCKET_NAME,
@@ -45,38 +76,54 @@ async function uploadDoctorFile({ doctorId, file, folder }) {
       })
     );
 
-    const fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
-
-    // Save to DB
     const savedFile = await DoctorFileModel.create({
       doctorId,
       fileKey,
-      folderName: folder,
+      folderName: cleanFolder,
     });
 
     return {
       success: true,
+      statusCode: 201,
       data: {
         ...savedFile,
-        fileUrl,
+        fileUrl: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`,
       },
     };
   } catch (error) {
-    console.error("Service Error:", error);
+    console.error("Upload Doctor File Error:", error);
+
+    // Rollback S3 file if DB failed
+    if (fileKey) {
+      try {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: fileKey,
+          })
+        );
+      } catch (deleteError) {
+        console.error("S3 Rollback Error:", deleteError);
+      }
+    }
 
     return {
       success: false,
-      message: "File upload failed",
+      statusCode: 500,
+      message: "Failed to upload file.",
     };
   }
-}
+};
 
-// Get Files
-async function getDoctorFiles(doctorId, folder = null) {
+const getDoctorFiles = async (
+  doctorId,
+  folder = null
+) => {
   if (!doctorId) {
     return {
       success: false,
-      message: "doctorId is required",
+      statusCode: 401,
+      message: "Doctor id is required.",
     };
   }
 
@@ -88,17 +135,19 @@ async function getDoctorFiles(doctorId, folder = null) {
 
     return {
       success: true,
+      statusCode: 200,
       data: files,
     };
   } catch (error) {
-    console.error("Service Fetch Error:", error);
+    console.error("Get Doctor Files Error:", error);
 
     return {
       success: false,
-      message: "Failed to fetch files",
+      statusCode: 500,
+      message: "Failed to fetch files.",
     };
   }
-}
+};
 
 module.exports = {
   upload,

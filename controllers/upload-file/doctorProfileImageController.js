@@ -1,96 +1,120 @@
 const {
   upload,
   uploadAndReplaceFile,
+  getUserFiles,
 } = require("../../services/upload-file/uploadDoctorImageService");
 
-const UserImageModel = require("../../models/upload-file/doctorProfileImageModel");
+const {
+  uploadImageQuerySchema,
+  validateImageFile,
+} = require("../../validation/upload/uploadDoctorImageValidation");
 
-const uploadFileAndImage = [
-  upload.single("file"),
 
-  async (req, res) => {
+const uploadFileAndImage = (req, res) => {
+  upload.single("file")(req, res, async (err) => {
     try {
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          message: err.message,
+        });
+      }
+
       const userId = req.user?.id;
-      const folder = req.query.folder;
 
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: "Unauthorized",
+          message: "Unauthorized user.",
         });
       }
 
-      if (!folder) {
+      const { error } = uploadImageQuerySchema.validate(req.query);
+
+      if (error) {
         return res.status(400).json({
           success: false,
-          message: "Folder name is required",
+          message: error.details[0].message,
         });
       }
 
-      if (!req.file) {
+      const fileError = validateImageFile(req.file);
+
+      if (fileError) {
         return res.status(400).json({
           success: false,
-          message: "File is required",
+          message: fileError,
         });
       }
+
+      const { folder } = req.query;
 
       const result = await uploadAndReplaceFile({
+        userId,
         file: req.file,
         folder,
-        userId,
       });
 
-      await UserImageModel.create({
-        userId,
-        fileKey: result.fileKey,
-        folderName: result.folder,
-      });
+      if (!result.success) {
+        return res.status(result.statusCode || 500).json({
+          success: false,
+          message: result.message,
+        });
+      }
 
       return res.status(201).json({
         success: true,
-        message: "File uploaded successfully",
-        data: result,
+        message: "Image uploaded successfully.",
+        data: result.data,
       });
     } catch (error) {
-      console.error("Upload Image Error:", error);
+      console.error("Upload Profile Image Controller Error:", error);
 
       return res.status(500).json({
         success: false,
-        message: error.message,
+        message: "Internal Server Error.",
       });
     }
-  },
-];
+  });
+};
 
-const getUserFiles = async (req, res) => {
+const getFileImage = async (req, res) => {
   try {
     const userId = req.user?.id;
 
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized",
+        message: "Unauthorized user.",
       });
     }
 
-    const files = await UserImageModel.getAllByUserId(userId);
+    const result = await getUserFiles(userId);
+
+    if (!result.success) {
+      return res.status(result.statusCode || 500).json({
+        success: false,
+        message: result.message,
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      count: files.length,
-      data: files,
+      message: "Files fetched successfully.",
+      count: result.data.length,
+      data: result.data,
     });
   } catch (error) {
-    console.error("Get User Files Error:", error);
+    console.error("Get User Files Controller Error:", error);
 
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal Server Error.",
     });
   }
 };
 
 module.exports = {
   uploadFileAndImage,
-  getUserFiles,
+  getFileImage
 };

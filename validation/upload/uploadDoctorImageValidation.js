@@ -1,12 +1,12 @@
 const Joi = require("joi");
 
 const ALLOWED_FOLDERS = [
-  "doctor-licenses",
   "doctor-profile",
-  "pan",
+  "user-profile",
+  "assistant-profile",
 ];
 
-const uploadFileQuerySchema = Joi.object({
+const uploadImageQuerySchema = Joi.object({
   folder: Joi.string()
     .trim()
     .lowercase()
@@ -22,31 +22,31 @@ const uploadFileQuerySchema = Joi.object({
     }),
 });
 
-const validateFile = (file) => {
+const validateImageFile = (file) => {
   if (!file) {
-    return "File is required.";
+    return "Image file is required.";
   }
 
   const allowedMimeTypes = [
-    "application/pdf",
     "image/jpeg",
+    "image/jpg",
     "image/png",
   ];
 
   if (!allowedMimeTypes.includes(file.mimetype)) {
-    return "Only PDF, JPG and PNG files are allowed.";
+    return "Only JPG, JPEG and PNG images are allowed.";
   }
 
   const maxFileSize = 5 * 1024 * 1024; // 5 MB
 
   if (file.size > maxFileSize) {
-    return "File size must not exceed 5 MB.";
+    return "Image size must not exceed 5 MB.";
   }
 
   return null;
 };
 
-const getFilesSchema = Joi.object({
+const getUserFilesSchema = Joi.object({
   folder: Joi.string()
     .trim()
     .lowercase()
@@ -61,8 +61,8 @@ const getFilesSchema = Joi.object({
 });
 
 module.exports = {
-  uploadFileQuerySchema,
-  validateFile,
-  getFilesSchema,
+  uploadImageQuerySchema,
+  validateImageFile,
+  getUserFilesSchema,
   ALLOWED_FOLDERS,
 };
