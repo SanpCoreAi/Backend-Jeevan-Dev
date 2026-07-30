@@ -8,11 +8,12 @@ exports.scanBook = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Valid doctor id is required.",
+        data: null,
       });
     }
 
     let hospitalName =
-      req.body.hospital_name ??
+      req.body.hospital_name ||
       req.body.hospitalName;
 
     if (typeof hospitalName === "string") {
@@ -23,17 +24,21 @@ exports.scanBook = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Hospital name is required.",
+        data: null,
       });
     }
+
+    const appointmentDate = new Date()
+      .toLocaleDateString("en-CA", {
+        timeZone: "Asia/Kolkata",
+      });
 
     const result =
       await AppointmentService.scanBook({
         user: req.user,
         doctorId,
         hospitalName,
-        date: new Date()
-          .toISOString()
-          .split("T")[0],
+        date: appointmentDate,
       });
 
     return res.status(result.statusCode).json({
@@ -51,8 +56,9 @@ exports.scanBook = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error",
+      message: "Internal Server Error.",
       data: null,
     });
+
   }
 };
