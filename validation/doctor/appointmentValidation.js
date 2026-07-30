@@ -1,25 +1,209 @@
 const Joi = require("joi");
 
-const bookAppointmentSchema = Joi.object({
-  appointment_date: Joi.string().required(),
-  start_time: Joi.string().required(),
-  end_time: Joi.string().required(),
-  reason_for_visit: Joi.string().required(),
-  booking_type: Joi.string().required(),
-  mode: Joi.string().valid("online", "offline").required(),
-  hospital_name: Joi.string().required(),
+exports.bookAppointmentValidation = Joi.object({
 
-  patient: Joi.object({
-    name: Joi.string().required(),
-    age: Joi.number().required(),
-    gender: Joi.string().required(),
-    phone: Joi.string().required(),
-    email: Joi.string().email().required()
-  }).when("booking_type", {
+  appointment_date: Joi.date()
+    .required()
+    .messages({
+      "any.required": "Appointment date is required"
+    }),
+
+  start_time: Joi.string()
+    .required()
+    .messages({
+      "any.required": "Start time is required"
+    }),
+
+  end_time: Joi.string()
+    .required()
+    .messages({
+      "any.required": "End time is required"
+    }),
+
+  reason_for_visit: Joi.string()
+    .trim()
+    .allow("", null),
+
+  booking_type: Joi.string()
+    .valid("myself","someone_else")
+    .required(),
+
+  mode: Joi.string()
+    .valid("online", "offline")
+    .required(),
+
+  hospital_name: Joi.when("mode", {
+    is: "offline",
+    then: Joi.string().trim().required(),
+    otherwise: Joi.string().allow("", null)
+  }),
+
+  patient: Joi.when("booking_type", {
+
     is: "someone_else",
-    then: Joi.required(),
-    otherwise: Joi.optional()
+
+    then: Joi.object({
+
+      name: Joi.string()
+        .trim()
+        .required(),
+
+      age: Joi.number()
+        .integer()
+        .min(0)
+        .max(120)
+        .required(),
+
+      gender: Joi.string()
+        .valid(
+          "Male",
+          "Female",
+          "Other"
+        )
+        .required(),
+
+      phone: Joi.string()
+        .pattern(/^[6-9]\d{9}$/)
+        .required(),
+
+      email: Joi.string()
+        .email()
+        .required()
+
+    }).required(),
+
+    otherwise: Joi.forbidden()
+
   })
+
 });
 
-module.exports = { bookAppointmentSchema };
+exports.bookAppointmentByAssistantValidation =
+Joi.object({
+
+  appointment_date: Joi.date().required(),
+
+  hospital_name: Joi.string()
+    .trim()
+    .required(),
+
+  booking_type: Joi.string()
+    .valid("someone_else")
+    .required(),
+
+  mode: Joi.string()
+    .valid("online", "offline")
+    .required(),
+
+  reason_for_visit: Joi.string()
+    .allow("", null),
+
+  patient: Joi.object({
+
+    name: Joi.string()
+      .trim()
+      .required(),
+
+    age: Joi.number()
+      .integer()
+      .min(0)
+      .max(120)
+      .required(),
+
+    gender: Joi.string()
+      .valid(
+        "Male",
+        "Female",
+        "Other"
+      )
+      .required(),
+
+    phone: Joi.string()
+      .pattern(/^[6-9]\d{9}$/)
+      .required(),
+
+    email: Joi.string()
+      .email()
+      .required()
+
+  }).required()
+
+});
+
+
+exports.cancelAppointmentValidation =
+Joi.object({
+
+  reason: Joi.string()
+    .trim()
+    .min(5)
+    .max(255)
+    .required()
+
+});
+
+
+exports.appointmentIdValidation =
+Joi.object({
+
+  appointmentId: Joi.number()
+    .integer()
+    .positive()
+    .required()
+
+});
+
+
+exports.getDoctorSlotsValidation =
+Joi.object({
+
+  doctorId: Joi.number()
+    .integer()
+    .positive()
+    .required(),
+
+  hospitalName: Joi.string()
+    .trim()
+    .required(),
+
+  date: Joi.date()
+    .required()
+
+});
+
+
+exports.getDoctorAppointmentsValidation =
+Joi.object({
+
+  hospitalName: Joi.string()
+    .trim()
+    .required(),
+
+  mode: Joi.string()
+    .valid("online", "offline")
+    .optional(),
+
+  slot_date: Joi.date()
+    .optional(),
+
+  status: Joi.string()
+    .valid(
+      "PENDING",
+      "IN_PROGRESS",
+      "COMPLETED",
+      "CANCELLED"
+    )
+    .optional(),
+
+  page: Joi.number()
+    .integer()
+    .min(1)
+    .default(1),
+
+  limit: Joi.number()
+    .integer()
+    .min(1)
+    .max(100)
+    .default(10)
+
+});

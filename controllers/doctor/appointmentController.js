@@ -1,56 +1,84 @@
 const appointmentService = require("../../services/doctor/appointmentService");
-const db = require("../../config/db");
-const { bookAppointmentSchema } = require("../../validation/doctor/appointmentValidation");
+const {
+  bookAppointmentValidation
+} = require("../../validation/doctor/appointmentValidation");
+
+const getDoctorIdFromUser = async (user) => {
+  if (user.role === 2) {
+    return user.id;
+  }
+
+  if (user.role === 3) {
+    const assistant = await appointmentService.getUserById(user.id);
+
+    if (!assistant || !assistant.doctor_id) {
+      return null;
+    }
+
+    return assistant.doctor_id;
+  }
+
+  return false;
+};
 
 exports.create = async (req, res) => {
   try {
 
-    const { error, value } =
-      bookAppointmentSchema.validate(req.body);
+ const { error, value } = bookAppointmentValidation.validate(req.body);
 
-    if (error) {
-      return res.status(400).json({
-        success: false,
-        message: error.details[0].message
-      });
-    }
+if (error) {
+  return res.status(400).json({
+    success: false,
+    message: error.details[0].message
+  });
+}
 
     const patientId = req.user.id;
     const doctorId = Number(req.params.doctorId);
 
-    const [userRows] = await db.query(
-      "SELECT email FROM users WHERE id = ?",
-      [patientId]
-    );
-
-    const patientEmail = userRows[0]?.email;
-
-    const result =
-      await appointmentService.bookAppointment(
-        patientId,
-        patientEmail,
-        doctorId,
-        value
-      );
-
-    if (!result.success) {
-      return res.status(400).json(result);
+    if (!doctorId || doctorId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid doctor id"
+      });
     }
 
-    return res.status(201).json({
-      success: true,
-      appointment_id: result.data.appointmentId,
-      appointment_token: result.data.appointmentToken
-    });
+const patient = await appointmentService.getUserById(patientId);
 
-  } catch (err) {
+if (!patient) {
+  return res.status(404).json({
+    success: false,
+    message: "Patient not found"
+  });
+}
 
-    console.log(err);
+const result = await appointmentService.bookAppointment(
+  patientId,
+  patient.email,
+  doctorId,
+  value
+);
+
+    return res
+      .status(result.success ? 201 : 400)
+      .json(result.success
+        ? {
+            success: true,
+            message: "Appointment booked successfully",
+            appointment_id: result.data.appointmentId,
+            appointment_token: result.data.appointmentToken
+          }
+        : result);
+
+  } catch (error) {
+
+    console.error("Book Appointment Error:", error);
 
     return res.status(500).json({
       success: false,
-      message: err.message
+      message: "Internal server error"
     });
+
   }
 };
 
@@ -63,246 +91,251 @@ exports.bookAppointmentByAssistant = async (req, res) => {
         body: req.body
       });
 
-    if (!result.success) {
-      return res.status(400).json(result);
-    }
-
-    return res.status(201).json(result);
+    return res
+      .status(result.success ? 201 : 400)
+      .json(result);
 
   } catch (error) {
 
+    console.error(
+      "Book Appointment By Assistant Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: "Internal server error"
     });
 
   }
 };
 
 exports.getDoctorAppointmentsForTable = async (req, res) => {
-
   try {
 
-    let doctorId;
+    const doctorId =
+      await getDoctorIdFromUser(req.user);
 
-    if (req.user.role === 2) {
-
-      doctorId = req.user.id;
-
-    }
-
-    else if (req.user.role === 3) {
-
-      const user =
-        await appointmentService.getUserById(
-          req.user.id
-        );
-
-
-      if (!user || !user.doctor_id) {
-
-        return res.status(404).json({
-          success:false,
-          message:"Doctor not found"
-        });
-
-      }
-
-
-      doctorId = user.doctor_id;
-
-    }
-
-
-    else {
-
+    if (doctorId === false) {
       return res.status(403).json({
-        success:false,
-        message:"Unauthorized role"
+        success: false,
+        message: "Unauthorized role"
       });
-
     }
 
+    if (!doctorId) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found"
+      });
+    }
 
-const {
-  hospitalName,
-  mode,
-  slot_date,
-  status,
-  page = 1,
-  limit = 10
-} = req.query;
+    const {
+      hospitalName,
+      mode,
+      slot_date,
+      status,
+      page = 1,
+      limit = 10
+    } = req.query;
 
-if (!hospitalName) {
-  return res.status(400).json({
-    success: false,
-    message: "hospitalName is required"
-  });
-}
+    if (!hospitalName) {
+      return res.status(400).json({
+        success: false,
+        message: "hospitalName is required"
+      });
+    }
 
-const result = await appointmentService.getDoctorAppointmentsForTable(
-  doctorId,
-  hospitalName,
-  mode,
-  slot_date,
-  status,
-  Number(page),
-  Number(limit)
-);
+    const result =
+      await appointmentService.getDoctorAppointmentsForTable(
+        doctorId,
+        hospitalName,
+        mode,
+        slot_date,
+        status,
+        Number(page),
+        Number(limit)
+      );
 
     return res.status(200).json(result);
 
+  } catch (error) {
 
-
-  } catch(error) {
-
-    console.log(error);
+    console.error(
+      "Get Doctor Appointments Error:",
+      error
+    );
 
     return res.status(500).json({
-      success:false,
-      message:"Internal server error"
+      success: false,
+      message: "Internal server error"
     });
 
   }
-
 };
-
 
 exports.getDashboardStats = async (req, res) => {
   try {
-    const doctorId = req.user.id;
 
-    const result = await appointmentService.getDashboardStats(doctorId);
+    const doctorId =
+      await getDoctorIdFromUser(req.user);
+
+    if (doctorId === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized role"
+      });
+    }
+
+    if (!doctorId) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found"
+      });
+    }
+
+    const data =
+      await appointmentService.getDashboardStats(
+        doctorId
+      );
 
     return res.status(200).json({
       success: true,
-      data: result
+      data
     });
+
   } catch (error) {
+
+    console.error(
+      "Dashboard Stats Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: "Internal server error"
     });
+
   }
 };
 
 exports.getAppointmentDetails = async (req, res) => {
   try {
-    const doctorId = req.user.id;
-    const appointmentId = parseInt(req.params.appointmentId);
 
-    const result = await appointmentService.getAppointmentDetails(
-      doctorId,
-      appointmentId
-    );
+    const doctorId =
+      await getDoctorIdFromUser(req.user);
 
-    if (!result.success) {
-      return res.status(404).json(result);
+    if (doctorId === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized role"
+      });
     }
 
-    return res.status(200).json(result);
+    if (!doctorId) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found"
+      });
+    }
+
+    const appointmentId =
+      Number(req.params.appointmentId);
+
+    if (!appointmentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid appointment id"
+      });
+    }
+
+    const result =
+      await appointmentService.getAppointmentDetails(
+        doctorId,
+        appointmentId
+      );
+
+    return res
+      .status(result.success ? 200 : 404)
+      .json(result);
 
   } catch (error) {
+
+    console.error(
+      "Get Appointment Details Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: "Internal server error"
     });
+
   }
 };
 
 exports.getAppointmentById = async (req, res) => {
   try {
 
-    let doctorId;
+    const doctorId =
+      await getDoctorIdFromUser(req.user);
 
-    if (req.user.role === 2) {
-
-      doctorId = req.user.id;
-
-    } 
-   
-    else if (req.user.role === 3) {
-
-      const user = await appointmentService.getUserById(req.user.id);
-
-      if (!user || !user.doctor_id) {
-        return res.status(404).json({
-          success: false,
-          message: "Doctor not found for assistant"
-        });
-      }
-
-      doctorId = user.doctor_id;
-
-    } 
-    else {
-
+    if (doctorId === false) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized role"
       });
-
     }
 
+    if (!doctorId) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found"
+      });
+    }
 
-    const result = await appointmentService.getAppointmentById(
-      doctorId
-    );
+    const result =
+      await appointmentService.getAppointmentById(
+        doctorId
+      );
 
-    return res.status(200).json(result);
+    return res
+      .status(result.success ? 200 : 404)
+      .json(result);
 
   } catch (error) {
 
-    console.log(error);
+    console.error(
+      "Get Appointment By Id Error:",
+      error
+    );
 
     return res.status(500).json({
-      success:false,
-      message:error.message
+      success: false,
+      message: "Internal server error"
     });
 
   }
 };
 
 exports.getTodayAppointments = async (req, res) => {
-
   try {
 
-    let doctorId;
+    const doctorId =
+      await getDoctorIdFromUser(req.user);
 
-    if (req.user.role === 2) {
-
-      doctorId = req.user.id;
-
-    }
-
-    else if (req.user.role === 3) {
-
-      const user =
-        await appointmentService.getUserById(
-          req.user.id
-        );
-
-
-      if (!user || !user.doctor_id) {
-
-        return res.status(404).json({
-          success:false,
-          message:"Doctor not found"
-        });
-
-      }
-      doctorId = user.doctor_id;
-
-    }
-
-
-    else {
-
+    if (doctorId === false) {
       return res.status(403).json({
-        success:false,
-        message:"Unauthorized role"
+        success: false,
+        message: "Unauthorized role"
       });
+    }
 
+    if (!doctorId) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found"
+      });
     }
 
     const {
@@ -311,8 +344,7 @@ exports.getTodayAppointments = async (req, res) => {
     } = req.query;
 
     const result =
-      await appointmentService
-      .getTodayAppointmentsService(
+      await appointmentService.getTodayAppointmentsService(
         doctorId,
         Number(page),
         Number(limit)
@@ -320,12 +352,16 @@ exports.getTodayAppointments = async (req, res) => {
 
     return res.status(200).json(result);
 
-  } catch(error) {
+  } catch (error) {
+
+    console.error(
+      "Get Today Appointments Error:",
+      error
+    );
 
     return res.status(500).json({
-      success:false,
-      message:"Internal server error",
-      error:error.message
+      success: false,
+      message: "Internal server error"
     });
 
   }
@@ -334,106 +370,79 @@ exports.getTodayAppointments = async (req, res) => {
 exports.getAppointmentPublicById = async (req, res) => {
   try {
 
-    let patientId = req.params.patient_id;
+    const patientId =
+      Number(req.params.patient_id);
+
+    if (!patientId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid patient id"
+      });
+    }
 
     if (req.user) {
 
-      if (req.user.role === 2) {
+      const doctorId =
+        await getDoctorIdFromUser(req.user);
 
-        patientId = req.params.patient_id;
-
-      }
-
-      else if (req.user.role === 3) {
-
-        const user = await appointmentService.getUserById(
-          req.user.id
-        );
-
-        if (!user || !user.doctor_id) {
-          return res.status(404).json({
-            success:false,
-            message:"Doctor not found"
-          });
-        }
-
-        patientId = req.params.patient_id;
-
-      }
-
-      else {
+      if (doctorId === false) {
         return res.status(403).json({
-          success:false,
-          message:"Unauthorized role"
+          success: false,
+          message: "Unauthorized role"
         });
       }
-    }
 
+      if (!doctorId) {
+        return res.status(404).json({
+          success: false,
+          message: "Doctor not found"
+        });
+      }
+
+    }
 
     const result =
       await appointmentService.getAppointmentPublicById(
         patientId
       );
 
-
-    if (!result.success) {
-      return res.status(404).json(result);
-    }
-
-
-    return res.status(200).json(result);
-
+    return res
+      .status(result.success ? 200 : 404)
+      .json(result);
 
   } catch (error) {
 
+    console.error(
+      "Get Public Appointment Error:",
+      error
+    );
+
     return res.status(500).json({
-      success:false,
-      message:error.message
+      success: false,
+      message: "Internal server error"
     });
 
   }
 };
 
 exports.getDashboardCards = async (req, res) => {
-
   try {
 
-    let doctorId;
+    const doctorId =
+      await getDoctorIdFromUser(req.user);
 
-    if (req.user.role === 2) {
-
-      doctorId = req.user.id;
-
-    }
-
-    else if (req.user.role === 3) {
-
-      const user =
-        await appointmentService.getUserById(
-          req.user.id
-        );
-
-
-      if (!user || !user.doctor_id) {
-
-        return res.status(404).json({
-          success:false,
-          message:"Doctor not found"
-        });
-
-      }
-
-      doctorId = user.doctor_id;
-
-    }
-
-    else {
-
+    if (doctorId === false) {
       return res.status(403).json({
-        success:false,
-        message:"Unauthorized role"
+        success: false,
+        message: "Unauthorized role"
       });
+    }
 
+    if (!doctorId) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found"
+      });
     }
 
     const data =
@@ -442,139 +451,139 @@ exports.getDashboardCards = async (req, res) => {
       });
 
     return res.status(200).json({
-
-      success:true,
-
+      success: true,
       message:
         "Dashboard cards fetched successfully",
-
       data
-
     });
 
-
-  } catch(error) {
-
-    console.log(error);
-
-
-    return res.status(500).json({
-
-      success:false,
-
-      message:"Something went wrong"
-
-    });
-
-  }
-
-};
-
-
-exports.getPatientDashboardCards = async (req, res) => {
-  try {
-    let doctorId;
-
-    if (req.user.role === 2) {
-      doctorId = req.user.id;
-    } else if (req.user.role === 3) {
-      const user = await appointmentService.getUserById(req.user.id);
-
-      if (!user || !user.doctor_id) {
-        return res.status(404).json({
-          success: false,
-          message: "Doctor not found",
-        });
-      }
-
-      doctorId = user.doctor_id;
-    } else {
-      return res.status(403).json({
-        success: false,
-        message: "Unauthorized role",
-      });
-    }
-
-    const filter = req.query.filter || "day";
-    const mode = req.query.mode;
-
-    const validFilters = ["day", "week", "month", "year"];
-    if (!validFilters.includes(filter)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid filter. Allowed values: day, week, month, year",
-      });
-    }
-
-    const validModes = ["online", "offline"];
-    if (!validModes.includes(mode)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid mode. Allowed values: online, offline",
-      });
-    }
-
-    const data = await appointmentService.getPatientDashboardCards({
-      doctorId,
-      filter,
-      mode,
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Patient dashboard cards fetched successfully",
-      data,
-    });
   } catch (error) {
-    console.error("Get Patient Dashboard Cards Error:", error);
+
+    console.error(
+      "Get Dashboard Cards Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Something went wrong",
+      message: "Internal server error"
     });
+
+  }
+};
+
+exports.getPatientDashboardCards = async (req, res) => {
+  try {
+
+    const doctorId =
+      await getDoctorIdFromUser(req.user);
+
+    if (doctorId === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized role"
+      });
+    }
+
+    if (!doctorId) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found"
+      });
+    }
+
+    const filter =
+      req.query.filter || "day";
+
+    const mode =
+      req.query.mode;
+
+    const validFilters = [
+      "day",
+      "week",
+      "month",
+      "year"
+    ];
+
+    if (!validFilters.includes(filter)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid filter. Allowed values: day, week, month, year"
+      });
+    }
+
+    const validModes = [
+      "online",
+      "offline"
+    ];
+
+    if (!validModes.includes(mode)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid mode. Allowed values: online, offline"
+      });
+    }
+
+    const data =
+      await appointmentService.getPatientDashboardCards({
+        doctorId,
+        filter,
+        mode
+      });
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Patient dashboard cards fetched successfully",
+      data
+    });
+
+  } catch (error) {
+
+    console.error(
+      "Get Patient Dashboard Cards Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+
   }
 };
 
 exports.getMyAppointments = async (req, res) => {
-
   try {
 
     let userId;
+
     if (req.user.role === 1) {
+
       userId = req.user.id;
 
-    }
+    } else {
 
-    else if (req.user.role === 2) {
-      userId = req.user.id;
+      const doctorId =
+        await getDoctorIdFromUser(req.user);
 
-    }
-
-    else if (req.user.role === 3) {
-      const user =
-        await appointmentService.getUserById(
-          req.user.id
-        );
-
-
-      if (!user || !user.doctor_id) {
-
-        return res.status(404).json({
-          success:false,
-          message:"Doctor not found"
+      if (doctorId === false) {
+        return res.status(403).json({
+          success: false,
+          message: "Unauthorized role"
         });
-
       }
 
-      userId = user.doctor_id;
+      if (!doctorId) {
+        return res.status(404).json({
+          success: false,
+          message: "Doctor not found"
+        });
+      }
 
-    }
-    else {
-
-      return res.status(403).json({
-        success:false,
-        message:"Unauthorized role"
-      });
+      userId = doctorId;
 
     }
 
@@ -583,76 +592,109 @@ exports.getMyAppointments = async (req, res) => {
         userId
       );
 
-
     return res.status(200).json({
-
-      success:true,
+      success: true,
       count: result.data.length,
       data: result.data
-
     });
 
+  } catch (error) {
 
-  } catch(error) {
+    console.error(
+      "Get My Appointments Error:",
+      error
+    );
 
     return res.status(500).json({
-      success:false,
-      message:error.message
-
+      success: false,
+      message: "Internal server error"
     });
 
   }
-
 };
 
 exports.getDoctorSlots = async (req, res) => {
   try {
-    let { doctorId, hospitalName, date } = req.query;
-    const roleId = req.user.role_id;
-    if (roleId === 2) {
+
+    let {
+      doctorId,
+      hospitalName,
+      date
+    } = req.query;
+
+    if (req.user.role === 2) {
       doctorId = req.user.id;
     }
 
-    if (!doctorId || !hospitalName || !date) {
+    if (
+      !doctorId ||
+      !hospitalName ||
+      !date
+    ) {
       return res.status(400).json({
         success: false,
         message:
-          "doctorId, hospitalName and date are required",
+          "doctorId, hospitalName and date are required"
       });
     }
 
-    const data =
+    const result =
       await appointmentService.getDoctorSlots({
-        doctorId,
+        doctorId: Number(doctorId),
         hospitalName,
-        date,
+        date
       });
 
     return res.status(200).json({
       success: true,
-      ...data,
+      ...result
     });
 
   } catch (error) {
+
+    console.error(
+      "Get Doctor Slots Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Internal server error"
     });
+
   }
 };
 
 exports.cancelAppointment = async (req, res) => {
   try {
 
+    if (req.user.role !== 1) {
+      return res.status(403).json({
+        success: false,
+        message: "Only patient can cancel appointment"
+      });
+    }
+
     const patientId = req.user.id;
-    const appointmentId = Number(req.params.appointmentId);
+
+    const appointmentId =
+      Number(req.params.appointmentId);
+
+    if (!appointmentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid appointment id"
+      });
+    }
+
     const { reason } = req.body;
 
-    const result = await appointmentService.cancelAppointment(
-      patientId,
-      appointmentId,
-      reason
-    );
+    const result =
+      await appointmentService.cancelAppointment(
+        patientId,
+        appointmentId,
+        reason
+      );
 
     return res
       .status(result.success ? 200 : 400)
@@ -660,9 +702,14 @@ exports.cancelAppointment = async (req, res) => {
 
   } catch (error) {
 
+    console.error(
+      "Cancel Appointment Error:",
+      error
+    );
+
     return res.status(500).json({
       success: false,
-      message: error.message
+      message: "Internal server error"
     });
 
   }

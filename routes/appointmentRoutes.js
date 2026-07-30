@@ -57,7 +57,7 @@ router.get(
 
 router.post(
   "/bookAppointmentByAssistant",
-  verifyToken,
+  verifyToken,allowRoles(3),
   appointmentController.bookAppointmentByAssistant
 );
 
