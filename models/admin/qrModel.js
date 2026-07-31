@@ -459,91 +459,32 @@ exports.getAllQrDetails = async ({
 
     );
 
+const sql = `
+SELECT
+    q.id,
+    q.qr_code,
+    q.qr_image,
+    q.status,
+    q.doctor_user_id,
+    q.assigned_at,
+    d.id AS doctor_id,
+    d.specialization,
+    d.qualification,
+    u.full_name,
+    u.email,
+    u.phone_number
+FROM qr_codes q
+LEFT JOIN doctors d
+    ON q.doctor_user_id = d.user_id
+LEFT JOIN users u
+    ON d.user_id = u.id
+${where}
+ORDER BY q.id DESC
+LIMIT ${Number(limit)}
+OFFSET ${Number(offset)}
+`;
 
-
-
-
-
-
-    const sql = `
-
-        SELECT
-
-            q.id,
-
-            q.qr_code,
-
-            q.qr_image,
-
-            q.status,
-
-            q.doctor_user_id,
-
-            q.assigned_at,
-
-
-            d.id AS doctor_id,
-
-            d.specialization,
-
-            d.qualification,
-
-
-            u.full_name,
-
-            u.email,
-
-            u.phone_number
-
-
-
-        FROM qr_codes q
-
-
-        LEFT JOIN doctors d
-
-        ON q.doctor_user_id = d.user_id
-
-
-
-        LEFT JOIN users u
-
-        ON d.user_id = u.id
-
-
-
-        ${where}
-
-
-
-        ORDER BY q.id DESC
-
-
-
-        LIMIT ?
-
-        OFFSET ?
-
-    `;
-
-
-
-
-    const [rows] = await db.execute(
-
-        sql,
-
-        [
-
-            ...params,
-
-            Number(limit),
-
-            Number(offset)
-
-        ]
-
-    );
+const [rows] = await db.execute(sql, params);
 
 
 
