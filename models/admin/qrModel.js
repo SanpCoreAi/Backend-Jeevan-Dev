@@ -10,16 +10,13 @@ exports.getLastQrCode = async () => {
         LIMIT 1
     `;
 
-
     const [rows] = await db.execute(sql);
-
 
     return rows.length
         ? rows[0]
         : null;
 
 };
-
 
 exports.bulkInsert = async (
     qrData,
@@ -104,14 +101,15 @@ exports.findDoctorByUserId = async (
 
 };
 
-exports.findQrCode = async (
+exports.findQrCode = async (connectionOrQrCode, qrCode) => {
 
-    connection = db,
+    let connection = db;
 
-    qrCode
-
-) => {
-
+    if (typeof connectionOrQrCode === "string") {
+        qrCode = connectionOrQrCode;
+    } else {
+        connection = connectionOrQrCode;
+    }
 
     const sql = `
         SELECT
@@ -126,22 +124,9 @@ exports.findQrCode = async (
         LIMIT 1
     `;
 
+    const [rows] = await connection.execute(sql, [qrCode]);
 
-
-    const [rows] = await connection.execute(
-
-        sql,
-
-        [qrCode]
-
-    );
-
-
-
-    return rows.length
-        ? rows[0]
-        : null;
-
+    return rows.length ? rows[0] : null;
 };
 
 exports.assignQrToDoctor = async (
@@ -243,12 +228,8 @@ exports.getAllQrCodes = async ({
 
 }) => {
 
-
     let where = "";
-
     const params = [];
-
-
 
     if(status){
 
@@ -257,9 +238,6 @@ exports.getAllQrCodes = async ({
         params.push(status);
 
     }
-
-
-
 
     const countSql = `
 
@@ -271,8 +249,6 @@ exports.getAllQrCodes = async ({
 
     `;
 
-
-
     const [countRows] = await db.execute(
 
         countSql,
@@ -280,11 +256,6 @@ exports.getAllQrCodes = async ({
         params
 
     );
-
-
-
-
-
 
     const sql = `
 
@@ -485,9 +456,6 @@ OFFSET ${Number(offset)}
 `;
 
 const [rows] = await db.execute(sql, params);
-
-
-
 
     return {
 
