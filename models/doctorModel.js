@@ -569,7 +569,6 @@ exports.findAllWithUser = async () => {
     INNER JOIN users u
       ON u.id = d.user_id
 
-    WHERE d.is_deleted = 0
 
     ORDER BY d.id DESC
   `;
