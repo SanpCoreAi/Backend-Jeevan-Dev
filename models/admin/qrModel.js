@@ -130,47 +130,22 @@ exports.findQrCode = async (connectionOrQrCode, qrCode) => {
 };
 
 exports.assignQrToDoctor = async (
-
     connection,
-
     doctorId,
-
-    qrCode,
-
-    qrImage
-
+    qrCode
 ) => {
-
-
     const sql = `
         UPDATE doctors
         SET
             qr_code = ?,
-            qr_code_image = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE user_id = ?
     `;
 
-
-
-    const [result] = await connection.execute(
-
-        sql,
-
-        [
-            qrCode,
-
-            qrImage,
-
-            doctorId
-        ]
-
-    );
-
-
-
-    return result;
-
+    return connection.execute(sql, [
+        qrCode,
+        doctorId
+    ]);
 };
 
 
