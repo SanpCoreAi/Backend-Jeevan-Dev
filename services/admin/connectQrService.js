@@ -104,10 +104,6 @@ exports.connectDoctorQr = async ({
             );
 
 
-
-            /**
-             * Save Doctor QR Details
-             */
             await QRModel.assignQrToDoctor(
 
                 connection,

@@ -29,7 +29,7 @@ exports.connectDoctorQrValidation = Joi.object({
 
             Joi.string()
                 .trim()
-                .pattern(/^QR-[A-Z0-9]+$/)
+                .pattern(/^(QR|DR)-[A-Z0-9]+$/)
                 .messages({
 
                     "string.pattern.base":
