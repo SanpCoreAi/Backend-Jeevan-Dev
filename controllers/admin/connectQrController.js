@@ -102,3 +102,21 @@ exports.connectDoctorQr = async (req, res) => {
     }
 
 };
+
+exports.scanQr = async (req, res) => {
+  try {
+    const result = await QRService.scanQr({
+      user: req.user,
+      qrCode: req.body.qrCode
+    });
+
+    return res.status(result.statusCode).json(result.body);
+  } catch (error) {
+    console.error("Scan QR Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error."
+    });
+  }
+};

@@ -59,3 +59,11 @@ exports.connectDoctorQrValidation = Joi.object({
 
 
 });
+
+exports.scanQrValidation = Joi.object({
+  qrCode: Joi.string().trim().required().messages({
+    "string.empty": "QR Code is required.",
+    "any.required": "QR Code is required."
+  })
+});
+

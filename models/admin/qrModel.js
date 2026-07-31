@@ -444,3 +444,58 @@ const [rows] = await db.execute(sql, params);
 
 
 };
+
+exports.findDoctorByQr = async (qrCode) => {
+  const [rows] = await db.execute(
+    `
+    SELECT
+        d.id AS doctor_id,
+        d.user_id AS doctor_user_id,
+        d.username AS doctor_name,
+        d.specialization,
+        d.consultation_fee,
+        d.language,
+        d.hospital_detail,
+        d.qr_code,
+        d.qr_url,
+        d.qr_code_image,
+        d.age,
+        d.gender
+    FROM doctors d
+    WHERE d.qr_code = ?
+      AND d.is_deleted = 0
+    LIMIT 1
+    `,
+    [qrCode]
+  );
+
+  return rows[0] || null;
+};
+
+exports.getDoctorHospitals = async (doctorId) => {
+  const [rows] = await db.execute(
+    `SELECT hospital_detail
+     FROM doctors
+     WHERE id = ?`,
+    [doctorId]
+  );
+
+  if (!rows.length) {
+    return [];
+  }
+
+  const hospitalDetail = rows[0].hospital_detail;
+
+  console.log("Hospital Detail:", hospitalDetail);
+  console.log("Type:", typeof hospitalDetail);
+
+  if (!hospitalDetail) {
+    return [];
+  }
+
+  if (typeof hospitalDetail === "object") {
+    return hospitalDetail;
+  }
+
+  return JSON.parse(hospitalDetail);
+};

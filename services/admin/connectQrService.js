@@ -188,3 +188,48 @@ exports.connectDoctorQr = async ({
     }
 
 };
+
+exports.scanQr = async ({ user, qrCode }) => {
+
+  if (!user?.id) {
+    return {
+      statusCode: 401,
+      body: {
+        success: false,
+        message: "Unauthorized user."
+      }
+    };
+  }
+
+  const doctor = await QRModel.findDoctorByQr(qrCode);
+
+  if (!doctor) {
+    return {
+      statusCode: 404,
+      body: {
+        success: false,
+        message: "Invalid QR Code."
+      }
+    };
+  }
+
+  const hospitals = await QRModel.getDoctorHospitals(
+    doctor.doctor_id
+  );
+
+  return {
+    statusCode: 200,
+    body: {
+      success: true,
+      message: "Doctor found successfully.",
+      data: {
+        doctorId: doctor.doctor_id,
+        doctorUserId: doctor.doctor_user_id,
+        doctorName: doctor.doctor_name,
+        specialization: doctor.specialization,
+        profileImage: doctor.profile_image,
+        hospitals
+      }
+    }
+  };
+};
