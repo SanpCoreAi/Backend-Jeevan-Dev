@@ -6,7 +6,7 @@ const {
     generateQrCodes, getAllQrCodes, getDoctorQrCodes, getAllQrDetails
 } = require("../../controllers/admin/generateQrCodesController");
 
-const { connectDoctorQr, scanQr} = require("../../controllers/admin/connectQrController");
+const { connectDoctorQr, scanQr, changeDoctorStatus} = require("../../controllers/admin/connectQrController");
 const {allowRoles}=require("../../middlewares/role");
 const { verifyToken } = require("../../middlewares/authMiddleware");
 const {validate} = require("../../middlewares/validate");
@@ -51,6 +51,13 @@ router.post(
   verifyToken,
   validate(scanQrValidation),
   scanQr
+);
+
+router.patch(
+  "/doctors/:doctorId/status",
+  verifyToken,
+  allowRoles(4),
+  changeDoctorStatus
 );
 
 module.exports = router;

@@ -334,7 +334,9 @@ exports.getDoctorPublicProfileById = async (userId) => {
     INNER JOIN users u
       ON u.id = d.user_id
 
-    WHERE d.user_id = ?
+    WHERE
+      d.user_id = ?
+      AND u.status = 'ACTIVE'
 
     LIMIT 1
   `;
@@ -431,8 +433,10 @@ exports.updateDoctor = async (userId, data) => {
 };
 
 exports.getAllDoctors = async () => {
+
   const sql = `
     SELECT
+
       d.id AS doctor_id,
       d.user_id,
       d.username,
@@ -441,9 +445,11 @@ exports.getAllDoctors = async () => {
       d.experience,
       d.consultation_fee,
       d.qr_code,
+
       u.full_name,
       u.email,
       u.phone_number,
+
       COALESCE(
         (
           SELECT JSON_ARRAYAGG(
@@ -456,21 +462,35 @@ exports.getAllDoctors = async () => {
           )
           FROM user_images di
           WHERE di.user_id = d.user_id
-          AND di.file_key IS NOT NULL
+            AND di.file_key IS NOT NULL
         ),
         JSON_ARRAY()
       ) AS images,
+
       ROUND(
         IFNULL(
-          (SELECT AVG(f.rating) FROM feedbacks f WHERE f.doctor_id = d.id),
+          (
+            SELECT AVG(f.rating)
+            FROM feedbacks f
+            WHERE f.doctor_id = d.user_id
+          ),
           0
-        ), 1
+        ),
+        1
       ) AS avg_rating
 
     FROM doctors d
-    LEFT JOIN users u ON u.id = d.user_id
+
+    INNER JOIN users u
+      ON u.id = d.user_id
+
+    WHERE u.status = 'ACTIVE'
+
+    ORDER BY d.id DESC
   `;
+
   const [rows] = await db.execute(sql);
+
   return rows;
 };
 
@@ -569,6 +589,7 @@ exports.findAllWithUser = async () => {
     INNER JOIN users u
       ON u.id = d.user_id
 
+    WHERE u.status = 'ACTIVE'
 
     ORDER BY d.id DESC
   `;

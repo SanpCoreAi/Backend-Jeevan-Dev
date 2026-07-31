@@ -14,10 +14,6 @@ exports.connectDoctorQr = async ({
 
         await connection.beginTransaction();
 
-
-        /**
-         * Check Doctor Exists
-         */
         const doctor = await QRModel.findDoctorByUserId(
             connection,
             doctorId
@@ -40,17 +36,8 @@ exports.connectDoctorQr = async ({
 
         const connectedQrCodes = [];
 
-
-
-        /**
-         * Process QR Codes
-         */
         for (const qrCode of qrCodes) {
 
-
-            /**
-             * Find QR
-             */
             const qr = await QRModel.findQrCode(
                 connection,
                 qrCode
@@ -69,11 +56,6 @@ exports.connectDoctorQr = async ({
 
             }
 
-
-
-            /**
-             * Check QR Status
-             */
             if (qr.status !== "AVAILABLE") {
 
 
@@ -89,10 +71,6 @@ exports.connectDoctorQr = async ({
             }
 
 
-
-            /**
-             * Update QR Status
-             */
             await QRModel.updateQrStatus(
 
                 connection,
@@ -123,11 +101,6 @@ exports.connectDoctorQr = async ({
 
         }
 
-
-
-        /**
-         * Commit Transaction
-         */
         await connection.commit();
 
 
@@ -232,4 +205,45 @@ exports.scanQr = async ({ user, qrCode }) => {
       }
     }
   };
+};
+
+exports.changeDoctorStatus = async ({
+    doctorId,
+    status
+}) => {
+
+    if (!["ACTIVE", "INACTIVE"].includes(status)) {
+
+        return {
+            success: false,
+            statusCode: 400,
+            message: "Invalid status."
+        };
+
+    }
+
+    const doctor =
+        await QRModel.findByUserId(doctorId);
+
+    if (!doctor) {
+
+        return {
+            success: false,
+            statusCode: 404,
+            message: "Doctor not found."
+        };
+
+    }
+
+    await QRModel.updateStatus(
+        doctorId,
+        status
+    );
+
+    return {
+        success: true,
+        statusCode: 200,
+        message: `Doctor ${status.toLowerCase()} successfully.`
+    };
+
 };

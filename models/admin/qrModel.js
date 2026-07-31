@@ -193,6 +193,29 @@ exports.updateQrStatus = async (
 };
 
 
+exports.findByUserId = async (userId) => {
+
+  const [rows] = await db.execute(
+    `
+    SELECT
+      d.id,
+      d.user_id,
+      u.full_name,
+      u.email,
+      u.status
+    FROM doctors d
+    INNER JOIN users u
+      ON d.user_id = u.id
+    WHERE d.user_id = ?
+    LIMIT 1
+    `,
+    [userId]
+  );
+
+  return rows[0] || null;
+
+};
+
 exports.getAllQrCodes = async ({
 
     limit,
@@ -498,4 +521,26 @@ exports.getDoctorHospitals = async (doctorId) => {
   }
 
   return JSON.parse(hospitalDetail);
+};
+
+exports.updateStatus = async (
+    doctorId,
+    status
+) => {
+
+    const [result] =
+        await db.execute(
+            `
+            UPDATE users
+            SET status = ?
+            WHERE id = ?
+            `,
+            [
+                status,
+                doctorId
+            ]
+        );
+
+    return result;
+
 };
