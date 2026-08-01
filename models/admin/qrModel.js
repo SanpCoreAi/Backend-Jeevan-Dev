@@ -523,23 +523,22 @@ exports.getDoctorHospitals = async (doctorId) => {
 };
 
 exports.updateStatus = async (
-    doctorId,
-    status
+  doctorId,
+  status
 ) => {
 
-    const [result] =
-        await db.execute(
-            `
-            UPDATE users
-            SET status = ?
-            WHERE id = ?
-            `,
-            [
-                status,
-                doctorId
-            ]
-        );
+  const [result] = await db.execute(
+    `
+    UPDATE users
+    SET status = ?
+    WHERE id = ?
+    `,
+    [
+      status,
+      doctorId
+    ]
+  );
 
-    return result;
+  return result;
 
 };

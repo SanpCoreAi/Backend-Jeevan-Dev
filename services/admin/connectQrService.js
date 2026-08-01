@@ -207,43 +207,33 @@ exports.scanQr = async ({ user, qrCode }) => {
   };
 };
 
-exports.changeDoctorStatus = async ({
-    doctorId,
-    status
-}) => {
+exports.changeDoctorStatus = async (doctorId) => {
 
-    if (!["ACTIVE", "INACTIVE"].includes(status)) {
+  const doctor =
+    await QRModel.findByUserId(doctorId);
 
-        return {
-            success: false,
-            statusCode: 400,
-            message: "Invalid status."
-        };
-
-    }
-
-    const doctor =
-        await QRModel.findByUserId(doctorId);
-
-    if (!doctor) {
-
-        return {
-            success: false,
-            statusCode: 404,
-            message: "Doctor not found."
-        };
-
-    }
-
-    await QRModel.updateStatus(
-        doctorId,
-        status
-    );
-
+  if (!doctor) {
     return {
-        success: true,
-        statusCode: 200,
-        message: `Doctor ${status.toLowerCase()} successfully.`
+      success: false,
+      statusCode: 404,
+      message: "Doctor not found."
     };
+  }
+
+  const newStatus =
+    doctor.status === "ACTIVE"
+      ? "INACTIVE"
+      : "ACTIVE";
+
+  await QRModel.updateStatus(
+    doctorId,
+    newStatus
+  );
+
+  return {
+    success: true,
+    statusCode: 200,
+    message: `Doctor ${newStatus.toLowerCase()} successfully.`
+  };
 
 };

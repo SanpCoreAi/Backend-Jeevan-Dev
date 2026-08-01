@@ -122,30 +122,26 @@ exports.scanQr = async (req, res) => {
 };
 
 exports.changeDoctorStatus = async (req, res) => {
-    try {
+  try {
 
-        const doctorId = Number(req.params.doctorId);
-        const { status } = req.body;
+    const doctorId = Number(req.params.doctorId);
 
-        const result =
-            await QRService.changeDoctorStatus({
-                doctorId,
-                status
-            });
+    const result =
+      await QRService.changeDoctorStatus(doctorId);
 
-        return res.status(result.statusCode).json({
-            success: result.success,
-            message: result.message
-        });
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.message
+    });
 
-    } catch (error) {
+  } catch (error) {
 
-        console.error(error);
+    console.error(error);
 
-        return res.status(500).json({
-            success: false,
-            message: "Internal Server Error."
-        });
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error."
+    });
 
-    }
+  }
 };
