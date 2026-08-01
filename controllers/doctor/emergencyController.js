@@ -1,85 +1,140 @@
-const { sendEmergencyService, getUserEmergenciesService,} = require("../../services/doctor/emergencyService");
+const {
+  sendEmergencyService,
+  getUserEmergenciesService,
+} = require("../../services/doctor/emergencyService");
+
+const {
+  sendEmergencyValidation,
+  getUserEmergenciesValidation,
+} = require("../../validation/doctor/emergencyValidation");
 
 exports.sendEmergency = async (req, res) => {
   try {
-    const { doctor_id, role_id, message } = req.body;
 
-    if (!doctor_id || !role_id || !message) {
+    const { error } =
+      sendEmergencyValidation.validate(req.body);
+
+    if (error) {
       return res.status(400).json({
         success: false,
-        statusCode: 400,
-        message: "doctor_id, role_id, and message are required.",
+        message: error.details[0].message,
       });
     }
 
-    const results = await sendEmergencyService(doctor_id, role_id, message);
+    const {
+      doctor_id,
+      role_id,
+      message,
+    } = req.body;
 
-    if (!results.data || results.data.length === 0) {
-      return res.status(404).json({
+    const result =
+      await sendEmergencyService(
+        doctor_id,
+        role_id,
+        message
+      );
+
+    if (!result.success) {
+      return res.status(result.statusCode).json({
         success: false,
-        statusCode: 404,
-        message: "No target users found for this emergency.",
+        message: result.message,
       });
     }
 
     const io = req.app.get("io");
 
-    results.data.forEach((result) => {
-      io.to(`user_${result.target_doctor_id}`).emit("receiveEmergency", {
-        from_user: result.doctor_id,
-        from_role: role_id === 2 ? "Doctor" : "Assistant",
-        message: result.message,
-        emergency_id: result.id,
-        created_at: result.created_at,
-      });
+    result.data.forEach((item) => {
+
+      io.to(`user_${item.target_user_id}`).emit(
+        "receiveEmergency",
+        {
+          emergency_id: item.id,
+          from_user: item.doctor_id,
+          from_role:
+            item.role_id === 2
+              ? "Doctor"
+              : "Assistant",
+          message: item.message,
+          created_at: item.created_at,
+        }
+      );
+
     });
 
-    return res.status(201).json({
+    return res.status(result.statusCode).json({
       success: true,
-      statusCode: 201,
-      message: "Emergency message sent successfully to target users.",
-      token: req.headers["authorization"]?.split(" ")[1] || null,
-      data: results.data,  
+      message: result.message,
+      token:
+        req.headers.authorization?.split(" ")[1] ||
+        null,
+      data: result.data,
     });
 
-  } catch (err) {
-    console.error("Error in sendEmergency:", err.message);
-    return res.status(err.statusCode || 500).json({
+  } catch (error) {
+
+    console.error(
+      "Send Emergency Controller Error:",
+      error
+    );
+
+    return res.status(500).json({
       success: false,
-      statusCode: err.statusCode || 500,
-      message: err.message || "Internal server error",
+      message: "Internal Server Error.",
     });
+
   }
 };
 
+
 exports.getUserEmergencies = async (req, res) => {
   try {
-    const { doctor_id } = req.params;
 
-    if (!doctor_id) {
+    const { error } =
+      getUserEmergenciesValidation.validate(
+        req.params
+      );
+
+    if (error) {
       return res.status(400).json({
         success: false,
-        statusCode: 400,
-        message: "Doctor ID is required.",
+        message: error.details[0].message,
       });
     }
 
-    const emergencies = await getUserEmergenciesService(doctor_id);
+    const { doctor_id } = req.params;
 
-    return res.status(200).json({
+    const result =
+      await getUserEmergenciesService(
+        doctor_id
+      );
+
+    if (!result.success) {
+      return res.status(result.statusCode).json({
+        success: false,
+        message: result.message,
+      });
+    }
+
+    return res.status(result.statusCode).json({
       success: true,
-      statusCode: 200,
-      message: "User emergencies fetched successfully.",
-      token: req.headers["authorization"]?.split(" ")[1] || null,
-      data: emergencies.data,
+      message: result.message,
+      token:
+        req.headers.authorization?.split(" ")[1] ||
+        null,
+      data: result.data,
     });
 
-  } catch (err) {
-    console.error("Error in getUserEmergencies:", err.message);
-    return res.status(err.statusCode || 500).json({
+  } catch (error) {
+
+    console.error(
+      "Get User Emergencies Controller Error:",
+      error
+    );
+
+    return res.status(500).json({
       success: false,
-      statusCode: err.statusCode || 500,
-      message: err.message || "Internal server error",
+      message: "Internal Server Error.",
     });
+
   }
 };

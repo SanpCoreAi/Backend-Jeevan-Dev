@@ -1,56 +1,112 @@
-const  db = require("../config/db");
-const AppError = require("../utils/appError");
+const db = require("../config/db");
 
-exports.findTargetUser = async (doctor_id, role_id) => {
-  try {
-    let query;
-    let params;
+exports.findTargetUser = async (
+  doctor_id,
+  role_id
+) => {
 
-    if (role_id === 2) {
-      query = `SELECT id FROM users WHERE doctor_id = ?`;
-      params = [doctor_id];
-    } 
-    else if (role_id === 3) {
-      query = `SELECT doctor_id AS id FROM users WHERE id = ?`;
-      params = [doctor_id];
-    } 
-    else {
-      throw new AppError("Invalid role. Only doctor or assistant can send emergency.", 400);
-    }
+  let query = "";
+  let params = [];
 
-    const [rows] = await db.query(query, params);
-    const targetIds = rows.map(r => r.id).filter(Boolean);
+  if (role_id === 2) {
 
-    if (role_id === 3 && targetIds.length === 0) {
-      throw new AppError(
-        "No doctor assigned to this assistant. Cannot send emergency.",
-        404
-      );
-    }
+    query = `
+      SELECT id
+      FROM users
+      WHERE doctor_id = ?
+    `;
 
-    return targetIds;
+    params = [doctor_id];
 
-  } catch (err) {
-    console.error(" Error in findTargetUser:", err.message);
-    throw err instanceof AppError ? err : new AppError("DB Error in target user lookup", 500);
+  } else if (role_id === 3) {
+
+    query = `
+      SELECT doctor_id AS id
+      FROM users
+      WHERE id = ?
+    `;
+
+    params = [doctor_id];
+
+  } else {
+
+    return [];
+
   }
+
+  const [rows] = await db.execute(
+    query,
+    params
+  );
+
+  return rows.map(row => row.id);
+
 };
 
-exports.insertEmergency = async (doctor_id, role_id, target_doctor_id, message) => {
-  const query = `
-    INSERT INTO emergency_requests (doctor_id, role_id, target_doctor_id, message, created_at)
-    VALUES (?, ?, ?, ?, NOW())
+exports.insertEmergency = async (
+  doctor_id,
+  role_id,
+  target_user_id,
+  message
+) => {
+
+  const sql = `
+    INSERT INTO emergency_requests
+    (
+      doctor_id,
+      role_id,
+      target_doctor_id,
+      message,
+      created_at
+    )
+    VALUES
+    (?, ?, ?, ?, NOW())
   `;
-  const [result] = await db.query(query, [doctor_id, role_id, target_doctor_id, message]);
+
+  const [result] = await db.execute(
+    sql,
+    [
+      doctor_id,
+      role_id,
+      target_user_id,
+      message
+    ]
+  );
+
   return result.insertId;
+
 };
 
-exports.getEmergenciesByUser = async (doctor_id) => {
-  const query = `
-    SELECT * FROM emergency_requests
-    WHERE doctor_id = ? OR target_doctor_id = ?
+exports.getEmergenciesByUser = async (
+  doctor_id
+) => {
+
+  const sql = `
+    SELECT
+      id,
+      doctor_id,
+      role_id,
+      target_doctor_id,
+      message,
+      created_at
+
+    FROM emergency_requests
+
+    WHERE
+      doctor_id = ?
+      OR target_doctor_id = ?
+
     ORDER BY created_at DESC
   `;
-  const [rows] = await db.query(query, [doctor_id, doctor_id]);
+
+  const [rows] = await db.execute(
+    sql,
+    [
+      doctor_id,
+      doctor_id
+    ]
+  );
+
   return rows;
+
 };
