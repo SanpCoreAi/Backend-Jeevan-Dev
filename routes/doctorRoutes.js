@@ -17,7 +17,7 @@ router.patch(
 router.get("/getDoctorProfileById", verifyToken, doctorController.getDoctorProfile);
 router.get("/getDoctorPublicProfileById/:userId", verifyToken, doctorController.getDoctorPublicProfileById);
 
-router.get("/getAlldoctor",  doctorController.getAllDoctors);
+router.get("/getAlldoctor",verifyToken,allowRoles(4),  doctorController.getAllDoctors);
 
 router.get("/getDoctors", getDoctors);
 

@@ -11,6 +11,7 @@ const {
 
 exports.registerUserOrAssistant = async (data) => {
   try {
+
     let {
       full_name,
       email,
@@ -24,7 +25,12 @@ exports.registerUserOrAssistant = async (data) => {
     email = email.trim().toLowerCase();
     phone_number = phone_number.trim();
 
-    const existingEmail = await User.findByEmail(email);
+    // ============================
+    // Check Email
+    // ============================
+
+    const existingEmail =
+      await User.findByEmail(email);
 
     if (existingEmail) {
       return {
@@ -35,7 +41,12 @@ exports.registerUserOrAssistant = async (data) => {
       };
     }
 
-    const existingPhone = await User.findByPhone(phone_number);
+    // ============================
+    // Check Phone Number
+    // ============================
+
+    const existingPhone =
+      await User.findByPhone(phone_number);
 
     if (existingPhone) {
       return {
@@ -45,136 +56,187 @@ exports.registerUserOrAssistant = async (data) => {
         },
       };
     }
+    // ============================
+// Create User Account
+// ============================
 
-    const createAccount = async ({
-      roleId,
-      password,
-      doctorId = null,
-      emailVerified = 1,
-      verificationToken = null,
-    }) => {
-      const hashedPassword = await bcrypt.hash(password, 10);
+const createAccount = async ({
+  roleId,
+  password,
+  doctorId = null,
+  emailVerified = 1,
+  verificationToken = null,
+  status = "ACTIVE",
+}) => {
 
-      return await User.createUser({
-        full_name,
-        email,
-        phone_number,
-        password: hashedPassword,
-        role_id: roleId,
-        doctor_id: doctorId,
-        email_verified: emailVerified,
-        verificationToken,
-      });
-    };
+  const hashedPassword =
+    await bcrypt.hash(password, 10);
 
-    if (role_id === 2) {
-      const doctorPassword = crypto.randomBytes(5).toString("hex");
+  return await User.createUser({
+    full_name,
+    email,
+    phone_number,
+    password: hashedPassword,
+    doctor_id: doctorId,
+    role_id: roleId,
+    email_verified: emailVerified,
+    verificationToken,
+    status,
+  });
 
-      const userId = await createAccount({
-        roleId: 2,
-        password: doctorPassword,
-      });
+};
+// ============================
+// Doctor Registration
+// ============================
 
-      try {
-        await sendDoctorCredentials(
-          email,
-          full_name,
-          doctorPassword
-        );
-      } catch (err) {
-        console.error("Doctor Email Error:", err.message);
-      }
+if (role_id === 2) {
 
-      return {
-        statusCode: 201,
-        body: {
-          message:
-            "Doctor created successfully. Credentials sent to email.",
-          user_id: userId,
-        },
-      };
-    }
+  const doctorPassword =
+    crypto.randomBytes(5).toString("hex");
 
-    if (role_id === 3) {
-      if (!doctor_id) {
-        return {
-          statusCode: 400,
-          body: {
-            message: "Doctor id is required",
-          },
-        };
-      }
+  const userId = await createAccount({
+    roleId: 2,
+    password: doctorPassword,
+    status: "INACTIVE",
+  });
 
-      const assistantPassword =
-        crypto.randomBytes(5).toString("hex");
+  try {
 
-      const userId = await createAccount({
-        roleId: 3,
-        password: assistantPassword,
-        doctorId: doctor_id,
-      });
+    await sendDoctorCredentials(
+      email,
+      full_name,
+      doctorPassword
+    );
 
-      try {
-        await sendAssistantCredentials(
-          email,
-          full_name,
-          assistantPassword
-        );
-      } catch (err) {
-        console.error("Assistant Email Error:", err.message);
-      }
+  } catch (err) {
 
-      return {
-        statusCode: 201,
-        body: {
-          message:
-            "Assistant created successfully. Credentials sent to email.",
-          user_id: userId,
-        },
-      };
-    }
+    console.error(
+      "Doctor Email Error:",
+      err.message
+    );
 
-    if (!password) {
-      return {
-        statusCode: 400,
-        body: {
-          message: "Password is required",
-        },
-      };
-    }
+  }
 
-    const verificationToken =
-      crypto.randomBytes(32).toString("hex");
+  return {
+    statusCode: 201,
+    body: {
+      message:
+        "Doctor created successfully. Credentials sent to email. Waiting for admin approval.",
+      user_id: userId,
+      status: "INACTIVE",
+    },
+  };
 
-    const userId = await createAccount({
-      roleId: 1,
-      password,
-      emailVerified: 0,
-      verificationToken,
-    });
+}
 
-    try {
-      await sendVerificationEmail(
-        email,
-        verificationToken
-      );
-    } catch (err) {
-      console.error(
-        "Verification Email Error:",
-        err.message
-      );
-    }
+// ============================
+// Assistant Registration
+// ============================
 
+if (role_id === 3) {
+
+  if (!doctor_id) {
     return {
-      statusCode: 201,
+      statusCode: 400,
       body: {
-        message:
-          "User registered successfully. Please verify your email.",
-        user_id: userId,
+        message: "Doctor id is required",
       },
     };
+  }
+
+  const assistantPassword =
+    crypto.randomBytes(5).toString("hex");
+
+  const userId = await createAccount({
+    roleId: 3,
+    password: assistantPassword,
+    doctorId: doctor_id,
+    status: "ACTIVE",
+  });
+
+  try {
+
+    await sendAssistantCredentials(
+      email,
+      full_name,
+      assistantPassword
+    );
+
+  } catch (err) {
+
+    console.error(
+      "Assistant Email Error:",
+      err.message
+    );
+
+  }
+
+  return {
+    statusCode: 201,
+    body: {
+      message:
+        "Assistant created successfully. Credentials sent to email.",
+      user_id: userId,
+      status: "ACTIVE",
+    },
+  };
+
+}
+// ============================
+// Patient Registration
+// ============================
+
+if (!password) {
+  return {
+    statusCode: 400,
+    body: {
+      message: "Password is required",
+    },
+  };
+}
+
+const verificationToken =
+  crypto.randomBytes(32).toString("hex");
+
+const userId = await createAccount({
+  roleId: 1,
+  password,
+  emailVerified: 0,
+  verificationToken,
+  status: "ACTIVE",
+});
+
+try {
+
+  await sendVerificationEmail(
+    email,
+    verificationToken
+  );
+
+} catch (err) {
+
+  console.error(
+    "Verification Email Error:",
+    err.message
+  );
+
+}
+
+return {
+  statusCode: 201,
+  body: {
+    message:
+      "User registered successfully. Please verify your email.",
+    user_id: userId,
+    status: "ACTIVE",
+  },
+};
   } catch (error) {
-    console.error("Register Service Error:", error);
+
+    console.error(
+      "Register Service Error:",
+      error
+    );
 
     return {
       statusCode: 500,
@@ -182,6 +244,7 @@ exports.registerUserOrAssistant = async (data) => {
         message: "Internal Server Error",
       },
     };
+
   }
 };
 

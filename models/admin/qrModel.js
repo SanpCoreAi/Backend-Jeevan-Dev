@@ -479,14 +479,13 @@ exports.findDoctorByQr = async (qrCode) => {
         d.consultation_fee,
         d.language,
         d.hospital_detail,
-        d.qr_code,
-        d.qr_url,
-        d.qr_code_image,
         d.age,
         d.gender
-    FROM doctors d
-    WHERE d.qr_code = ?
-      AND d.is_deleted = 0
+    FROM qr_codes q
+    INNER JOIN doctors d
+        ON d.user_id = q.doctor_user_id
+    WHERE q.qr_code = ?
+      AND q.status = 'ASSIGNED'
     LIMIT 1
     `,
     [qrCode]

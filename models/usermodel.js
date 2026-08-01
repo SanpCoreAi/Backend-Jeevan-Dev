@@ -11,6 +11,7 @@ exports.createUser = async (data) => {
       "role_id",
       "verificationToken",
       "email_verified",
+       "status",
     ];
 
     const fields = [];
