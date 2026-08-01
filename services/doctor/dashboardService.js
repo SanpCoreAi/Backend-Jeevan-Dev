@@ -1,47 +1,55 @@
-const appointmentModel = require('../../models/dashboardModel');
+const dashboardModel = require("../../models/dashboardModel");
 const User = require("../../models/usermodel");
 
+exports.cardNumber = async (params) => {
 
-const cardNumber = async (params) => {
- const [
-  patients,
-  doctors,
-  assistants,
-  completedAppointments,
-  upcomingAppointments,
-  pastAppointments,
-] = await Promise.all([
-  appointmentModel.getPatientsCount(params),
-  appointmentModel.getDoctorsCount(params),
-  appointmentModel.getAssistantsCount(params),
-  appointmentModel.getCompletedAppointmentsCount(params),
-  appointmentModel.getUpcomingAppointmentsCount(params),
-  appointmentModel.getPastAppointmentsCount(params),
-]);
-
-  return {
+  const [
     patients,
     doctors,
     assistants,
-     completedAppointments,
+    completedAppointments,
     upcomingAppointments,
     pastAppointments,
+  ] = await Promise.all([
+
+    dashboardModel.getPatientsCount(params),
+
+    dashboardModel.getDoctorsCount(params),
+
+    dashboardModel.getAssistantsCount(params),
+
+    dashboardModel.getCompletedAppointmentsCount(params),
+
+    dashboardModel.getUpcomingAppointmentsCount(params),
+
+    dashboardModel.getPastAppointmentsCount(params),
+
+  ]);
+
+  return {
+
+    patients,
+
+    doctors,
+
+    assistants,
+
+    completedAppointments,
+
+    upcomingAppointments,
+
+    pastAppointments,
+
   };
+
 };
 
-
-
-
-
-
-
-const getAppointmentGraph = async (doctorId) => {
+exports.getAppointmentGraph = async (doctorId) => {
 
   const rows =
-    await appointmentModel.getWeeklyAppointmentStats(
+    await dashboardModel.getWeeklyAppointmentStats(
       doctorId
     );
-
 
   const days = [
     "Monday",
@@ -50,89 +58,72 @@ const getAppointmentGraph = async (doctorId) => {
     "Thursday",
     "Friday",
     "Saturday",
-    "Sunday"
+    "Sunday",
   ];
-
 
   const onlineGraph = [];
   const offlineGraph = [];
 
-
-  days.forEach(day => {
-
+  days.forEach((day) => {
 
     const online = rows.find(
-      item =>
+      (item) =>
         item.day_name === day &&
-        item.appointment_type.toLowerCase() === "online"
+        (item.appointment_type || "")
+          .toLowerCase() === "online"
     );
-
 
     const offline = rows.find(
-      item =>
+      (item) =>
         item.day_name === day &&
-        item.appointment_type.toLowerCase() === "offline"
+        (item.appointment_type || "")
+          .toLowerCase() === "offline"
     );
 
-
-
     onlineGraph.push({
-      day: day.substring(0,3),
-      value: online ? online.total : 0
-    });
 
+      day: day.substring(0, 3),
+
+      value: online ? online.total : 0,
+
+    });
 
     offlineGraph.push({
-      day: day.substring(0,3),
-      value: offline ? offline.total : 0
-    });
 
+      day: day.substring(0, 3),
+
+      value: offline ? offline.total : 0,
+
+    });
 
   });
 
-
-
   return {
 
-    online_total:
-      onlineGraph.reduce(
-        (sum,item)=>sum+item.value,0
-      ),
+    online_total: onlineGraph.reduce(
+      (sum, item) => sum + item.value,
+      0
+    ),
 
-
-    offline_total:
-      offlineGraph.reduce(
-        (sum,item)=>sum+item.value,0
-      ),
-
+    offline_total: offlineGraph.reduce(
+      (sum, item) => sum + item.value,
+      0
+    ),
 
     online_graph: onlineGraph,
 
-    offline_graph: offlineGraph
+    offline_graph: offlineGraph,
 
   };
 
 };
 
-
-
-exports.getUserById = async(id)=>{
-
-  const user = await User.findById(id);
-
-  return user;
-
-};
-
-
-const getTodayStats = async (doctorId) => {
-
+exports.getTodayStats = async (doctorId) => {
 
   const stats =
-    await appointmentModel.getTodayAppointmentStats(
+    await dashboardModel.getTodayAppointmentStats(
       doctorId
     );
-
 
   return {
 
@@ -146,25 +137,14 @@ const getTodayStats = async (doctorId) => {
       stats.pending || 0,
 
     today_cancelled:
-      stats.cancelled || 0
+      stats.cancelled || 0,
 
   };
 
 };
 
+exports.getUserById = async (id) => {
 
+  return await User.findById(id);
 
-const getUserById = async(id)=>{
-
-  const user = await User.findById(id);
-
-  return user;
-
-};
-
-module.exports = {
-  cardNumber,
-  getAppointmentGraph,
-  getTodayStats,
-  getUserById
 };

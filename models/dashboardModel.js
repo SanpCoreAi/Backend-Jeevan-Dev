@@ -1,16 +1,27 @@
-const db = require('../config/db');
+const db = require("../config/db");
 
-const getCondition = (params = {}, column = "created_at") => {
-  const { filter, startDate, endDate } = params;
+const getCondition = (
+  params = {},
+  column = "created_at"
+) => {
+
+  const {
+    filter,
+    startDate,
+    endDate,
+  } = params;
 
   if (startDate && endDate) {
+
     return {
       condition: `DATE(${column}) BETWEEN ? AND ?`,
       values: [startDate, endDate],
     };
+
   }
 
   switch (filter) {
+
     case "today":
       return {
         condition: `DATE(${column}) = CURDATE()`,
@@ -40,68 +51,96 @@ const getCondition = (params = {}, column = "created_at") => {
         condition: "1=1",
         values: [],
       };
+
   }
+
 };
 
-const getPatientsCount = async (params) => {
-  const { condition, values } = getCondition(params);
+exports.getPatientsCount = async (params) => {
 
-  const [rows] = await db.query(
-    `SELECT COUNT(*) AS total
-     FROM users
-     WHERE role_id = 1
-     AND ${condition}`,
+  const { condition, values } =
+    getCondition(params);
+
+  const [rows] = await db.execute(
+    `
+    SELECT COUNT(*) AS total
+    FROM users
+    WHERE role_id = 1
+      AND ${condition}
+    `,
     values
   );
 
   return rows[0].total;
-};
-const getDoctorsCount = async (params) => {
-  const { condition, values } = getCondition(params);
 
-  const [rows] = await db.query(
-    `SELECT COUNT(*) AS total
-     FROM users
-     WHERE role_id = 2
-     AND ${condition}`,
+};
+
+exports.getDoctorsCount = async (params) => {
+
+  const { condition, values } =
+    getCondition(params);
+
+  const [rows] = await db.execute(
+    `
+    SELECT COUNT(*) AS total
+    FROM users
+    WHERE role_id = 2
+      AND status = 'ACTIVE'
+      AND ${condition}
+    `,
     values
   );
 
   return rows[0].total;
+
 };
 
-const getAssistantsCount = async (params) => {
-  const { condition, values } = getCondition(params);
+exports.getAssistantsCount = async (params) => {
 
-  const [rows] = await db.query(
-    `SELECT COUNT(*) AS total
-     FROM users
-     WHERE role_id = 3
-     AND ${condition}`,
+  const { condition, values } =
+    getCondition(params);
+
+  const [rows] = await db.execute(
+    `
+    SELECT COUNT(*) AS total
+    FROM users
+    WHERE role_id = 3
+      AND ${condition}
+    `,
     values
   );
 
   return rows[0].total;
+
 };
 
-const getCompletedAppointmentsCount = async (params) => {
-  const { condition, values } = getCondition(params);
+exports.getCompletedAppointmentsCount =
+async (params) => {
 
-  const [rows] = await db.query(
-    `SELECT COUNT(*) AS total
-     FROM appointments
-     WHERE LOWER(status) = 'completed'
-     AND ${condition}`,
+  const { condition, values } =
+    getCondition(params);
+
+  const [rows] = await db.execute(
+    `
+    SELECT COUNT(*) AS total
+    FROM appointments
+    WHERE LOWER(status) = 'completed'
+      AND ${condition}
+    `,
     values
   );
 
   return rows[0].total;
+
 };
 
-const getUpcomingAppointmentsCount = async (params) => {
-  const { condition, values } = getCondition(params);
+exports.getUpcomingAppointmentsCount =
+async (params) => {
 
-  const [rows] = await db.query(
+  const { condition, values } =
+    getCondition(params);
+
+  const [rows] = await db.execute(
     `
     SELECT COUNT(*) AS total
     FROM appointments
@@ -112,12 +151,16 @@ const getUpcomingAppointmentsCount = async (params) => {
   );
 
   return rows[0].total;
+
 };
 
-const getPastAppointmentsCount = async (params) => {
-  const { condition, values } = getCondition(params, "slot_date");
+exports.getPastAppointmentsCount =
+async (params) => {
 
-  const [rows] = await db.query(
+  const { condition, values } =
+    getCondition(params, "slot_date");
+
+  const [rows] = await db.execute(
     `
     SELECT COUNT(*) AS total
     FROM appointments
@@ -128,64 +171,84 @@ const getPastAppointmentsCount = async (params) => {
   );
 
   return rows[0].total;
+
 };
-const getWeeklyAppointmentStats = async (doctorId) => {
-  const [rows] = await db.query(
+
+exports.getWeeklyAppointmentStats =
+async (doctorId) => {
+
+  const [rows] = await db.execute(
     `
     SELECT
+
       DAYNAME(slot_date) AS day_name,
+
       appointment_type,
+
       COUNT(*) AS total
+
     FROM appointments
+
     WHERE doctor_id = ?
-      AND YEARWEEK(slot_date, 1) = YEARWEEK(CURDATE(), 1)
-    GROUP BY DAYNAME(slot_date), appointment_type
+
+      AND YEARWEEK(slot_date,1)
+          = YEARWEEK(CURDATE(),1)
+
+    GROUP BY
+
+      DAYNAME(slot_date),
+
+      appointment_type
     `,
     [doctorId]
   );
 
   return rows;
+
 };
 
-const getTodayAppointmentStats = async (doctorId) => {
-  const [rows] = await db.query(
+exports.getTodayAppointmentStats =
+async (doctorId) => {
+
+  const [rows] = await db.execute(
     `
     SELECT
+
       COUNT(*) AS total_appointments,
 
-      SUM(CASE
-            WHEN LOWER(status) = 'completed'
-            THEN 1 ELSE 0
-          END) AS completed,
+      SUM(
+        CASE
+          WHEN LOWER(status)='completed'
+          THEN 1
+          ELSE 0
+        END
+      ) AS completed,
 
-      SUM(CASE
-            WHEN LOWER(status) = 'pending'
-            THEN 1 ELSE 0
-          END) AS pending,
+      SUM(
+        CASE
+          WHEN LOWER(status)='pending'
+          THEN 1
+          ELSE 0
+        END
+      ) AS pending,
 
-      SUM(CASE
-            WHEN LOWER(status) = 'cancelled'
-            THEN 1 ELSE 0
-          END) AS cancelled
+      SUM(
+        CASE
+          WHEN LOWER(status)='cancelled'
+          THEN 1
+          ELSE 0
+        END
+      ) AS cancelled
 
     FROM appointments
+
     WHERE doctor_id = ?
-      AND DATE(slot_date) = CURDATE()
+
+      AND DATE(slot_date)=CURDATE()
     `,
     [doctorId]
   );
 
   return rows[0];
-};
 
-
-module.exports = {
-  getPatientsCount,
-  getDoctorsCount,
-  getAssistantsCount,
-   getCompletedAppointmentsCount,
-  getUpcomingAppointmentsCount,
-  getPastAppointmentsCount,
-  getWeeklyAppointmentStats,
-  getTodayAppointmentStats,
 };
