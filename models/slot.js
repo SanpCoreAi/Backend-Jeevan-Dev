@@ -103,7 +103,6 @@ async function deleteCompleteSchedule({
   scheduleId
 }) {
 
-  // Delete only ACTIVE slots
   await db.query(
     `
     DELETE FROM schedule_slots
@@ -117,7 +116,6 @@ async function deleteCompleteSchedule({
     ]
   );
 
-  // Delete schedule
   const [result] = await db.query(
     `
     DELETE FROM schedules
@@ -155,7 +153,6 @@ async function deleteSlotsByDate({
     date
   ];
 
-  // Agar bookedSlots use karna ho
   if (bookedSlots.length > 0) {
     sql += ` AND id NOT IN (${bookedSlots.map(() => "?").join(",")})`;
     params.push(...bookedSlots);

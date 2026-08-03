@@ -232,18 +232,17 @@ exports.update = async (req, res) => {
 
 exports.deleteSchedule = async (req, res) => {
   try {
-
     const scheduleId = Number(req.params.scheduleId);
 
-    if (!scheduleId) {
+    if (!scheduleId || isNaN(scheduleId)) {
       return res.status(400).json({
         success: false,
         statusCode: 400,
-        message: "Valid scheduleId is required"
+        message: "Valid scheduleId is required."
       });
     }
 
-    const { error } = deleteScheduleValidation.validate(req.body, {
+    const { error, value } = deleteScheduleValidation.validate(req.body, {
       abortEarly: false,
       stripUnknown: true
     });
@@ -252,31 +251,26 @@ exports.deleteSchedule = async (req, res) => {
       return res.status(400).json({
         success: false,
         statusCode: 400,
-        message: "Validation failed",
-        errors: error.details.map(err => err.message)
+        message: "Validation failed.",
+        errors: error.details.map((err) => err.message)
       });
     }
 
-    const result =
-      await ScheduleService.deleteSchedule(
-        scheduleId,
-        req.body,
-        req.user.id
-      );
+    const result = await ScheduleService.deleteSchedule(
+      scheduleId,
+      value,
+      req.user.id
+    );
 
-    return res
-      .status(result.statusCode || (result.success ? 200 : 400))
-      .json(result);
+    return res.status(result.statusCode).json(result);
 
   } catch (error) {
-
     console.error("DELETE SCHEDULE ERROR:", error);
 
     return res.status(500).json({
       success: false,
       statusCode: 500,
-      message: "Internal Server Error"
+      message: "Internal Server Error."
     });
-
   }
 };

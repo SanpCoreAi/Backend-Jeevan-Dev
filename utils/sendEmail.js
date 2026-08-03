@@ -393,3 +393,89 @@ exports.sendAppointmentEmail = async ({ to, token, date, time }) => {
     console.error(`❌ Appointment email failed for ${to}:`, error.message);
   }
 };
+
+exports.sendAppointmentCancelledEmail = async ({
+ email,
+ patientName,
+ reason,
+ date,
+ startTime,
+ endTime
+
+}) => {
+
+  try {
+
+    await transporter.sendMail({
+
+      from: `"Hospital" <${process.env.EMAIL_USER}>`,
+
+      to: email,
+
+      subject: "Appointment Cancelled",
+
+      html: `
+        <div style="font-family:Arial;padding:20px">
+
+          <h2>Appointment Cancelled</h2>
+
+          <p>Hello <b>${patientName}</b>,</p>
+
+          <p>Your appointment has been cancelled by the doctor.</p>
+
+          <table cellpadding="8">
+
+            <tr>
+
+              <td><b>Date</b></td>
+
+              <td>${date}</td>
+
+            </tr>
+
+            <tr>
+
+              <td><b>Time</b></td>
+
+              <td>${startTime} - ${endTime}</td>
+
+            </tr>
+
+            <tr>
+
+              <td><b>Reason</b></td>
+
+              <td>${reason}</td>
+
+            </tr>
+
+          </table>
+
+          <br>
+
+          <p>
+            Please book another appointment.
+          </p>
+
+          <br>
+
+          <p>
+            Regards,<br>
+            Hospital Team
+          </p>
+
+        </div>
+      `
+
+    });
+
+  } catch (error) {
+
+    console.error(
+      "Appointment Cancel Mail Error:",
+      error
+    );
+
+  }
+
+};

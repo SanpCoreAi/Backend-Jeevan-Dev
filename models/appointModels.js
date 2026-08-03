@@ -34,6 +34,43 @@ exports.getByToken = async ({
 };
 
 
+exports.getAppointmentsByDate = async (
+  scheduleId,
+  slotDate,
+  connection = db
+) => {
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      a.id,
+      a.slot_date,
+      a.start_time,
+      a.end_time,
+      COALESCE(u.full_name, ap.patient_name) AS patient_name,
+      COALESCE(u.email, ap.patient_email) AS email
+    FROM appointments a
+
+    LEFT JOIN users u
+      ON u.id = a.patient_id
+
+    LEFT JOIN appointment_patients ap
+      ON ap.appointment_id = a.id
+
+    WHERE a.schedule_id = ?
+      AND DATE(a.slot_date)=?
+      AND a.status <> 'CANCELLED'
+    `,
+    [
+      scheduleId,
+      slotDate
+    ]
+  );
+
+  return rows;
+};
+
+
 
 exports.getById = async (id) => {
 
@@ -115,4 +152,101 @@ exports.revisit = async (
 
 
   return rows[0] || null;
+};
+
+// ===============================
+exports.getAppointmentsBySchedule = async (
+  scheduleId,
+  connection = db
+) => {
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      a.id,
+      a.slot_date,
+      a.start_time,
+      a.end_time,
+      COALESCE(u.full_name, ap.patient_name) AS patient_name,
+      COALESCE(u.email, ap.patient_email) AS email
+    FROM appointments a
+
+    LEFT JOIN users u
+      ON u.id = a.patient_id
+
+    LEFT JOIN appointment_patients ap
+      ON ap.appointment_id = a.id
+
+    WHERE a.schedule_id = ?
+      AND a.status <> 'CANCELLED'
+    `,
+    [scheduleId]
+  );
+
+  return rows;
+};
+
+exports.getAppointmentBySlot = async (
+  scheduleId,
+  slotDate,
+  startTime,
+  connection = db
+) => {
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      a.id,
+      a.slot_date,
+      a.start_time,
+      a.end_time,
+      COALESCE(u.full_name, ap.patient_name) AS patient_name,
+      COALESCE(u.email, ap.patient_email) AS email
+    FROM appointments a
+
+    LEFT JOIN users u
+      ON u.id = a.patient_id
+
+    LEFT JOIN appointment_patients ap
+      ON ap.appointment_id = a.id
+
+    WHERE a.schedule_id = ?
+      AND DATE(a.slot_date)=?
+      AND a.start_time=?
+      AND a.status <> 'CANCELLED'
+    LIMIT 1
+    `,
+    [
+      scheduleId,
+      slotDate,
+      startTime
+    ]
+  );
+
+  return rows[0] || null;
+};
+
+
+exports.cancelAppointment = async (
+  appointmentId,
+  reason,
+  connection = db
+) => {
+
+  const [result] = await connection.query(
+    `
+    UPDATE appointments
+    SET
+      status='CANCELLED',
+      cancel_reason=?,
+      updated_at=NOW()
+    WHERE id=?
+    `,
+    [
+      reason,
+      appointmentId
+    ]
+  );
+
+  return result;
 };
