@@ -36,9 +36,9 @@ exports.loginUser = async ({ email, password }) => {
       };
     }
 
+
 if (
-  user.role_id !== 2 &&
-  user.status &&
+  user.role_id === 2 &&
   user.status !== "ACTIVE"
 ) {
   return {
