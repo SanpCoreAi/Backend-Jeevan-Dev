@@ -98,17 +98,16 @@ async function getDoctorSlots(doctorId, hospitalName, date) {
   return rows;
 }
 
-async function deleteCompleteSchedule({
-  doctorId,
-  scheduleId
-}) {
+async function deleteCompleteSchedule(
+  { doctorId, scheduleId },
+  connection = db
+) {
 
-  await db.query(
+  await connection.query(
     `
     DELETE FROM schedule_slots
     WHERE doctor_id = ?
       AND schedule_id = ?
-      AND LOWER(status) = 'active'
     `,
     [
       doctorId,
@@ -116,7 +115,7 @@ async function deleteCompleteSchedule({
     ]
   );
 
-  const [result] = await db.query(
+  const [result] = await connection.query(
     `
     DELETE FROM schedules
     WHERE id = ?
@@ -131,51 +130,47 @@ async function deleteCompleteSchedule({
   return result;
 }
 
-
-async function deleteSlotsByDate({
-  doctorId,
-  scheduleId,
-  date,
-  bookedSlots = []
-}) {
-
-  let sql = `
-    DELETE FROM schedule_slots
-    WHERE doctor_id = ?
-      AND schedule_id = ?
-      AND DATE(start_date) = ?
-      AND LOWER(status) = 'active'
-  `;
-
-  const params = [
+async function deleteSlotsByDate(
+  {
     doctorId,
     scheduleId,
     date
-  ];
+  },
+  connection = db
+) {
 
-  if (bookedSlots.length > 0) {
-    sql += ` AND id NOT IN (${bookedSlots.map(() => "?").join(",")})`;
-    params.push(...bookedSlots);
-  }
-
-  const [result] = await db.query(sql, params);
+  const [result] = await connection.query(
+    `
+    DELETE FROM schedule_slots
+    WHERE doctor_id = ?
+      AND schedule_id = ?
+      AND DATE(start_date)=?
+    `,
+    [
+      doctorId,
+      scheduleId,
+      date
+    ]
+  );
 
   return result;
 }
 
-async function deleteSingleSlot({
-  doctorId,
-  scheduleId,
-  slotId
-}) {
+async function deleteSingleSlot(
+  {
+    doctorId,
+    scheduleId,
+    slotId
+  },
+  connection = db
+) {
 
-  const [result] = await db.query(
+  const [result] = await connection.query(
     `
     DELETE FROM schedule_slots
     WHERE id = ?
       AND doctor_id = ?
       AND schedule_id = ?
-      AND LOWER(status) = 'active'
     `,
     [
       slotId,

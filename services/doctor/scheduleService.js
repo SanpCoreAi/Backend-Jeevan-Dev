@@ -929,29 +929,19 @@ async function deleteSchedule(scheduleId, body, doctorId) {
 
       await connection.commit();
 
-      for (const patient of patients) {
+for (const patient of patients) {
 
-        if (patient.email) {
+  if (!patient.email) continue;
 
-          await sendAppointmentCancelledEmail({
-
-            email: patient.email,
-
-            patientName: patient.patient_name,
-
-            reason,
-
-            date: patient.slot_date,
-
-            startTime: patient.start_time,
-
-            endTime: patient.end_time
-
-          });
-
-        }
-
-      }
+  await sendAppointmentCancelledEmail({
+    email: patient.email,
+    patientName: patient.patient_name,
+    reason,
+    date: patient.slot_date,
+    startTime: patient.start_time,
+    endTime: patient.end_time
+  });
+}
 
       return {
 
@@ -1013,29 +1003,26 @@ async function deleteSchedule(scheduleId, body, doctorId) {
 
       await connection.commit();
 
-      for (const patient of patients) {
+for (const patient of patients) {
 
-        if (patient.email) {
+  if (patient.email) {
 
-          await sendAppointmentCancelledEmail({
 
-            email: patient.email,
+    await sendAppointmentCancelledEmail({
+      email: patient.email,
+      patientName: patient.patient_name,
+      reason,
+      date: patient.slot_date,
+      startTime: patient.start_time,
+      endTime: patient.end_time
+    });
 
-            patientName: patient.patient_name,
+    console.log("Email sent successfully.");
 
-            reason,
-
-            date: patient.slot_date,
-
-            startTime: patient.start_time,
-
-            endTime: patient.end_time
-
-          });
-
-        }
-
-      }
+  } else {
+    console.log("Patient email not found.");
+  }
+}
 
       return {
 
@@ -1049,100 +1036,108 @@ async function deleteSchedule(scheduleId, body, doctorId) {
 
     }
  
-    if (slotId) {
+if (slotId) {
 
-      const [slot] = await connection.query(
-        `
-        SELECT
-          id,
-          start_date,
-          start_time,
-          end_time
-        FROM schedule_slots
-        WHERE id = ?
-          AND doctor_id = ?
-          AND schedule_id = ?
-        LIMIT 1
-        `,
-        [
-          slotId,
-          doctorId,
-          scheduleId
-        ]
-      );
+  const [slot] = await connection.query(
+    `
+    SELECT
+      id,
+      start_date,
+      start_time,
+      end_time
+    FROM schedule_slots
+    WHERE id = ?
+      AND doctor_id = ?
+      AND schedule_id = ?
+    LIMIT 1
+    `,
+    [
+      slotId,
+      doctorId,
+      scheduleId
+    ]
+  );
 
-      if (!slot.length) {
+  if (!slot.length) {
 
-        await connection.rollback();
+    await connection.rollback();
 
-        return {
-          success: false,
-          statusCode: 404,
-          message: "Slot not found."
-        };
+    return {
+      success: false,
+      statusCode: 404,
+      message: "Slot not found."
+    };
 
-      }
+  }
 
-      const patient =
-        await AppointmentModel.getAppointmentBySlot(
-          scheduleId,
-          slot[0].start_date,
-          slot[0].start_time,
-          connection
-        );
+  const patient =
+    await AppointmentModel.getAppointmentBySlot(
+      scheduleId,
+      slot[0].start_date,
+      slot[0].start_time,
+      connection
+    );
 
-      if (patient) {
+  console.log("Appointment By Slot:", patient);
 
-        await AppointmentModel.cancelAppointment(
-          patient.id,
-          reason,
-          connection
-        );
+  if (patient) {
 
-      }
+    await AppointmentModel.cancelAppointment(
+      patient.id,
+      reason,
+      connection
+    );
 
-      await SlotModel.deleteSingleSlot(
-        {
-          doctorId,
-          scheduleId,
-          slotId
-        },
-        connection
-      );
+  }
 
-      await connection.commit();
+  await SlotModel.deleteSingleSlot(
+    {
+      doctorId,
+      scheduleId,
+      slotId
+    },
+    connection
+  );
 
-      if (patient?.email) {
+  await connection.commit();
 
-        await sendAppointmentCancelledEmail({
+  if (patient?.email) {
 
-          email: patient.email,
+    await sendAppointmentCancelledEmail({
 
-          patientName: patient.patient_name,
+      email: patient.email,
 
-          reason,
+      patientName: patient.patient_name,
 
-          date: patient.slot_date,
+      reason,
 
-          startTime: patient.start_time,
+      date: patient.slot_date,
 
-          endTime: patient.end_time
+      startTime: patient.start_time,
 
-        });
+      endTime: patient.end_time
 
-      }
+    });
 
-      return {
+    console.log("✅ Appointment email sent to:", patient.email);
 
-        success: true,
+  } else {
 
-        statusCode: 200,
+    console.log("❌ No appointment found or patient email missing.");
 
-        message: "Slot deleted successfully."
+  }
 
-      };
+  return {
 
-    }
+    success: true,
+
+    statusCode: 200,
+
+    message: "Slot deleted successfully."
+
+  };
+
+}
 
     await connection.rollback();
 

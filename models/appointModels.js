@@ -1,6 +1,5 @@
 const db = require("../config/db");
 
-
 exports.getByToken = async ({
   doctorId,
   appointmentId,
@@ -29,10 +28,8 @@ exports.getByToken = async ({
     ]
   );
 
-
   return rows[0] || null;
 };
-
 
 exports.getAppointmentsByDate = async (
   scheduleId,
@@ -66,11 +63,8 @@ exports.getAppointmentsByDate = async (
       slotDate
     ]
   );
-
   return rows;
 };
-
-
 
 exports.getById = async (id) => {
 
@@ -83,11 +77,8 @@ exports.getById = async (id) => {
     [id]
   );
 
-
   return rows[0] || null;
 };
-
-
 
 exports.start = async (id) => {
 
@@ -103,11 +94,8 @@ exports.start = async (id) => {
     [id]
   );
 
-
   return result;
 };
-
-
 
 exports.complete = async (id) => {
 
@@ -123,11 +111,8 @@ exports.complete = async (id) => {
     [id]
   );
 
-
   return result;
 };
-
-
 
 exports.revisit = async (
   patientId,
@@ -154,34 +139,34 @@ exports.revisit = async (
   return rows[0] || null;
 };
 
-// ===============================
 exports.getAppointmentsBySchedule = async (
   scheduleId,
   connection = db
 ) => {
 
+  console.log("Schedule ID:", scheduleId);
+
   const [rows] = await connection.query(
     `
     SELECT
       a.id,
+      a.schedule_id,
+      a.patient_id,
       a.slot_date,
       a.start_time,
       a.end_time,
-      COALESCE(u.full_name, ap.patient_name) AS patient_name,
-      COALESCE(u.email, ap.patient_email) AS email
+      u.full_name AS patient_name,
+      u.email
     FROM appointments a
-
     LEFT JOIN users u
       ON u.id = a.patient_id
-
-    LEFT JOIN appointment_patients ap
-      ON ap.appointment_id = a.id
-
     WHERE a.schedule_id = ?
       AND a.status <> 'CANCELLED'
     `,
     [scheduleId]
   );
+
+  console.log("Appointments:", rows);
 
   return rows;
 };
@@ -211,8 +196,8 @@ exports.getAppointmentBySlot = async (
       ON ap.appointment_id = a.id
 
     WHERE a.schedule_id = ?
-      AND DATE(a.slot_date)=?
-      AND a.start_time=?
+      AND DATE(a.slot_date) = DATE(?)
+      AND TIME(a.start_time) = TIME(?)
       AND a.status <> 'CANCELLED'
     LIMIT 1
     `,
@@ -222,6 +207,8 @@ exports.getAppointmentBySlot = async (
       startTime
     ]
   );
+
+  console.log("Appointment By Slot:", rows);
 
   return rows[0] || null;
 };

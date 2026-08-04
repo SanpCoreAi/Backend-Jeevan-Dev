@@ -124,34 +124,22 @@ const updateScheduleValidation = Joi.object({
 const deleteScheduleValidation = Joi.object({
 
   date: Joi.date()
-    .optional()
-    .messages({
-      "date.base": "Date must be a valid date."
-    }),
+    .optional(),
 
   slotId: Joi.number()
     .integer()
     .positive()
-    .optional()
-    .messages({
-      "number.base": "Slot ID must be a number.",
-      "number.integer": "Slot ID must be an integer.",
-      "number.positive": "Slot ID must be positive."
-    }),
+    .optional(),
 
   reason: Joi.string()
     .trim()
-    .min(5)
-    .max(255)
     .required()
     .messages({
       "string.empty": "Reason is required.",
-      "string.min": "Reason must be at least 5 characters.",
-      "string.max": "Reason cannot exceed 255 characters.",
       "any.required": "Reason is required."
     })
 
-}).or("date", "slotId");
+});
 
 module.exports = {
   createScheduleValidation,

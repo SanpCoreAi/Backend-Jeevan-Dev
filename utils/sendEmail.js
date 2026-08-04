@@ -395,79 +395,213 @@ exports.sendAppointmentEmail = async ({ to, token, date, time }) => {
 };
 
 exports.sendAppointmentCancelledEmail = async ({
- email,
- patientName,
- reason,
- date,
- startTime,
- endTime
-
+  email,
+  patientName,
+  reason,
+  date,
+  startTime,
+  endTime
 }) => {
 
   try {
 
+    const formattedDate = new Date(date).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric"
+    });
+
     await transporter.sendMail({
 
-      from: `"Hospital" <${process.env.EMAIL_USER}>`,
+      from: `"SampCore AI Hospital" <${process.env.EMAIL_USER}>`,
 
       to: email,
 
-      subject: "Appointment Cancelled",
+      subject: "❌ Appointment Cancelled",
 
       html: `
-        <div style="font-family:Arial;padding:20px">
+      <!DOCTYPE html>
+      <html>
 
-          <h2>Appointment Cancelled</h2>
+      <head>
+        <meta charset="UTF-8">
+      </head>
 
-          <p>Hello <b>${patientName}</b>,</p>
+      <body style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,sans-serif;">
 
-          <p>Your appointment has been cancelled by the doctor.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 0;">
 
-          <table cellpadding="8">
+          <tr>
 
-            <tr>
+            <td align="center">
 
-              <td><b>Date</b></td>
+              <table width="650" cellpadding="0" cellspacing="0"
+                style="background:#ffffff;border-radius:12px;overflow:hidden;
+                box-shadow:0 5px 20px rgba(0,0,0,.08);">
 
-              <td>${date}</td>
+                <!-- Header -->
 
-            </tr>
+                <tr>
 
-            <tr>
+                  <td
+                    style="background:linear-gradient(90deg,#dc3545,#ff6b6b);
+                    color:#fff;padding:30px;text-align:center;">
 
-              <td><b>Time</b></td>
+                    <h1 style="margin:0;font-size:28px;">
+                      Appointment Cancelled
+                    </h1>
 
-              <td>${startTime} - ${endTime}</td>
+                    <p style="margin-top:10px;font-size:15px;">
+                      SampCore AI Hospital
+                    </p>
 
-            </tr>
+                  </td>
 
-            <tr>
+                </tr>
 
-              <td><b>Reason</b></td>
+                <!-- Body -->
 
-              <td>${reason}</td>
+                <tr>
 
-            </tr>
+                  <td style="padding:35px;">
 
-          </table>
+                    <p style="font-size:18px;">
+                      Hello <strong>${patientName}</strong>,
+                    </p>
 
-          <br>
+                    <p style="color:#555;font-size:15px;line-height:26px;">
 
-          <p>
-            Please book another appointment.
-          </p>
+                      We regret to inform you that your scheduled appointment
+                      has been <strong style="color:#dc3545;">cancelled</strong>
+                      by the doctor.
 
-          <br>
+                    </p>
 
-          <p>
-            Regards,<br>
-            Hospital Team
-          </p>
+                    <table
+                      width="100%"
+                      cellpadding="12"
+                      cellspacing="0"
+                      style="
+                        margin-top:25px;
+                        border:1px solid #eeeeee;
+                        border-collapse:collapse;
+                      ">
 
-        </div>
+                      <tr style="background:#f8f9fa;">
+
+                        <td width="35%"><strong>📅 Date</strong></td>
+
+                        <td>${formattedDate}</td>
+
+                      </tr>
+
+                      <tr>
+
+                        <td><strong>🕒 Time</strong></td>
+
+                        <td>${startTime} - ${endTime}</td>
+
+                      </tr>
+
+                      <tr style="background:#f8f9fa;">
+
+                        <td><strong>📝 Reason</strong></td>
+
+                        <td>${reason}</td>
+
+                      </tr>
+
+                    </table>
+
+                    <div
+                      style="
+                        margin-top:30px;
+                        background:#fff4e5;
+                        border-left:5px solid #ff9800;
+                        padding:18px;
+                        border-radius:6px;
+                        color:#555;
+                      ">
+
+                      <strong>Important:</strong><br><br>
+
+                      Please book a new appointment at your convenience.
+                      We apologize for any inconvenience caused.
+
+                    </div>
+
+                    <div style="text-align:center;margin:35px 0;">
+
+                      <a
+                        href="https://sampcoreai.com"
+                        style="
+                          background:#0d6efd;
+                          color:#fff;
+                          text-decoration:none;
+                          padding:14px 28px;
+                          border-radius:8px;
+                          display:inline-block;
+                          font-size:15px;
+                          font-weight:bold;
+                        ">
+
+                        Book New Appointment
+
+                      </a>
+
+                    </div>
+
+                    <hr style="border:none;border-top:1px solid #eee;">
+
+                    <p style="font-size:14px;color:#666;">
+
+                      Regards,<br><br>
+
+                      <strong>SampCore AI Hospital Team</strong>
+
+                    </p>
+
+                  </td>
+
+                </tr>
+
+                <!-- Footer -->
+
+                <tr>
+
+                  <td
+                    style="
+                      background:#f8f9fa;
+                      text-align:center;
+                      padding:20px;
+                      color:#888;
+                      font-size:12px;
+                    ">
+
+                    © ${new Date().getFullYear()} SampCore AI Hospital.<br>
+
+                    This is an automated email. Please do not reply.
+
+                  </td>
+
+                </tr>
+
+              </table>
+
+            </td>
+
+          </tr>
+
+        </table>
+
+      </body>
+
+      </html>
       `
 
     });
+
+    console.log(`Appointment cancellation email sent to ${email}`);
 
   } catch (error) {
 
