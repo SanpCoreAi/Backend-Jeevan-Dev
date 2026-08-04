@@ -224,10 +224,10 @@ exports.cancelAppointment = async (
     `
     UPDATE appointments
     SET
-      status='CANCELLED',
-      cancel_reason=?,
-      updated_at=NOW()
-    WHERE id=?
+      status = 'CANCELLED',
+      doctor_reason = ?,
+      updated_at = NOW()
+    WHERE id = ?
     `,
     [
       reason,

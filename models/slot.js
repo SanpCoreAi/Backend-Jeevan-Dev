@@ -2,7 +2,6 @@ const db = require("../config/db");
 
 async function insertSlots(slots) {
   if (!Array.isArray(slots) || slots.length === 0) return;
-  console.log("Slot Data:", slots);
 
   const values = slots.map(s => [
     s.schedule_id,

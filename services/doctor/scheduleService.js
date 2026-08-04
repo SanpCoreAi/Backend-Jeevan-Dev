@@ -1017,11 +1017,7 @@ for (const patient of patients) {
       endTime: patient.end_time
     });
 
-    console.log("Email sent successfully.");
-
-  } else {
-    console.log("Patient email not found.");
-  }
+  } 
 }
 
       return {
@@ -1078,8 +1074,6 @@ if (slotId) {
       connection
     );
 
-  console.log("Appointment By Slot:", patient);
-
   if (patient) {
 
     await AppointmentModel.cancelAppointment(
@@ -1119,13 +1113,7 @@ if (slotId) {
 
     });
 
-    console.log("✅ Appointment email sent to:", patient.email);
-
-  } else {
-
-    console.log("❌ No appointment found or patient email missing.");
-
-  }
+  } 
 
   return {
 
