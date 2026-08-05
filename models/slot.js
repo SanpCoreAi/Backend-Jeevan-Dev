@@ -1,6 +1,6 @@
 const db = require("../config/db");
 
-async function insertSlots(slots) {
+async function insertSlots(slots, connection = db) {
   if (!Array.isArray(slots) || slots.length === 0) return;
 
   const values = slots.map(s => [
@@ -13,7 +13,7 @@ async function insertSlots(slots) {
     formatTime(s.end_time)
   ]);
 
-  await db.query(
+  await connection.query(
     `INSERT INTO schedule_slots
      (schedule_id, doctor_id, start_date, end_date, status, start_time, end_time)
      VALUES ?`,
@@ -92,6 +92,27 @@ async function getDoctorSlots(doctorId, hospitalName, date) {
     ORDER BY ss.start_time ASC
     `,
     [doctorId, hospitalName, date]
+  );
+
+  return rows;
+}
+
+async function getSlotsBySchedule(scheduleId, connection = db) {
+  if (!scheduleId) return [];
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      id,
+      start_date,
+      start_time,
+      end_time,
+      status
+    FROM schedule_slots
+    WHERE schedule_id = ?
+    ORDER BY start_date ASC, start_time ASC
+    `,
+    [scheduleId]
   );
 
   return rows;
@@ -186,6 +207,7 @@ module.exports = {
   insertSlots,
   getActiveSlot,
   getDoctorSlots,
+  getSlotsBySchedule,
   deactivateSlot,
   deleteCompleteSchedule,
   deleteSlotsByDate,

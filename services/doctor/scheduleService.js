@@ -27,7 +27,7 @@ function normalizeDateValue(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
 }
 
-async function generateScheduleSlots(scheduleId, payload) {
+async function generateScheduleSlots(scheduleId, payload, connection = db) {
   const doctorId = payload.doctor_id;
   const start24 = payload.start_time;
   const end24 = payload.end_time;
@@ -44,19 +44,21 @@ async function generateScheduleSlots(scheduleId, payload) {
     return 0;
   }
 
-  const startDate = payload.start_date ? new Date(payload.start_date) : null;
-  const endDate = payload.end_date ? new Date(payload.end_date) : null;
+  const startDateStr = normalizeDateValue(payload.start_date);
+  const endDateStr = normalizeDateValue(payload.end_date);
   const activeDays = Array.isArray(payload.active_days) ? payload.active_days : [];
 
-  if (!startDate || !endDate || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return 0;
-  }
+  if (!startDateStr || !endDateStr) return 0;
+
+  // Use UTC midnight to avoid timezone shifts when iterating dates
+  const startDate = new Date(startDateStr + "T00:00:00Z");
+  const endDate = new Date(endDateStr + "T00:00:00Z");
 
   const slotRows = [];
   let currentDate = new Date(startDate);
 
   while (currentDate <= endDate) {
-    const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][currentDate.getDay()];
+    const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][currentDate.getUTCDay()];
 
     if (activeDays.includes(dayName)) {
       const dateStr = currentDate.toISOString().slice(0, 10);
@@ -74,14 +76,15 @@ async function generateScheduleSlots(scheduleId, payload) {
       }
     }
 
-    currentDate.setDate(currentDate.getDate() + 1);
+    // advance by one day in UTC
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
   }
 
   if (!slotRows.length) {
     return 0;
   }
 
-  await SlotModel.insertSlots(slotRows);
+  await SlotModel.insertSlots(slotRows, connection);
   return slotRows.length;
 }
 
@@ -254,6 +257,8 @@ async function createSchedule(doctorId, body) {
 async function getAllSchedules(doctorId) {
   try {
 
+    console.log("Doctor ID:", doctorId);
+
     if (!doctorId) {
       return {
         success: false,
@@ -264,6 +269,9 @@ async function getAllSchedules(doctorId) {
 
     const schedules = await ScheduleModel.getAllByDoctor(doctorId);
 
+    console.log("Schedules Count:", schedules.length);
+    console.log("Schedules:", JSON.stringify(schedules, null, 2));
+
     if (!Array.isArray(schedules) || schedules.length === 0) {
       return {
         success: true,
@@ -273,40 +281,61 @@ async function getAllSchedules(doctorId) {
       };
     }
 
-    const data = schedules.map((schedule) => ({
-      scheduleId: schedule.id,
-      doctorId: schedule.doctor_id,
-      locationId: schedule.location_id,
-      hospitalName: schedule.hospital_name,
-      offlinepatient_number: schedule.offlinepatient_number,
+    const data = [];
 
-      timing: {
-        start: time24To12(schedule.start_time),
-        end: time24To12(schedule.end_time),
-        slotDuration: Number(schedule.slot_duration),
-        breakMinutes: Number(schedule.break_minutes)
-      },
+    for (const schedule of schedules) {
 
-      availability: {
-        activeDays: Array.isArray(schedule.active_days)
-          ? schedule.active_days
-          : [],
-        startDate: formatDate(schedule.start_date),
-        endDate: formatDate(schedule.end_date)
-      },
+      console.log("\n==================================");
+      console.log("Schedule ID:", schedule.id);
+      console.log("Start Time:", schedule.start_time);
+      console.log("End Time:", schedule.end_time);
+      console.log("Slot Duration:", schedule.slot_duration);
+      console.log("Break Minutes:", schedule.break_minutes);
 
-      note: schedule.note || null,
+      // fetch all slots for this schedule from DB (covers full date range)
+      const dbSlots = await SlotModel.getSlotsBySchedule(schedule.id);
 
-      slots: generateSlots12(
-        schedule.start_time,
-        schedule.end_time,
-        Number(schedule.slot_duration),
-        Number(schedule.break_minutes)
-      ),
+      const slots = (dbSlots || []).map(s => ({
+        date: formatDate(s.start_date),
+        start: time24To12(s.start_time),
+        end: time24To12(s.end_time),
+        status: s.status
+      }));
 
-      createdAt: schedule.created_at || null,
-      updatedAt: schedule.updated_at || null
-    }));
+      console.log("DB Slots Count:", slots.length);
+
+      data.push({
+        scheduleId: schedule.id,
+        doctorId: schedule.doctor_id,
+        locationId: schedule.location_id,
+        hospitalName: schedule.hospital_name,
+        offlinepatient_number: schedule.offlinepatient_number,
+
+        timing: {
+          start: time24To12(schedule.start_time),
+          end: time24To12(schedule.end_time),
+          slotDuration: Number(schedule.slot_duration),
+          breakMinutes: Number(schedule.break_minutes)
+        },
+
+        availability: {
+          activeDays: Array.isArray(schedule.active_days)
+            ? schedule.active_days
+            : [],
+          startDate: formatDate(schedule.start_date),
+          endDate: formatDate(schedule.end_date)
+        },
+
+        note: schedule.note || null,
+
+        slots,
+
+        createdAt: schedule.created_at || null,
+        updatedAt: schedule.updated_at || null
+      });
+    }
+
+    console.log("Final Response Count:", data.length);
 
     return {
       success: true,
@@ -747,7 +776,8 @@ async function updateSchedule(doctorId, scheduleId, body) {
           ...existing,
           ...body,
           doctor_id: doctorId
-        }
+        },
+        connection
       );
 
     if (!totalSlots) {

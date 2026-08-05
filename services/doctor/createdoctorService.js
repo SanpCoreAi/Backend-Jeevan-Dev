@@ -116,23 +116,18 @@ exports.getProfile = async (userId) => {
 
         image: doctor.image_file_key
           ? {
-              url: S3_BASE_URL
-                ? `${S3_BASE_URL}/${encodeURI(
-                    doctor.image_file_key
-                  )}`
-                : null,
-            }
+            url: S3_BASE_URL
+              ? `${S3_BASE_URL}/${encodeURI(
+                doctor.image_file_key
+              )}`
+              : null,
+          }
           : null,
 
-        licenseFiles: safeParse(
-          doctor.files,
-          []
-        ).map((file) => ({
-          url: S3_BASE_URL
-            ? `${S3_BASE_URL}/${encodeURI(
-                file.fileKey
-              )}`
-            : null,
+        licenseFiles: safeParse(doctor.files, []).map((file) => ({
+          url: file.fileKey.startsWith("http")
+            ? file.fileKey
+            : `${S3_BASE_URL}/${encodeURI(file.fileKey)}`
         })),
 
         avgRating: Number(doctor.avg_rating || 0),
@@ -208,12 +203,12 @@ exports.getDoctorPublicProfileById = async (userId) => {
 
         image: doctor.image_file_key
           ? {
-              url: S3_BASE_URL
-                ? `${S3_BASE_URL}/${encodeURI(
-                    doctor.image_file_key
-                  )}`
-                : null,
-            }
+            url: S3_BASE_URL
+              ? `${S3_BASE_URL}/${encodeURI(
+                doctor.image_file_key
+              )}`
+              : null,
+          }
           : null,
 
         avgRating:
@@ -337,7 +332,7 @@ exports.getAllDoctors = async () => {
       if (doctor.qr_code) {
         qrUrl =
           doctor.qr_code.startsWith("http") ||
-          doctor.qr_code.startsWith("data:")
+            doctor.qr_code.startsWith("data:")
             ? doctor.qr_code
             : `${BASE_FILE_URL}/qr/${doctor.qr_code}`;
       }
