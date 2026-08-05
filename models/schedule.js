@@ -149,29 +149,19 @@ async function findOverlappingScheduleForUpdate(data) {
   return rows.length > 0;
 }
 
-async function getSlotsByScheduleId(scheduleId) {
-
-  const today = new Date().toLocaleDateString("en-CA", {
-    timeZone: "Asia/Kolkata"
-  });
-
+async function getScheduleByDoctor(doctorId) {
   const [rows] = await db.query(
     `
-    SELECT
-      id,
-      start_date,
-      start_time,
-      end_time,
-      status
-    FROM schedule_slots
-    WHERE schedule_id = ?
-      AND DATE(start_date) >= ?
-    ORDER BY start_date ASC, start_time ASC
+    SELECT *
+    FROM schedules
+    WHERE doctor_id = ?
+      AND end_date >= CURDATE()
+    ORDER BY start_date ASC, id DESC
     `,
-    [scheduleId, today]
+    [doctorId]
   );
 
-  return rows;
+  return rows.map(parseActiveDays);
 }
 
 async function getSchedulePublicByDoctorId(doctorId) {
@@ -298,7 +288,7 @@ module.exports = {
   getAllByDoctor,
   getScheduleByDoctor,
   getSchedulePublicByDoctorId,
-  getSlotsByScheduleId,
+  // getSlotsByScheduleId,
   findOverlappingScheduleForUpdate,
   deleteByScheduleId,
   update,
