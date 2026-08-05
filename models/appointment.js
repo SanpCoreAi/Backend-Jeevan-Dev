@@ -209,7 +209,6 @@ exports.getDashboardStats = async (
 
     FROM appointments
     WHERE doctor_id = ?
-      AND is_deleted = 0
     `,
     [doctorId]
   );
@@ -419,7 +418,6 @@ exports.getAppointmentForCancel = async (
     FROM appointments
     WHERE id = ?
       AND patient_id = ?
-      AND is_deleted = 0
     LIMIT 1
     `,
     [
@@ -541,7 +539,6 @@ exports.getAppointmentById = async (
       ON d.id = a.doctor_id
 
     WHERE a.doctor_id = ?
-      AND a.is_deleted = 0
 
     ORDER BY a.id DESC
     `,
@@ -568,7 +565,6 @@ exports.countTodayAppointments = async (
     WHERE patient_id = ?
       AND DATE(slot_date) = ?
       AND status <> 'CANCELLED'
-      AND is_deleted = 0
     `,
     [
       patientId,
@@ -597,7 +593,6 @@ exports.getByIdAndPatient = async (
       ON ap.appointment_id = a.id
 
     WHERE ap.user_id = ?
-      AND a.is_deleted = 0
 
     ORDER BY a.id DESC
     `,
@@ -694,7 +689,6 @@ exports.getAppointmentDetails = async (
 
     WHERE a.doctor_id = ?
       AND a.id = ?
-      AND a.is_deleted = 0
 
     LIMIT 1
     `,
@@ -746,7 +740,6 @@ exports.getAllByPatient = async (
         a.patient_id = ?
         OR ap.user_id = ?
       )
-      AND a.is_deleted = 0
 
     ORDER BY
       a.slot_date DESC,
@@ -865,7 +858,6 @@ exports.getAppointments = async (
     WHERE
       a.doctor_id = ?
       AND DATE(a.slot_date) = ?
-      AND a.is_deleted = 0
 
     ORDER BY
       a.start_time ASC,
@@ -894,7 +886,6 @@ exports.getAppointments = async (
       FROM appointments
       WHERE doctor_id = ?
         AND DATE(slot_date) = ?
-        AND is_deleted = 0
       `,
       [
         doctorId,
@@ -951,7 +942,6 @@ exports.getDashboardCards = async (
       FROM appointments
 
       WHERE doctor_id = ?
-        AND is_deleted = 0
       `,
       [doctorId]
     );
