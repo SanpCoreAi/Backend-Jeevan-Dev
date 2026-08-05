@@ -558,6 +558,9 @@ exports.getPatientDashboardCards = async (req, res) => {
 exports.getMyAppointments = async (req, res) => {
   try {
 
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+
     let userId;
 
     if (req.user.role === 1) {
@@ -566,8 +569,7 @@ exports.getMyAppointments = async (req, res) => {
 
     } else {
 
-      const doctorId =
-        await getDoctorIdFromUser(req.user);
+      const doctorId = await getDoctorIdFromUser(req.user);
 
       if (doctorId === false) {
         return res.status(403).json({
@@ -584,32 +586,25 @@ exports.getMyAppointments = async (req, res) => {
       }
 
       userId = doctorId;
-
     }
 
-    const result =
-      await appointmentService.getMyAppointments(
-        userId
-      );
+    const result = await appointmentService.getMyAppointments(
+      userId,
+      req.user.role,
+      page,
+      limit
+    );
 
-    return res.status(200).json({
-      success: true,
-      count: result.data.length,
-      data: result.data
-    });
+    return res.status(200).json(result);
 
   } catch (error) {
 
-    console.error(
-      "Get My Appointments Error:",
-      error
-    );
+    console.error("Get My Appointments Error:", error);
 
     return res.status(500).json({
       success: false,
       message: "Internal server error"
     });
-
   }
 };
 

@@ -701,12 +701,10 @@ exports.getAppointmentDetails = async (
   return rows[0] || null;
 };
 
-
-// ===============================
-// Get All Patient Appointments
-// ===============================
 exports.getAllByPatient = async (
   userId,
+  limit,
+  offset,
   connection = db
 ) => {
 
@@ -714,49 +712,111 @@ exports.getAllByPatient = async (
     `
     SELECT
       a.*,
-
       ap.patient_name,
       ap.age,
       ap.gender,
       ap.patient_phone,
       ap.patient_email,
-
       u.full_name AS doctor_name,
       d.specialization AS doctor_department
-
     FROM appointments a
-
     LEFT JOIN appointment_patients ap
       ON ap.appointment_id = a.id
-
     LEFT JOIN doctors d
       ON d.user_id = a.doctor_id
-
     LEFT JOIN users u
       ON u.id = a.doctor_id
-
     WHERE
-      (
-        a.patient_id = ?
-        OR ap.user_id = ?
-      )
-
+      a.patient_id = ?
+      OR ap.user_id = ?
     ORDER BY
       a.slot_date DESC,
       a.start_time ASC
+    LIMIT ? OFFSET ?
     `,
-    [
-      userId,
-      userId
-    ]
+    [userId, userId, limit, offset]
   );
 
   return rows;
 };
 
-// ===============================
-// Get Today's Appointments
-// ===============================
+exports.getPatientAppointmentCount = async (
+  userId,
+  connection = db
+) => {
+
+  const [rows] = await connection.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM appointments a
+    LEFT JOIN appointment_patients ap
+      ON ap.appointment_id = a.id
+    WHERE
+      a.patient_id = ?
+      OR ap.user_id = ?
+    `,
+    [userId, userId]
+  );
+
+  return rows[0].total;
+};
+
+exports.getAllByDoctor = async (
+  doctorId,
+  limit,
+  offset,
+  connection = db
+) => {
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      a.*,
+      ap.patient_name,
+      ap.age,
+      ap.gender,
+      ap.patient_phone,
+      ap.patient_email,
+      u.full_name AS doctor_name,
+      d.specialization AS doctor_department
+    FROM appointments a
+    LEFT JOIN appointment_patients ap
+      ON ap.appointment_id = a.id
+    LEFT JOIN doctors d
+      ON d.user_id = a.doctor_id
+    LEFT JOIN users u
+      ON u.id = a.doctor_id
+    WHERE
+      a.doctor_id = ?
+    ORDER BY
+      a.slot_date DESC,
+      a.start_time ASC
+    LIMIT ? OFFSET ?
+    `,
+    [doctorId, limit, offset]
+  );
+
+  return rows;
+};
+
+exports.getDoctorAppointmentCount = async (
+  doctorId,
+  connection = db
+) => {
+
+  const [rows] = await connection.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM appointments
+    WHERE doctor_id = ?
+    `,
+    [doctorId]
+  );
+
+  return rows[0].total;
+};
+
+
 exports.getAppointments = async (
   {
     doctorId,

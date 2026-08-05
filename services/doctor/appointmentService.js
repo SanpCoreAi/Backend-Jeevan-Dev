@@ -877,20 +877,51 @@ exports.getUserById = async (
 
 
 exports.getMyAppointments = async (
-  userId
+  userId,
+  role,
+  page,
+  limit
 ) => {
 
-  const appointments =
-    await Appointment.getAllByPatient(
+  const offset = (page - 1) * limit;
+
+  let appointments;
+  let total;
+
+  if (role === 1) {
+
+    appointments = await Appointment.getAllByPatient(
+      userId,
+      limit,
+      offset
+    );
+
+    total = await Appointment.getPatientAppointmentCount(
       userId
     );
 
+  } else {
+
+    appointments = await Appointment.getAllByDoctor(
+      userId,
+      limit,
+      offset
+    );
+
+    total = await Appointment.getDoctorAppointmentCount(
+      userId
+    );
+  }
+
   return {
     success: true,
+    page,
+    limit,
+    totalRecords: total,
+    totalPages: Math.ceil(total / limit),
     count: appointments.length,
     data: appointments
   };
-
 };
 
 exports.getDoctorSlots = async ({
