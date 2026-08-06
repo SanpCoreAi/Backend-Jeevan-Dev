@@ -97,17 +97,29 @@ async function getScheduleCountByDoctor(doctorId) {
   return rows[0].total;
 }
 
-async function getScheduleByDoctor(doctorId) {
-  const [rows] = await db.query(
-    `
-    SELECT *
-    FROM schedules
-    WHERE doctor_id = ?
-      AND end_date >= CURDATE()
-    ORDER BY start_date ASC, id DESC
-    `,
-    [doctorId]
-  );
+async function getScheduleByDoctor(doctorId, limit = 0, offset = 0) {
+  let sql = `
+    SELECT
+      s.*,
+      (
+        SELECT COUNT(*)
+        FROM schedule_slots ss
+        WHERE ss.schedule_id = s.id
+          AND LOWER(ss.status) = 'inactive'
+      ) AS booking_length
+    FROM schedules s
+    WHERE s.doctor_id = ?
+      AND s.end_date >= CURDATE()
+    ORDER BY s.start_date ASC, s.id DESC
+  `;
+  const params = [doctorId];
+
+  if (Number(limit) > 0) {
+    sql += ` LIMIT ? OFFSET ?`;
+    params.push(Number(limit), Number(offset));
+  }
+
+  const [rows] = await db.query(sql, params);
 
   return rows.map(parseActiveDays);
 }
@@ -147,21 +159,6 @@ async function findOverlappingScheduleForUpdate(data) {
   );
 
   return rows.length > 0;
-}
-
-async function getScheduleByDoctor(doctorId) {
-  const [rows] = await db.query(
-    `
-    SELECT *
-    FROM schedules
-    WHERE doctor_id = ?
-      AND end_date >= CURDATE()
-    ORDER BY start_date ASC, id DESC
-    `,
-    [doctorId]
-  );
-
-  return rows.map(parseActiveDays);
 }
 
 async function getSchedulePublicByDoctorId(doctorId) {
@@ -264,6 +261,12 @@ function parseActiveDays(r) {
       active_days = active_days.split(",").map(d => d.trim());
     }
   }
+
+  return {
+    ...r,
+    active_days
+  };
+
 
   const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 

@@ -3,6 +3,19 @@ const DoctorRatingModel = require("../../models/doctorRatingModel");
 const BASE_FILE_URL =
   process.env.APP_BASE_URL || "http://localhost:4000/uploads";
 
+const buildQrUrl = (qrCode) => {
+  if (!qrCode) return null;
+  if (qrCode.startsWith("http") || qrCode.startsWith("data:")) {
+    return qrCode;
+  }
+
+  if (qrCode.toLowerCase().endsWith(".png")) {
+    return `${BASE_FILE_URL}/qr/${qrCode}`;
+  }
+
+  return `${BASE_FILE_URL}/qrcodes/${qrCode}.png`;
+};
+
 function parseJSON(value, fallback = []) {
   if (!value) return fallback;
 
@@ -41,11 +54,7 @@ exports.getDoctorProfileWithRating = async (doctorId) => {
     let qrCode = null;
 
     if (doctor.qr_code) {
-      qrCode =
-        doctor.qr_code.startsWith("http") ||
-        doctor.qr_code.startsWith("data:")
-          ? doctor.qr_code
-          : `${BASE_FILE_URL}/qr/${doctor.qr_code}`;
+      qrCode = buildQrUrl(doctor.qr_code);
     }
 
     return {

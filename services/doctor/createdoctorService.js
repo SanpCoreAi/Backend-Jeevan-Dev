@@ -13,6 +13,19 @@ if (!fs.existsSync(qrFolder)) {
   fs.mkdirSync(qrFolder, { recursive: true });
 }
 
+const buildQrUrl = (qrCode) => {
+  if (!qrCode) return null;
+  if (qrCode.startsWith("http") || qrCode.startsWith("data:")) {
+    return qrCode;
+  }
+
+  if (qrCode.toLowerCase().endsWith(".png")) {
+    return `${BASE_FILE_URL}/qr/${qrCode}`;
+  }
+
+  return `${BASE_FILE_URL}/qrcodes/${qrCode}.png`;
+};
+
 const buildAddress = (hospital) => {
   if (!hospital) return null;
 
@@ -132,10 +145,7 @@ exports.getProfile = async (userId) => {
 
         avgRating: Number(doctor.avg_rating || 0),
 
-        qr_code:
-          qrCode && BASE_FILE_URL
-            ? `${BASE_FILE_URL}/qr/${qrCode}`
-            : null,
+        qr_code: buildQrUrl(qrCode),
       },
     };
   } catch (error) {
@@ -330,11 +340,7 @@ exports.getAllDoctors = async () => {
       let qrUrl = null;
 
       if (doctor.qr_code) {
-        qrUrl =
-          doctor.qr_code.startsWith("http") ||
-            doctor.qr_code.startsWith("data:")
-            ? doctor.qr_code
-            : `${BASE_FILE_URL}/qr/${doctor.qr_code}`;
+        qrUrl = buildQrUrl(doctor.qr_code);
       }
 
       const images = safeParse(

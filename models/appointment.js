@@ -1081,13 +1081,11 @@ exports.getPatientDashboardCards = async (
         FROM appointments
         WHERE doctor_id=?
         AND status='COMPLETED'
-        AND is_deleted=0
       ) AS total_patient
 
     FROM appointments
 
     WHERE doctor_id=?
-      AND is_deleted=0
   `;
 
   const [[row]] =

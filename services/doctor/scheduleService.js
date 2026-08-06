@@ -435,8 +435,9 @@ async function getScheduleByDoctorId(
 
         hospitalName: schedule.hospital_name,
 
-        offlinepatient_number:
-          schedule.offlinepatient_number,
+        offlinepatient_number: schedule.offlinepatient_number,
+
+        booking_length: Number(schedule.booking_length),
 
         timing: {
           start: time24To12(schedule.start_time),
@@ -455,7 +456,6 @@ async function getScheduleByDoctorId(
         },
 
         note: schedule.note || null,
-
 
         createdAt: schedule.created_at || null,
 
