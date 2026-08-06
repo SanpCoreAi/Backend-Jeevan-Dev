@@ -165,9 +165,9 @@ async function getSchedulePublicByDoctorId(doctorId) {
   return getScheduleByDoctor(doctorId);
 }
 
-async function deleteActiveSlots(doctorId, scheduleId) {
+async function deleteActiveSlots(doctorId, scheduleId, connection = db) {
 
-  const [result] = await db.query(
+  const [result] = await connection.query(
     `
     DELETE FROM schedule_slots
     WHERE doctor_id = ?

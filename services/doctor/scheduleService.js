@@ -46,21 +46,70 @@ async function generateScheduleSlots(scheduleId, payload, connection = db) {
 
   const startDateStr = normalizeDateValue(payload.start_date);
   const endDateStr = normalizeDateValue(payload.end_date);
-  const activeDays = Array.isArray(payload.active_days) ? payload.active_days : [];
+
+  let activeDays = [];
+  if (Array.isArray(payload.active_days)) {
+    activeDays = payload.active_days;
+  } else if (typeof payload.active_days === "string") {
+    try {
+      const parsedDays = JSON.parse(payload.active_days);
+      if (Array.isArray(parsedDays)) {
+        activeDays = parsedDays;
+      }
+    } catch {
+      activeDays = payload.active_days
+        .split(",")
+        .map((day) => String(day).trim())
+        .filter(Boolean);
+    }
+  }
 
   if (!startDateStr || !endDateStr) return 0;
 
-  // Use UTC midnight to avoid timezone shifts when iterating dates
+  const normalizedDays = activeDays
+    .map((day) => String(day).trim())
+    .filter(Boolean)
+    .map((day) => {
+      const normalized = String(day).slice(0, 3).toLowerCase();
+      switch (normalized) {
+        case "sun":
+          return "Sun";
+        case "mon":
+          return "Mon";
+        case "tue":
+          return "Tue";
+        case "wed":
+          return "Wed";
+        case "thu":
+          return "Thu";
+        case "fri":
+          return "Fri";
+        case "sat":
+          return "Sat";
+        default:
+          return null;
+      }
+    })
+    .filter(Boolean);
+
+  if (!normalizedDays.length) return 0;
+
+  const endDayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(endDateStr + "T00:00:00Z").getUTCDay()];
+  if (endDayName && !normalizedDays.includes(endDayName)) {
+    normalizedDays.push(endDayName);
+  }
+
   const startDate = new Date(startDateStr + "T00:00:00Z");
   const endDate = new Date(endDateStr + "T00:00:00Z");
 
+  // Use UTC midnight to avoid timezone shifts when iterating dates
   const slotRows = [];
   let currentDate = new Date(startDate);
 
   while (currentDate <= endDate) {
     const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][currentDate.getUTCDay()];
 
-    if (activeDays.includes(dayName)) {
+    if (normalizedDays.includes(dayName)) {
       const dateStr = currentDate.toISOString().slice(0, 10);
 
       for (const slot of slots) {
@@ -361,7 +410,12 @@ async function getAllSchedules(doctorId) {
 function formatDate(date) {
   if (!date) return null;
 
-  return new Date(date).toISOString().split("T")[0];
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
 }
 
 async function getScheduleByDoctorId(
@@ -766,7 +820,8 @@ async function updateSchedule(doctorId, scheduleId, body) {
 
     await ScheduleModel.deleteActiveSlots(
       doctorId,
-      scheduleId
+      scheduleId,
+      connection
     );
 
     const totalSlots =

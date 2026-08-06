@@ -1,7 +1,7 @@
 const db = require("../config/db");
 
 async function insertSlots(slots, connection = db) {
-  if (!Array.isArray(slots) || slots.length === 0) return;
+  if (!Array.isArray(slots) || slots.length === 0) return 0;
 
   const values = slots.map(s => [
     s.schedule_id,
@@ -13,12 +13,14 @@ async function insertSlots(slots, connection = db) {
     formatTime(s.end_time)
   ]);
 
-  await connection.query(
+  const [result] = await connection.query(
     `INSERT INTO schedule_slots
      (schedule_id, doctor_id, start_date, end_date, status, start_time, end_time)
      VALUES ?`,
     [values]
   );
+
+  return result.affectedRows || 0;
 }
 
 function formatTime(time) {
