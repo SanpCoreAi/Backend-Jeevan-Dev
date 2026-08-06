@@ -303,10 +303,12 @@ async function createSchedule(doctorId, body) {
   }
 }
 
-async function getAllSchedules(doctorId) {
+async function getAllSchedules(
+  doctorId,
+  page = 1,
+  limit = 10
+) {
   try {
-
-    console.log("Doctor ID:", doctorId);
 
     if (!doctorId) {
       return {
@@ -316,49 +318,68 @@ async function getAllSchedules(doctorId) {
       };
     }
 
-    const schedules = await ScheduleModel.getAllByDoctor(doctorId);
+    page = Math.max(1, Number(page) || 1);
+    limit = Math.max(1, Math.min(100, Number(limit) || 10));
 
-    console.log("Schedules Count:", schedules.length);
-    console.log("Schedules:", JSON.stringify(schedules, null, 2));
+    const offset = (page - 1) * limit;
 
-    if (!Array.isArray(schedules) || schedules.length === 0) {
+    const totalRecords =
+      await ScheduleModel.getAllCountByDoctor(doctorId);
+
+    if (totalRecords === 0) {
       return {
         success: true,
         statusCode: 200,
         message: "No schedules found.",
+        pagination: {
+          totalRecords: 0,
+          totalPages: 0,
+          currentPage: page,
+          limit,
+          hasNextPage: false,
+          hasPreviousPage: false
+        },
+        count: 0,
         data: []
       };
     }
+
+    const schedules =
+      await ScheduleModel.getAllByDoctor(
+        doctorId,
+        limit,
+        offset
+      );
 
     const data = [];
 
     for (const schedule of schedules) {
 
-      console.log("\n==================================");
-      console.log("Schedule ID:", schedule.id);
-      console.log("Start Time:", schedule.start_time);
-      console.log("End Time:", schedule.end_time);
-      console.log("Slot Duration:", schedule.slot_duration);
-      console.log("Break Minutes:", schedule.break_minutes);
+      const dbSlots =
+        await SlotModel.getSlotsBySchedule(schedule.id);
 
-      // fetch all slots for this schedule from DB (covers full date range)
-      const dbSlots = await SlotModel.getSlotsBySchedule(schedule.id);
-
-      const slots = (dbSlots || []).map(s => ({
-        date: formatDate(s.start_date),
-        start: time24To12(s.start_time),
-        end: time24To12(s.end_time),
-        status: s.status
+      const slots = dbSlots.map(slot => ({
+        date: formatDate(slot.start_date),
+        start: time24To12(slot.start_time),
+        end: time24To12(slot.end_time),
+        status: slot.status
       }));
 
-      console.log("DB Slots Count:", slots.length);
-
       data.push({
+
         scheduleId: schedule.id,
+
         doctorId: schedule.doctor_id,
+
         locationId: schedule.location_id,
+
         hospitalName: schedule.hospital_name,
-        offlinepatient_number: schedule.offlinepatient_number,
+
+        offlinepatient_number:
+          schedule.offlinepatient_number,
+
+        booking_length:
+          Number(schedule.booking_length),
 
         timing: {
           start: time24To12(schedule.start_time),
@@ -380,23 +401,44 @@ async function getAllSchedules(doctorId) {
         slots,
 
         createdAt: schedule.created_at || null,
+
         updatedAt: schedule.updated_at || null
+
       });
+
     }
 
-    console.log("Final Response Count:", data.length);
-
     return {
+
       success: true,
+
       statusCode: 200,
+
       message: "Schedules fetched successfully.",
+
+      pagination: {
+        totalRecords,
+        totalPages: Math.ceil(totalRecords / limit),
+        currentPage: page,
+        limit,
+        hasNextPage:
+          page < Math.ceil(totalRecords / limit),
+        hasPreviousPage:
+          page > 1
+      },
+
       count: data.length,
+
       data
+
     };
 
   } catch (error) {
 
-    console.error("Get All Schedules Service Error:", error);
+    console.error(
+      "Get All Schedules Service Error:",
+      error
+    );
 
     return {
       success: false,

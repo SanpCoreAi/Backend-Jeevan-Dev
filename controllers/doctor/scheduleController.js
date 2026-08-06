@@ -44,13 +44,22 @@ exports.create = async (req, res) => {
 
 exports.getAll = async (req, res) => {
   try {
-    const result = await ScheduleService.getAllSchedules(req.user.id);
+
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+
+    const result = await ScheduleService.getAllSchedules(
+      req.user.id,
+      page,
+      limit
+    );
 
     return res
       .status(result.statusCode || 200)
       .json(result);
 
   } catch (error) {
+
     console.error("GET ALL SCHEDULES ERROR:", error);
 
     return res.status(500).json({
@@ -58,6 +67,7 @@ exports.getAll = async (req, res) => {
       statusCode: 500,
       message: "Internal Server Error"
     });
+
   }
 };
 

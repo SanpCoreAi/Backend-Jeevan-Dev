@@ -37,17 +37,52 @@ async function createSchedule(data) {
   return res.insertId;
 }
 
-// ✅ Get all schedules
-async function getAllByDoctor(doctorId) {
+
+async function getAllByDoctor(
+  doctorId,
+  limit,
+  offset
+) {
+
   const [rows] = await db.query(
-    `SELECT * FROM schedules WHERE doctor_id=? ORDER BY id DESC`,
-    [doctorId]
+    `
+    SELECT
+      s.*,
+      (
+        SELECT COUNT(*)
+        FROM schedule_slots ss
+        WHERE ss.schedule_id = s.id
+          AND LOWER(ss.status) = 'inactive'
+      ) AS booking_length
+    FROM schedules s
+    WHERE s.doctor_id = ?
+    ORDER BY s.id DESC
+    LIMIT ? OFFSET ?
+    `,
+    [doctorId, limit, offset]
   );
 
   return rows.map(parseActiveDays);
+
 }
 
-// ✅ Hospital-wise duplicate + overlap check
+
+async function getAllCountByDoctor(doctorId) {
+
+  const [rows] = await db.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM schedules
+    WHERE doctor_id = ?
+    `,
+    [doctorId]
+  );
+
+  return rows[0].total;
+
+}
+
+
 async function findOverlappingSchedule(data) {
   const [rows] = await db.query(
     `
@@ -292,6 +327,7 @@ module.exports = {
   getScheduleByDoctor,
   getSchedulePublicByDoctorId,
   // getSlotsByScheduleId,
+  getAllCountByDoctor,
   findOverlappingScheduleForUpdate,
   deleteByScheduleId,
   update,
