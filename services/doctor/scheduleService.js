@@ -955,14 +955,6 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       reason
     } = body || {};
 
-    if (!reason || !reason.trim()) {
-      return {
-        success: false,
-        statusCode: 400,
-        message: "Reason is required."
-      };
-    }
-
     connection = await db.getConnection();
 
     await connection.beginTransaction();
@@ -971,8 +963,8 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       `
       SELECT id
       FROM schedules
-      WHERE id=?
-      AND doctor_id=?
+      WHERE id = ?
+        AND doctor_id = ?
       LIMIT 1
       `,
       [
@@ -990,11 +982,44 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         statusCode: 404,
         message: "Schedule not found."
       };
+
     }
 
     let patients = [];
 
+    /* =====================================================
+       COMPLETE SCHEDULE DELETE
+    ====================================================== */
+
     if (!date && !slotId) {
+
+      const slots =
+        await SlotModel.getSlotsBySchedule(
+          scheduleId,
+          connection
+        );
+
+      const hasBookedSlots =
+        slots.some(
+          slot =>
+            String(slot.status).toLowerCase() === "inactive"
+        );
+
+      if (
+        hasBookedSlots &&
+        (!reason || !reason.trim())
+      ) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "Reason is required because booked slots exist."
+        };
+
+      }
 
       patients =
         await AppointmentModel.getAppointmentsBySchedule(
@@ -1006,9 +1031,10 @@ async function deleteSchedule(scheduleId, body, doctorId) {
 
         await AppointmentModel.cancelAppointment(
           item.id,
-          reason,
+          reason || null,
           connection
         );
+
       }
 
       await SlotModel.deleteCompleteSchedule(
@@ -1026,13 +1052,21 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         if (!patient.email) continue;
 
         await sendAppointmentCancelledEmail({
+
           email: patient.email,
+
           patientName: patient.patient_name,
-          reason,
+
+          reason: reason || "Schedule removed",
+
           date: patient.slot_date,
+
           startTime: patient.start_time,
+
           endTime: patient.end_time
+
         });
+
       }
 
       return {
@@ -1047,69 +1081,92 @@ async function deleteSchedule(scheduleId, body, doctorId) {
 
     }
 
+    /* =====================================================
+       ONE DAY DELETE
+    ====================================================== */
+
     if (date && !slotId) {
 
       const formattedDate =
         normalizeDateValue(date);
 
+      const slots =
+        await SlotModel.getSlotsByDate(
+          scheduleId,
+          formattedDate,
+          connection
+        );
+
+      const hasBookedSlots =
+        slots.some(
+          slot =>
+            String(slot.status).toLowerCase() === "inactive"
+        );
+
+      if (
+        hasBookedSlots &&
+        (!reason || !reason.trim())
+      ) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "Reason is required because booked slots exist."
+        };
+
+      }
+
       patients =
         await AppointmentModel.getAppointmentsByDate(
-
           scheduleId,
-
           formattedDate,
-
           connection
-
         );
 
       for (const item of patients) {
 
         await AppointmentModel.cancelAppointment(
-
           item.id,
-
-          reason,
-
+          reason || null,
           connection
-
         );
 
       }
 
       await SlotModel.deleteSlotsByDate(
-
         {
-
           doctorId,
-
           scheduleId,
-
           date: formattedDate
-
         },
-
         connection
-
       );
 
       await connection.commit();
 
       for (const patient of patients) {
 
-        if (patient.email) {
+        if (!patient.email) continue;
 
+        await sendAppointmentCancelledEmail({
 
-          await sendAppointmentCancelledEmail({
-            email: patient.email,
-            patientName: patient.patient_name,
-            reason,
-            date: patient.slot_date,
-            startTime: patient.start_time,
-            endTime: patient.end_time
-          });
+          email: patient.email,
 
-        }
+          patientName: patient.patient_name,
+
+          reason: reason || "Schedule removed",
+
+          date: patient.slot_date,
+
+          startTime: patient.start_time,
+
+          endTime: patient.end_time
+
+        });
+
       }
 
       return {
@@ -1124,21 +1181,26 @@ async function deleteSchedule(scheduleId, body, doctorId) {
 
     }
 
+    /* =====================================================
+       SINGLE SLOT DELETE
+    ====================================================== */
+
     if (slotId) {
 
       const [slot] = await connection.query(
         `
-    SELECT
-      id,
-      start_date,
-      start_time,
-      end_time
-    FROM schedule_slots
-    WHERE id = ?
-      AND doctor_id = ?
-      AND schedule_id = ?
-    LIMIT 1
-    `,
+        SELECT
+          id,
+          status,
+          start_date,
+          start_time,
+          end_time
+        FROM schedule_slots
+        WHERE id = ?
+          AND doctor_id = ?
+          AND schedule_id = ?
+        LIMIT 1
+        `,
         [
           slotId,
           doctorId,
@@ -1158,21 +1220,46 @@ async function deleteSchedule(scheduleId, body, doctorId) {
 
       }
 
-      const patient =
-        await AppointmentModel.getAppointmentBySlot(
-          scheduleId,
-          slot[0].start_date,
-          slot[0].start_time,
-          connection
-        );
+      const isBooked =
+        String(slot[0].status).toLowerCase() === "inactive";
 
-      if (patient) {
+      if (
+        isBooked &&
+        (!reason || !reason.trim())
+      ) {
 
-        await AppointmentModel.cancelAppointment(
-          patient.id,
-          reason,
-          connection
-        );
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "Reason is required because this slot is booked."
+        };
+
+      }
+
+      let patient = null;
+
+      if (isBooked) {
+
+        patient =
+          await AppointmentModel.getAppointmentBySlot(
+            scheduleId,
+            slot[0].start_date,
+            slot[0].start_time,
+            connection
+          );
+
+        if (patient) {
+
+          await AppointmentModel.cancelAppointment(
+            patient.id,
+            reason,
+            connection
+          );
+
+        }
 
       }
 

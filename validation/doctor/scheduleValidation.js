@@ -133,10 +133,10 @@ const deleteScheduleValidation = Joi.object({
 
   reason: Joi.string()
     .trim()
-    .required()
+    .optional()
+    .allow("")
     .messages({
-      "string.empty": "Reason is required.",
-      "any.required": "Reason is required."
+      "string.base": "Reason must be a string."
     })
 
 });

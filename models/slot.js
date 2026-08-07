@@ -105,7 +105,10 @@ async function getDoctorSlots(doctorId, hospitalName, date) {
   return rows;
 }
 
-async function getSlotsBySchedule(scheduleId, connection = db) {
+async function getSlotsBySchedule(
+  scheduleId,
+  connection = db
+) {
   if (!scheduleId) return [];
 
   const [rows] = await connection.query(
@@ -210,6 +213,34 @@ async function deleteSingleSlot(
   return result;
 }
 
+async function getSlotsByDate(
+  scheduleId,
+  date,
+  connection = db
+) {
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      id,
+      status,
+      start_date,
+      start_time,
+      end_time
+    FROM schedule_slots
+    WHERE schedule_id = ?
+      AND DATE(start_date) = DATE(?)
+    ORDER BY start_time ASC
+    `,
+    [
+      scheduleId,
+      date
+    ]
+  );
+
+  return rows;
+
+}
 
 module.exports = {
   insertSlots,
@@ -217,6 +248,7 @@ module.exports = {
   getDoctorSlots,
   getSlotsBySchedule,
   deactivateSlot,
+  getSlotsByDate,
   deleteCompleteSchedule,
   deleteSlotsByDate,
   deleteSingleSlot,
