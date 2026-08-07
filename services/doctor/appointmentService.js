@@ -943,6 +943,12 @@ exports.getDoctorSlots = async ({
     hospitalName,
     date,
     totalSlots: slots.length,
+
+    booking_length:
+      slots.length > 0
+        ? Number(slots[0].booking_length)
+        : 0,
+
     slots: slots.map((slot) => ({
       slotId: slot.id,
       startTime: slot.start_time,

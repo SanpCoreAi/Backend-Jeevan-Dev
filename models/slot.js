@@ -84,7 +84,13 @@ async function getDoctorSlots(doctorId, hospitalName, date) {
       ss.start_time,
       ss.end_time,
       ss.status,
-      s.hospital_name
+      s.hospital_name,
+      (
+        SELECT COUNT(*)
+        FROM schedule_slots s2
+        WHERE s2.schedule_id = ss.schedule_id
+          AND LOWER(s2.status) = 'inactive'
+      ) AS booking_length
     FROM schedule_slots ss
     INNER JOIN schedules s
       ON s.id = ss.schedule_id
