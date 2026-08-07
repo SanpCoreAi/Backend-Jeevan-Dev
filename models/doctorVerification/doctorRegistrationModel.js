@@ -330,3 +330,66 @@ exports.markEmailVerified = async (email, conn = db) => {
     );
 
 };
+
+exports.updateDocuments = async ({
+  id,
+  medical_registration_certificate = null,
+  medical_degree_certificate = null,
+  government_id_proof = null,
+  selfie = null,
+}) => {
+
+  const sql = `
+    UPDATE doctor_registrations
+    SET
+      medical_registration_certificate =
+        COALESCE(?, medical_registration_certificate),
+
+      medical_degree_certificate =
+        COALESCE(?, medical_degree_certificate),
+
+      government_id_proof =
+        COALESCE(?, government_id_proof),
+
+      selfie =
+        COALESCE(?, selfie),
+
+      updated_at = CURRENT_TIMESTAMP
+
+    WHERE id = ?
+  `;
+
+  const [result] = await db.execute(sql, [
+    medical_registration_certificate,
+    medical_degree_certificate,
+    government_id_proof,
+    selfie,
+    id,
+  ]);
+
+  return {
+    id,
+    affectedRows: result.affectedRows,
+  };
+};
+
+exports.findDocumentsById = async (id) => {
+  const sql = `
+    SELECT
+      id,
+      medical_registration_certificate,
+      medical_degree_certificate,
+      government_id_proof,
+      selfie,
+      status,
+      created_at,
+      updated_at
+    FROM doctor_registrations
+    WHERE id = ?
+    LIMIT 1
+  `;
+
+  const [rows] = await db.execute(sql, [id]);
+
+  return rows.length ? rows[0] : null;
+};

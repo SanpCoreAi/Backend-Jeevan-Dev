@@ -6,6 +6,7 @@ const doctorRegistrationValidation = require("../../validation/doctorVerificatio
 
 const validate = require("../../middlewares/validate.middleware");
 const { verifyToken } = require("../../middlewares/authMiddleware");
+const {allowRoles}=require("../../middlewares/role");
 
 router.post(
     "/create",
@@ -56,6 +57,16 @@ router.post(
     "/verify-email-otp",
     validate(doctorRegistrationValidation.verifyEmailOtp),
     doctorRegistrationController.verifyEmailOtp
+);
+
+router.post(
+  "/registration/upload-documents",
+  doctorRegistrationController.uploadRegistrationDocuments
+);
+
+router.get(
+  "/getregistration-documents/:id",
+  doctorRegistrationController.getRegistrationDocuments
 );
 
 module.exports = router;

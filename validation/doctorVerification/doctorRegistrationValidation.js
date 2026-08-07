@@ -177,3 +177,18 @@ exports.verifyEmailOtp = Joi.object({
         .required()
 
 });
+
+exports.uploadRegistrationDocumentValidation = Joi.object({
+  documentType: Joi.string()
+    .valid(
+      "medicalRegistrationCertificate",
+      "medicalDegreeCertificate",
+      "governmentIdProof",
+      "selfie"
+    )
+    .required()
+    .messages({
+      "any.required": "Document type is required.",
+      "any.only": "Invalid document type."
+    })
+});

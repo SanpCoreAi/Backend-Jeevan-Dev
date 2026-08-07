@@ -1,4 +1,5 @@
 const doctorRegistrationService = require("../../services/doctorVerification/doctorRegistrationService");
+const { upload } = require("../../middlewares/multer");
 
 exports.createDoctorRegistration = async (req, res) => {
     try {
@@ -163,4 +164,93 @@ exports.verifyEmailOtp = async (req, res) => {
         });
 
     }
+};
+
+exports.uploadRegistrationDocuments = (req, res) => {
+  upload.fields([
+    {
+      name: "medicalRegistrationCertificate",
+      maxCount: 1,
+    },
+    {
+      name: "medicalDegreeCertificate",
+      maxCount: 1,
+    },
+    {
+      name: "governmentIdProof",
+      maxCount: 1,
+    },
+    {
+      name: "selfie",
+      maxCount: 1,
+    },
+  ])(req, res, async (err) => {
+    try {
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          message: err.message,
+        });
+      }
+
+      const files = req.files || {};
+      const body = req.body || {};
+      const registrationId =
+        req.params?.id ||
+        body.registrationId ||
+        body.id ||
+        req.query.registrationId ||
+        req.query.id;
+
+      const result =
+        await doctorRegistrationService.uploadRegistrationDocuments({
+          registrationId,
+          files,
+        });
+
+      return res.status(result.statusCode).json({
+        success: result.success,
+        message: result.message,
+        data: result.data || null,
+      });
+
+    } catch (error) {
+      console.error(
+        "Upload Registration Documents Controller Error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "Internal Server Error.",
+      });
+    }
+  });
+};
+
+exports.getRegistrationDocuments = async (req, res) => {
+  try {
+    const registrationId = req.params.id;
+
+    const result =
+      await doctorRegistrationService.getRegistrationDocuments(
+        registrationId
+      );
+
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.message,
+      data: result.data || null,
+    });
+  } catch (error) {
+    console.error(
+      "Get Registration Documents Controller Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error.",
+    });
+  }
 };

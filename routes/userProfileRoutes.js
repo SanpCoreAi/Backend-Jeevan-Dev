@@ -21,7 +21,7 @@ router.get(
 
 router.get(
   "/getPatientDetails/:appointmentId",
-  verifyToken,allowRoles(2),
+  verifyToken,allowRoles(2,3),
   userProfileController.getPatientDetails
 );
 
