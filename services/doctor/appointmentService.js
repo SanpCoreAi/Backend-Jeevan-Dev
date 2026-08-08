@@ -414,6 +414,13 @@ async function bookAppointmentByAssistant({
     patient
   } = body;
 
+  if (!patient || typeof patient !== "object" || !patient.name) {
+    return {
+      success: false,
+      message: "Patient details are required"
+    };
+  }
+
   const token =
     await Appointment.getNextTokenNumber(
       doctorId,

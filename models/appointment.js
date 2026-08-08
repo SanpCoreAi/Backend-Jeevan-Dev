@@ -60,7 +60,7 @@ exports.create = async (
 
   const [result] = await connection.query(sql, [
     data.appointment_token,
-    data.appointment_date,
+    normalizeDateOnly(data.appointment_date),
     data.start_time,
     data.end_time,
     data.patient_id,
@@ -162,22 +162,21 @@ exports.getNextTokenNumber = async (
   connection = db
 ) => {
 
-  const [rows] = await connection.query(
-    `
-    SELECT COALESCE(MAX(token_number),0)+1 AS nextToken
+  const sql = `
+    SELECT COALESCE(MAX(token_number), 0) + 1 AS nextToken
     FROM appointments
     WHERE doctor_id = ?
-      AND DATE(slot_date) = ?
+      AND slot_date = ?
       AND LOWER(TRIM(hospital_name)) = LOWER(TRIM(?))
-    `,
-    [
-      doctorId,
-      appointmentDate,
-      hospitalName
-    ]
-  );
+  `;
 
-  return rows[0].nextToken;
+  const [rows] = await connection.execute(sql, [
+    doctorId,
+    appointmentDate,
+    hospitalName
+  ]);
+
+  return Number(rows[0].nextToken);
 };
 
 exports.getAppointmentPublicById = async (
@@ -1799,7 +1798,7 @@ exports.getNextTokenNumber = async (
       FROM appointments
 
       WHERE doctor_id = ?
-      AND DATE(slot_date)=?
+      AND DATE(slot_date)=DATE(?)
       AND LOWER(TRIM(hospital_name))
           = LOWER(TRIM(?))
       `,

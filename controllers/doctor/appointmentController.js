@@ -1,6 +1,7 @@
 const appointmentService = require("../../services/doctor/appointmentService");
 const {
-  bookAppointmentValidation
+  bookAppointmentValidation,
+  bookAppointmentByAssistantValidation
 } = require("../../validation/doctor/appointmentValidation");
 
 const getDoctorIdFromUser = async (user) => {
@@ -85,10 +86,19 @@ const result = await appointmentService.bookAppointment(
 exports.bookAppointmentByAssistant = async (req, res) => {
   try {
 
+    const { error, value } = bookAppointmentByAssistantValidation.validate(req.body);
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+    }
+
     const result =
       await appointmentService.bookAppointmentByAssistant({
         user: req.user,
-        body: req.body
+        body: value
       });
 
     return res
