@@ -332,52 +332,45 @@ exports.getPatientDetails = async (
 
   try {
 
-    // Authentication
     if (!doctorId) {
       return {
         success: false,
         statusCode: 401,
-        body: {
-          message: "Unauthorized doctor."
-        }
+        message: "Unauthorized."
       };
     }
 
-    // Validation
-    if (!appointmentId) {
+    if (
+      !appointmentId ||
+      !Number.isInteger(Number(appointmentId)) ||
+      Number(appointmentId) <= 0
+    ) {
       return {
         success: false,
         statusCode: 400,
-        body: {
-          message: "Appointment ID is required."
-        }
+        message: "Valid appointment ID is required."
       };
     }
 
-    // Fetch Patient Details
     const patient =
       await userProfileModel.getPatientDetails(
         doctorId,
-        appointmentId
+        Number(appointmentId)
       );
 
     if (!patient) {
       return {
         success: false,
         statusCode: 404,
-        body: {
-          message: "Patient details not found."
-        }
+        message: "Patient details not found."
       };
     }
 
     return {
       success: true,
       statusCode: 200,
-      body: {
-        message: "Patient details fetched successfully.",
-        data: patient
-      }
+      message: "Patient details fetched successfully.",
+      data: patient
     };
 
   } catch (error) {
@@ -390,13 +383,9 @@ exports.getPatientDetails = async (
     return {
       success: false,
       statusCode: 500,
-      body: {
-        message: "Internal Server Error."
-      }
+      message: "Internal Server Error."
     };
-
   }
-
 };
 
 exports.getAllUsers = async () => {

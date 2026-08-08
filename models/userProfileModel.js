@@ -130,12 +130,12 @@ exports.updateUserProfile = async (
 };
 
 exports.getUserProfileByUserIds =
-async (userId) => {
+  async (userId) => {
 
-  const [rows] =
-    await db.execute(
+    const [rows] =
+      await db.execute(
 
-`
+        `
 SELECT
 
 u.id AS user_id,
@@ -173,23 +173,23 @@ WHERE u.id=?
 
 LIMIT 1
 `,
-[userId]
+        [userId]
 
-);
+      );
 
-return rows.length
-? rows[0]
-: null;
+    return rows.length
+      ? rows[0]
+      : null;
 
-};
+  };
 
 exports.getUserProfileByUserIds =
-async (userId) => {
+  async (userId) => {
 
-const [rows] =
-await db.execute(
+    const [rows] =
+      await db.execute(
 
-`
+        `
 SELECT
 
 u.id user_id,
@@ -227,24 +227,24 @@ WHERE u.id=?
 
 LIMIT 1
 `,
-[userId]
+        [userId]
 
-);
+      );
 
-return rows[0] || null;
+    return rows[0] || null;
 
-};
+  };
 
 exports.checkDoctorPatientRelation =
-async (
-doctorId,
-patientId
-)=>{
+  async (
+    doctorId,
+    patientId
+  ) => {
 
-const [rows]=
-await db.execute(
+    const [rows] =
+      await db.execute(
 
-`
+        `
 SELECT id
 
 FROM appointments
@@ -255,24 +255,24 @@ AND patient_id=?
 LIMIT 1
 `,
 
-[
-doctorId,
-patientId
-]
+        [
+          doctorId,
+          patientId
+        ]
 
-);
+      );
 
-return rows.length>0;
+    return rows.length > 0;
 
-};
+  };
 
 exports.getPatientCardProfile =
-async(patientId)=>{
+  async (patientId) => {
 
-const [rows]=
-await db.execute(
+    const [rows] =
+      await db.execute(
 
-`
+        `
 SELECT
 
 u.id patient_id,
@@ -311,76 +311,73 @@ WHERE u.id=?
 LIMIT 1
 `,
 
-[patientId]
+        [patientId]
 
-);
+      );
 
-return rows[0] || null;
+    return rows[0] || null;
 
-};
+  };
 
-exports.getPatientDetails =
-async(
-doctorId,
-appointmentId
-)=>{
+exports.getPatientDetails = async (
+  doctorId,
+  appointmentId,
+  connection = db
+) => {
 
-const [rows]=
-await db.execute(
+  const [rows] = await connection.execute(
+    `
+    SELECT
+      u.id AS user_id,
+      u.full_name,
+      u.email,
+      u.phone_number,
 
-`
-SELECT
+      up.age,
+      up.gender,
+      up.weight,
+      up.height,
+      up.blood_group,
 
-u.id user_id,
-u.full_name,
-u.email,
-u.phone_number,
+      a.id AS appointment_id,
+      a.slot_date,
+      a.start_time,
+      a.end_time,
+      a.status,
+      a.reason_for_visit,
+      a.hospital_name,
+      a.appointment_type AS mode
 
-up.age,
-up.gender,
-up.weight,
-up.height,
-up.blood_group,
+    FROM appointments a
 
-a.id appointment_id,
-a.slot_date,
-a.status,
-a.reason_for_visit,
-a.hospital_name
+    INNER JOIN users u
+      ON u.id = a.patient_id
 
-FROM appointments a
+    LEFT JOIN user_profiles up
+      ON up.user_id = a.patient_id
 
-INNER JOIN users u
-ON u.id=a.patient_id
+    WHERE
+      a.id = ?
+      AND a.doctor_id = ?
 
-LEFT JOIN user_profiles up
-ON up.user_id=a.patient_id
+    LIMIT 1
+    `,
+    [
+      appointmentId,
+      doctorId
+    ]
+  );
 
-WHERE
-a.id=?
-AND a.doctor_id=?
-
-LIMIT 1
-`,
-
-[
-appointmentId,
-doctorId
-]
-
-);
-
-return rows[0] || null;
-
+  return rows[0] || null;
 };
 
 exports.getAllUsers =
-async()=>{
+  async () => {
 
-const [rows]=
-await db.execute(
+    const [rows] =
+      await db.execute(
 
-`
+        `
 SELECT
 
 u.id user_id,
@@ -411,8 +408,8 @@ WHERE u.role_id=1
 ORDER BY u.id DESC
 `
 
-);
+      );
 
-return rows;
+    return rows;
 
-};
+  };

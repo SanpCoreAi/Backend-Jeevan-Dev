@@ -1,8 +1,27 @@
 const userProfileService = require("../../services/users/userProfileService");
+const appointmentService = require("../../services/doctor/appointmentService");
 
 const {
   validateUserProfile,
 } = require("../../validation/user/userProfile");
+
+const getDoctorIdFromUser = async (user) => {
+  if (user.role === 2) {
+    return user.id;
+  }
+
+  if (user.role === 3) {
+    const assistant = await appointmentService.getUserById(user.id);
+
+    if (!assistant || !assistant.doctor_id) {
+      return null;
+    }
+
+    return assistant.doctor_id;
+  }
+
+  return false;
+};
 
 exports.getUserProfile = async (req, res) => {
   try {
@@ -129,21 +148,40 @@ exports.getPatientCardProfile = async (req, res) => {
 
 exports.getPatientDetails = async (req, res) => {
   try {
-
-    const doctorId = Number(req.user.id);
     const appointmentId = Number(req.params.appointmentId);
+    const role = Number(req.user.role);
 
-    if (!doctorId) {
-      return res.status(401).json({
+    if (
+      !appointmentId ||
+      !Number.isInteger(appointmentId) ||
+      appointmentId <= 0
+    ) {
+      return res.status(400).json({
         success: false,
-        message: "Unauthorized"
+        message: "Valid appointment ID is required."
       });
     }
 
-    if (!appointmentId) {
-      return res.status(400).json({
+    if (role !== 2 && role !== 3) {
+      return res.status(403).json({
         success: false,
-        message: "Appointment id is required"
+        message: "Access denied."
+      });
+    }
+
+    const doctorId = await getDoctorIdFromUser(req.user);
+
+    if (doctorId === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized role."
+      });
+    }
+
+    if (!doctorId) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found."
       });
     }
 
@@ -155,19 +193,21 @@ exports.getPatientDetails = async (req, res) => {
 
     return res.status(result.statusCode).json({
       success: result.success,
-      message: result.body.message,
-      data: result.body.data || null
+      message: result.message,
+      data: result.data || null
     });
 
   } catch (error) {
 
-    console.error(error);
+    console.error(
+      "Get Patient Details Controller Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error"
+      message: "Internal Server Error."
     });
-
   }
 };
 
