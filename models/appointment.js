@@ -1,6 +1,36 @@
 const db = require("../config/db");
 const { parse12to24 } = require("../utils/timeHelper");
 
+const normalizeDateOnly = (value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+  }
+
+  const rawValue = String(value).trim();
+
+  if (!rawValue) {
+    return null;
+  }
+
+  const datePart = rawValue.split("T")[0].split(" ")[0];
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
+    return datePart;
+  }
+
+  const parsedDate = new Date(rawValue);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, "0")}-${String(parsedDate.getDate()).padStart(2, "0")}`;
+};
+
 exports.getConnection = async () => {
   return await db.getConnection();
 };
@@ -986,9 +1016,7 @@ exports.getMonthlyAppointmentStatsForDoctor = async (
 
       const row = rows.find(
         item =>
-          new Date(item.appointment_date)
-            .toISOString()
-            .slice(0, 10) === date
+          normalizeDateOnly(item.appointment_date) === date
       );
 
       return {
@@ -1062,9 +1090,7 @@ exports.getMonthlyAppointmentStatsForPatient = async (
 
     const row = rows.find(
       item =>
-        new Date(item.appointment_date)
-          .toISOString()
-          .slice(0, 10) === date
+        normalizeDateOnly(item.appointment_date) === date
     );
 
     result.push({
@@ -1140,13 +1166,11 @@ exports.getWeeklyAppointmentStatsForDoctor = async (
     );
 
     const date =
-      currentDate.toISOString().slice(0, 10);
+      normalizeDateOnly(currentDate);
 
     const row = rows.find(
       item =>
-        new Date(item.appointment_date)
-          .toISOString()
-          .slice(0, 10) === date
+        normalizeDateOnly(item.appointment_date) === date
     );
 
     result.push({
@@ -1239,13 +1263,11 @@ exports.getWeeklyAppointmentStatsForPatient = async (
     );
 
     const date =
-      currentDate.toISOString().slice(0, 10);
+      normalizeDateOnly(currentDate);
 
     const row = rows.find(
       item =>
-        new Date(item.appointment_date)
-          .toISOString()
-          .slice(0, 10) === date
+        normalizeDateOnly(item.appointment_date) === date
     );
 
     result.push({
