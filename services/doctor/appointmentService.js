@@ -15,7 +15,7 @@ exports.bookAppointment = async (
   body
 ) => {
 
-const connection = await Appointment.getConnection();
+  const connection = await Appointment.getConnection();
 
   try {
 
@@ -85,7 +85,7 @@ const connection = await Appointment.getConnection();
 
     const weekday =
       dayjs(appointment_date)
-      .format("ddd");
+        .format("ddd");
 
     const start24 =
       parse12to24(start_time);
@@ -127,15 +127,15 @@ const connection = await Appointment.getConnection();
 
       const startDate =
         dayjs(s.start_date)
-        .format("YYYY-MM-DD");
+          .format("YYYY-MM-DD");
 
       const endDate =
         dayjs(s.end_date)
-        .format("YYYY-MM-DD");
+          .format("YYYY-MM-DD");
 
       const apptDate =
         dayjs(appointment_date)
-        .format("YYYY-MM-DD");
+          .format("YYYY-MM-DD");
 
       if (
         apptDate < startDate ||
@@ -211,34 +211,34 @@ const connection = await Appointment.getConnection();
     }
 
 
-let token;
+    let token;
 
-if (mode === "online") {
+    if (mode === "online") {
 
-  do {
-    token = Math.floor(1000 + Math.random() * 9000);
-  } while (
-    await Appointment.checkTokenExists(
-      doctorId,
-      appointment_date,
-      hospital_name,
-      token,
-      connection
-    )
-  );
+      do {
+        token = Math.floor(1000 + Math.random() * 9000);
+      } while (
+        await Appointment.checkTokenExists(
+          doctorId,
+          appointment_date,
+          hospital_name,
+          token,
+          connection
+        )
+      );
 
-} else {
+    } else {
 
-  token = await Appointment.getNextTokenNumber(
-    doctorId,
-    appointment_date,
-    hospital_name,
-    connection
-  );
+      token = await Appointment.getNextTokenNumber(
+        doctorId,
+        appointment_date,
+        hospital_name,
+        connection
+      );
 
-}
+    }
 
-          const appointmentId =
+    const appointmentId =
       await Appointment.create(
         {
           appointment_token: token,
@@ -508,131 +508,131 @@ exports.bookAppointmentByAssistant =
   bookAppointmentByAssistant;
 
 exports.getDashboardStats =
-async (doctorId) => {
+  async (doctorId) => {
 
-  return await Appointment.getDashboardStats(
-    doctorId
-  );
-
-};
-
-exports.getAppointmentPublicById =
-async (patientId) => {
-
-  const appointments =
-    await Appointment.getAppointmentPublicById(
-      patientId
+    return await Appointment.getDashboardStats(
+      doctorId
     );
-
-  if (!appointments.length) {
-
-    return {
-
-      success: false,
-
-      message: "Appointment not found"
-
-    };
-
-  }
-
-  return {
-
-    success: true,
-
-    count: appointments.length,
-
-    data: appointments
 
   };
 
-};
+exports.getAppointmentPublicById =
+  async (patientId) => {
 
-exports.getDoctorAppointmentsForTable =
-async (
-
-  doctorId,
-
-  hospitalName,
-
-  mode,
-
-  slot_date,
-
-  status,
-
-  page,
-
-  limit
-
-) => {
-
-  try {
-
-    const offset =
-      (page - 1) * limit;
-
-    const {
-      rows,
-      total
-    } =
-      await Appointment.getDoctorAppointmentsForTable(
-
-        doctorId,
-
-        hospitalName,
-
-        mode,
-
-        slot_date,
-
-        status,
-
-        limit,
-
-        offset
-
+    const appointments =
+      await Appointment.getAppointmentPublicById(
+        patientId
       );
+
+    if (!appointments.length) {
+
+      return {
+
+        success: false,
+
+        message: "Appointment not found"
+
+      };
+
+    }
 
     return {
 
       success: true,
 
-      message:
-        "Appointments fetched successfully.",
+      count: appointments.length,
 
-      total,
-
-      currentPage: page,
-
-      totalPages:
-        Math.ceil(total / limit),
-
-      appointments: rows
+      data: appointments
 
     };
 
-  } catch (error) {
+  };
 
-    console.error(
-      "Get Doctor Appointments Service Error:",
-      error
-    );
+exports.getDoctorAppointmentsForTable =
+  async (
 
-    return {
+    doctorId,
 
-      success: false,
+    hospitalName,
 
-      message:
-        "Internal Server Error",
+    mode,
 
-      appointments: []
+    slot_date,
 
-    };
+    status,
 
-  }
+    page,
 
-};
+    limit
+
+  ) => {
+
+    try {
+
+      const offset =
+        (page - 1) * limit;
+
+      const {
+        rows,
+        total
+      } =
+        await Appointment.getDoctorAppointmentsForTable(
+
+          doctorId,
+
+          hospitalName,
+
+          mode,
+
+          slot_date,
+
+          status,
+
+          limit,
+
+          offset
+
+        );
+
+      return {
+
+        success: true,
+
+        message:
+          "Appointments fetched successfully.",
+
+        total,
+
+        currentPage: page,
+
+        totalPages:
+          Math.ceil(total / limit),
+
+        appointments: rows
+
+      };
+
+    } catch (error) {
+
+      console.error(
+        "Get Doctor Appointments Service Error:",
+        error
+      );
+
+      return {
+
+        success: false,
+
+        message:
+          "Internal Server Error",
+
+        appointments: []
+
+      };
+
+    }
+
+  };
 
 exports.getAppointmentDetails = async (
   doctorId,
@@ -745,127 +745,127 @@ exports.getAppointmentById = async (
 };
 
 exports.getTodayAppointmentsService =
-async (
-  doctorId,
-  page = 1,
-  limit = 10
-) => {
+  async (
+    doctorId,
+    page = 1,
+    limit = 10
+  ) => {
 
-  try {
+    try {
 
-    const offset =
-      (page - 1) * limit;
+      const offset =
+        (page - 1) * limit;
 
-    const {
-      rows,
-      total
-    } =
-      await Appointment.getAppointments({
+      const {
+        rows,
+        total
+      } =
+        await Appointment.getAppointments({
 
-        doctorId,
+          doctorId,
 
-        limit,
+          limit,
 
-        offset
+          offset
+
+        });
+
+      return {
+
+        success: true,
+
+        message:
+          "Appointments fetched successfully",
+
+        total,
+
+        currentPage: page,
+
+        totalPages:
+          Math.ceil(total / limit),
+
+        appointments:
+          rows || []
+
+      };
+
+    } catch (error) {
+
+      console.error(
+        "Get Today Appointments Error:",
+        error
+      );
+
+      return {
+
+        success: false,
+
+        message:
+          "Internal Server Error",
+
+        appointments: []
+
+      };
+
+    }
+
+  };
+
+exports.getDashboardCards =
+  async ({ doctorId }) => {
+
+    try {
+
+      return await Appointment.getDashboardCards({
+
+        doctorId
 
       });
 
-    return {
+    } catch (error) {
 
-      success: true,
+      console.error(
+        "Dashboard Cards Error:",
+        error
+      );
 
-      message:
-        "Appointments fetched successfully",
+      throw error;
 
-      total,
+    }
 
-      currentPage: page,
-
-      totalPages:
-        Math.ceil(total / limit),
-
-      appointments:
-        rows || []
-
-    };
-
-  } catch (error) {
-
-    console.error(
-      "Get Today Appointments Error:",
-      error
-    );
-
-    return {
-
-      success: false,
-
-      message:
-        "Internal Server Error",
-
-      appointments: []
-
-    };
-
-  }
-
-};
-
-exports.getDashboardCards =
-async ({ doctorId }) => {
-
-  try {
-
-    return await Appointment.getDashboardCards({
-
-      doctorId
-
-    });
-
-  } catch (error) {
-
-    console.error(
-      "Dashboard Cards Error:",
-      error
-    );
-
-    throw error;
-
-  }
-
-};
+  };
 
 exports.getPatientDashboardCards =
-async ({
-  doctorId,
-  filter,
-  mode
-}) => {
+  async ({
+    doctorId,
+    filter,
+    mode
+  }) => {
 
-  try {
+    try {
 
-    return await Appointment.getPatientDashboardCards({
+      return await Appointment.getPatientDashboardCards({
 
-      doctorId,
+        doctorId,
 
-      filter,
+        filter,
 
-      mode
+        mode
 
-    });
+      });
 
-  } catch (error) {
+    } catch (error) {
 
-    console.error(
-      "Patient Dashboard Cards Error:",
-      error
-    );
+      console.error(
+        "Patient Dashboard Cards Error:",
+        error
+      );
 
-    throw error;
+      throw error;
 
-  }
+    }
 
-};
+  };
 
 exports.getUserById = async (
   id
@@ -875,53 +875,351 @@ exports.getUserById = async (
 
 };
 
+const validateYear = (year) => {
+  if (
+    year === undefined ||
+    year === null ||
+    year === ""
+  ) {
+    throw {
+      statusCode: 400,
+      message: "Year is required."
+    };
+  }
+
+  const value = Number(year);
+
+  if (!Number.isInteger(value)) {
+    throw {
+      statusCode: 400,
+      message: "Year must be a valid integer."
+    };
+  }
+
+  if (value < 2000 || value > 2100) {
+    throw {
+      statusCode: 400,
+      message: "Year must be between 2000 and 2100."
+    };
+  }
+
+  return value;
+};
+
+const validateMonth = (month) => {
+  if (
+    month === undefined ||
+    month === null ||
+    month === ""
+  ) {
+    throw {
+      statusCode: 400,
+      message: "Month is required."
+    };
+  }
+
+  const value = Number(month);
+
+  if (!Number.isInteger(value)) {
+    throw {
+      statusCode: 400,
+      message: "Month must be a valid integer."
+    };
+  }
+
+  if (value < 1 || value > 12) {
+    throw {
+      statusCode: 400,
+      message: "Month must be between 1 and 12."
+    };
+  }
+
+  return value;
+};
+
+const validateWeek = (week) => {
+  if (
+    week === undefined ||
+    week === null ||
+    week === ""
+  ) {
+    throw {
+      statusCode: 400,
+      message: "Week date is required."
+    };
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(week)) {
+    throw {
+      statusCode: 400,
+      message: "Week must be in YYYY-MM-DD format."
+    };
+  }
+
+  const date = new Date(`${week}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    throw {
+      statusCode: 400,
+      message: "Invalid week date."
+    };
+  }
+
+  return week;
+};
+
+const validateDate = (date) => {
+  if (
+    date === undefined ||
+    date === null ||
+    date === ""
+  ) {
+    throw {
+      statusCode: 400,
+      message: "Date is required."
+    };
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw {
+      statusCode: 400,
+      message: "Date must be in YYYY-MM-DD format."
+    };
+  }
+
+  const parsedDate = new Date(`${date}T00:00:00`);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    throw {
+      statusCode: 400,
+      message: "Invalid date."
+    };
+  }
+
+  const [year, month, day] = date.split("-").map(Number);
+
+  if (
+    parsedDate.getFullYear() !== year ||
+    parsedDate.getMonth() + 1 !== month ||
+    parsedDate.getDate() !== day
+  ) {
+    throw {
+      statusCode: 400,
+      message: "Invalid date."
+    };
+  }
+
+  return date;
+};
+
 
 exports.getMyAppointments = async (
   userId,
   role,
   page,
-  limit
+  limit,
+  filters
 ) => {
+  try {
+    const {
+      year,
+      month,
+      week,
+      date
+    } = filters;
 
-  const offset = (page - 1) * limit;
+    const filterCount = [
+      year,
+      month,
+      week,
+      date
+    ].filter(value => value !== undefined && value !== "")
+      .length;
 
-  let appointments;
-  let total;
+    if (filterCount === 0) {
+      const offset = (page - 1) * limit;
 
-  if (role === 1) {
+      let appointments;
+      let total;
 
-    appointments = await Appointment.getAllByPatient(
-      userId,
-      limit,
-      offset
+      if (role === 1) {
+        appointments = await Appointment.getAllByPatient(
+          userId,
+          limit,
+          offset
+        );
+
+        total = await Appointment.getPatientAppointmentCount(
+          userId
+        );
+      } else {
+        appointments = await Appointment.getAllByDoctor(
+          userId,
+          limit,
+          offset
+        );
+
+        total = await Appointment.getDoctorAppointmentCount(
+          userId
+        );
+      }
+
+      return {
+        success: true,
+        statusCode: 200,
+        message: "Appointments fetched successfully.",
+        data: {
+          filter: "all",
+          page,
+          limit,
+          totalRecords: Number(total),
+          totalPages: Math.ceil(total / limit),
+          count: appointments.length,
+          data: appointments
+        }
+      };
+    }
+
+    if (year && !month && !week && !date) {
+
+      const validYear = validateYear(year);
+
+      const data =
+        role === 1
+          ? await Appointment.getYearlyAppointmentStatsForPatient(
+            userId,
+            validYear
+          )
+          : await Appointment.getYearlyAppointmentStatsForDoctor(
+            userId,
+            validYear
+          );
+
+      return {
+        success: true,
+        statusCode: 200,
+        message: "Yearly appointment statistics fetched successfully.",
+        data: {
+          filter: "year",
+          year: validYear,
+          totalAppointments: data.reduce(
+            (sum, item) => sum + item.appointmentCount,
+            0
+          ),
+          data
+        }
+      };
+    }
+
+    if (year && month && !week && !date) {
+
+      const validYear = validateYear(year);
+      const validMonth = validateMonth(month);
+
+      const data =
+        role === 1
+          ? await Appointment.getMonthlyAppointmentStatsForPatient(
+            userId,
+            validYear,
+            validMonth
+          )
+          : await Appointment.getMonthlyAppointmentStatsForDoctor(
+            userId,
+            validYear,
+            validMonth
+          );
+
+      return {
+        success: true,
+        statusCode: 200,
+        message: "Monthly appointment statistics fetched successfully.",
+        data: {
+          filter: "month",
+          year: validYear,
+          month: validMonth,
+          totalAppointments: data.reduce(
+            (sum, item) => sum + item.appointmentCount,
+            0
+          ),
+          data
+        }
+      };
+    }
+
+    if (week && !year && !month && !date) {
+
+      const validWeek = validateWeek(week);
+
+      const data =
+        role === 1
+          ? await Appointment.getWeeklyAppointmentStatsForPatient(
+            userId,
+            validWeek
+          )
+          : await Appointment.getWeeklyAppointmentStatsForDoctor(
+            userId,
+            validWeek
+          );
+
+      return {
+        success: true,
+        statusCode: 200,
+        message: "Weekly appointment statistics fetched successfully.",
+        data: {
+          filter: "week",
+          week: validWeek,
+          totalAppointments: data.reduce(
+            (sum, item) => sum + item.appointmentCount,
+            0
+          ),
+          data
+        }
+      };
+    }
+
+    if (date && !year && !month && !week) {
+
+      const validDate = validateDate(date);
+
+      const appointments =
+        role === 1
+          ? await Appointment.getAppointmentsByDateForPatient(
+            userId,
+            validDate
+          )
+          : await Appointment.getAppointmentsByDateForDoctor(
+            userId,
+            validDate
+          );
+
+      return {
+        success: true,
+        statusCode: 200,
+        message: "Appointments fetched successfully.",
+        data: {
+          filter: "date",
+          date: validDate,
+          count: appointments.length,
+          data: appointments
+        }
+      };
+    }
+
+    return {
+      success: false,
+      statusCode: 400,
+      message:
+        "Invalid filter combination. Use year, year+month, week, or date."
+    };
+
+  } catch (error) {
+    console.error(
+      "Get My Appointments Service Error:",
+      error
     );
 
-    total = await Appointment.getPatientAppointmentCount(
-      userId
-    );
-
-  } else {
-
-    appointments = await Appointment.getAllByDoctor(
-      userId,
-      limit,
-      offset
-    );
-
-    total = await Appointment.getDoctorAppointmentCount(
-      userId
-    );
+    throw error;
   }
-
-  return {
-    success: true,
-    page,
-    limit,
-    totalRecords: total,
-    totalPages: Math.ceil(total / limit),
-    count: appointments.length,
-    data: appointments
-  };
 };
 
 exports.getDoctorSlots = async ({

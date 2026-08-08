@@ -557,56 +557,75 @@ exports.getPatientDashboardCards = async (req, res) => {
 
 exports.getMyAppointments = async (req, res) => {
   try {
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(
+      Math.max(Number(req.query.limit) || 10, 1),
+      100
+    );
 
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 10;
+    const userRole = Number(req.user.role);
 
     let userId;
 
-    if (req.user.role === 1) {
-
+    if (userRole === 1) {
       userId = req.user.id;
+    }
 
-    } else {
-
+    else {
       const doctorId = await getDoctorIdFromUser(req.user);
 
       if (doctorId === false) {
         return res.status(403).json({
           success: false,
-          message: "Unauthorized role"
+          message: "Unauthorized role."
         });
       }
 
       if (!doctorId) {
         return res.status(404).json({
           success: false,
-          message: "Doctor not found"
+          message: "Doctor not found."
         });
       }
 
       userId = doctorId;
     }
 
+    const filters = {
+      year: req.query.year,
+      month: req.query.month,
+      week: req.query.week,
+      date: req.query.date
+    };
+
     const result = await appointmentService.getMyAppointments(
       userId,
-      req.user.role,
+      userRole,
       page,
-      limit
+      limit,
+      filters
     );
 
-    return res.status(200).json(result);
+    return res.status(result.statusCode || 200).json({
+      success: result.success,
+      message: result.message,
+      ...result.data
+    });
 
   } catch (error) {
-
-    console.error("Get My Appointments Error:", error);
+    console.error(
+      "Get My Appointments Controller Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
-      message: "Internal server error"
+      message: "Internal server error."
     });
   }
 };
+
+
 
 exports.getDoctorSlots = async (req, res) => {
   try {

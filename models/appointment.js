@@ -480,9 +480,6 @@ exports.autoCancelPendingAppointments = async (
   return result;
 };
 
-// ===============================
-// Get Appointment By Doctor
-// ===============================
 exports.getAppointmentById = async (
   doctorId,
   connection = db
@@ -548,9 +545,6 @@ exports.getAppointmentById = async (
   return rows;
 };
 
-// ===============================
-// Count Today Appointments
-// ===============================
 exports.countTodayAppointments = async (
   patientId,
   appointmentDate,
@@ -575,9 +569,7 @@ exports.countTodayAppointments = async (
   return Number(rows[0].total);
 };
 
-// ===============================
-// Get Appointment By Patient
-// ===============================
+
 exports.getByIdAndPatient = async (
   patientId,
   connection = db
@@ -602,9 +594,7 @@ exports.getByIdAndPatient = async (
   return rows;
 };
 
-// ===============================
-// Get Appointment Details
-// ===============================
+
 exports.getAppointmentDetails = async (
   doctorId,
   appointmentId,
@@ -739,6 +729,607 @@ exports.getAllByPatient = async (
 
   return rows;
 };
+
+exports.getAppointmentsByDateForPatient = async (
+  patientId,
+  date,
+  connection = db
+) => {
+  const [rows] = await connection.query(
+    `
+    SELECT
+      a.id AS appointment_id,
+      a.slot_date,
+      a.start_time,
+      a.end_time,
+      a.status,
+      a.appointment_type AS mode,
+
+      a.patient_id,
+
+      COALESCE(
+        ap.patient_name,
+        p.full_name
+      ) AS patient_name,
+
+      COALESCE(
+        ap.patient_phone,
+        p.phone_number
+      ) AS patient_phone,
+
+      COALESCE(
+        ap.patient_email,
+        p.email
+      ) AS patient_email,
+
+      ap.age,
+      ap.gender,
+
+      a.doctor_id,
+      u.full_name AS doctor_name,
+      d.specialization AS doctor_department
+
+    FROM appointments a
+
+    LEFT JOIN appointment_patients ap
+      ON ap.appointment_id = a.id
+
+    LEFT JOIN users p
+      ON p.id = a.patient_id
+
+    LEFT JOIN doctors d
+      ON d.user_id = a.doctor_id
+
+    LEFT JOIN users u
+      ON u.id = a.doctor_id
+
+    WHERE
+      (
+        a.patient_id = ?
+        OR ap.user_id = ?
+      )
+      AND a.slot_date >= ?
+      AND a.slot_date < DATE_ADD(?, INTERVAL 1 DAY)
+
+    ORDER BY
+      a.start_time ASC,
+      a.id ASC
+    `,
+    [
+      patientId,
+      patientId,
+      date,
+      date
+    ]
+  );
+
+  return rows;
+};
+
+exports.getYearlyAppointmentStatsForPatient = async (
+  patientId,
+  year,
+  connection = db
+) => {
+  const startDate = `${year}-01-01`;
+  const nextYear = `${Number(year) + 1}-01-01`;
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      MONTH(a.slot_date) AS month_number,
+      COUNT(DISTINCT a.id) AS appointment_count
+
+    FROM appointments a
+
+    LEFT JOIN appointment_patients ap
+      ON ap.appointment_id = a.id
+
+    WHERE
+      (
+        a.patient_id = ?
+        OR ap.user_id = ?
+      )
+
+      AND a.slot_date >= ?
+      AND a.slot_date < ?
+
+    GROUP BY MONTH(a.slot_date)
+
+    ORDER BY MONTH(a.slot_date)
+    `,
+    [
+      patientId,
+      patientId,
+      startDate,
+      nextYear
+    ]
+  );
+
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ];
+
+  const result = monthNames.map(
+    (month, index) => {
+
+      const row = rows.find(
+        item =>
+          Number(item.month_number) === index + 1
+      );
+
+      return {
+        month,
+        monthNumber: index + 1,
+        appointmentCount: row
+          ? Number(row.appointment_count)
+          : 0
+      };
+    }
+  );
+
+  return result;
+};
+
+exports.getYearlyAppointmentStatsForDoctor = async (
+  doctorId,
+  year,
+  connection = db
+) => {
+  const [rows] = await connection.query(
+    `
+    SELECT
+      MONTH(slot_date) AS month_number,
+      COUNT(DISTINCT id) AS appointment_count
+    FROM appointments
+    WHERE doctor_id = ?
+      AND slot_date >= ?
+      AND slot_date < ?
+    GROUP BY MONTH(slot_date)
+    ORDER BY MONTH(slot_date)
+    `,
+    [
+      doctorId,
+      `${year}-01-01`,
+      `${year + 1}-01-01`
+    ]
+  );
+
+  const monthNames = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ];
+
+  return monthNames.map((month, index) => {
+    const row = rows.find(
+      item => Number(item.month_number) === index + 1
+    );
+
+    return {
+      month: month,
+      monthNumber: index + 1,
+      appointmentCount: row
+        ? Number(row.appointment_count)
+        : 0
+    };
+  });
+};
+
+exports.getMonthlyAppointmentStatsForDoctor = async (
+  doctorId,
+  year,
+  month,
+  connection = db
+) => {
+  const startDate =
+    `${year}-${String(month).padStart(2, "0")}-01`;
+
+  const nextMonth =
+    month === 12
+      ? `${year + 1}-01-01`
+      : `${year}-${String(month + 1).padStart(2, "0")}-01`;
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      DATE(slot_date) AS appointment_date,
+      COUNT(DISTINCT id) AS appointment_count
+    FROM appointments
+    WHERE doctor_id = ?
+      AND slot_date >= ?
+      AND slot_date < ?
+    GROUP BY DATE(slot_date)
+    ORDER BY DATE(slot_date)
+    `,
+    [
+      doctorId,
+      startDate,
+      nextMonth
+    ]
+  );
+
+  const daysInMonth = new Date(
+    year,
+    month,
+    0
+  ).getDate();
+
+  return Array.from(
+    { length: daysInMonth },
+    (_, index) => {
+
+      const day = index + 1;
+
+      const date =
+        `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+      const row = rows.find(
+        item =>
+          new Date(item.appointment_date)
+            .toISOString()
+            .slice(0, 10) === date
+      );
+
+      return {
+        date,
+        appointmentCount: row
+          ? Number(row.appointment_count)
+          : 0
+      };
+    }
+  );
+};
+
+exports.getMonthlyAppointmentStatsForPatient = async (
+  patientId,
+  year,
+  month,
+  connection = db
+) => {
+  const startDate =
+    `${year}-${String(month).padStart(2, "0")}-01`;
+
+  const nextMonth =
+    month === 12
+      ? `${year + 1}-01-01`
+      : `${year}-${String(month + 1).padStart(2, "0")}-01`;
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      DATE(a.slot_date) AS appointment_date,
+      COUNT(DISTINCT a.id) AS appointment_count
+
+    FROM appointments a
+
+    LEFT JOIN appointment_patients ap
+      ON ap.appointment_id = a.id
+
+    WHERE
+      (
+        a.patient_id = ?
+        OR ap.user_id = ?
+      )
+
+      AND a.slot_date >= ?
+      AND a.slot_date < ?
+
+    GROUP BY DATE(a.slot_date)
+
+    ORDER BY DATE(a.slot_date)
+    `,
+    [
+      patientId,
+      patientId,
+      startDate,
+      nextMonth
+    ]
+  );
+
+  const daysInMonth = new Date(
+    Number(year),
+    Number(month),
+    0
+  ).getDate();
+
+  const result = [];
+
+  for (let i = 1; i <= daysInMonth; i++) {
+
+    const date =
+      `${year}-${String(month).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
+
+    const row = rows.find(
+      item =>
+        new Date(item.appointment_date)
+          .toISOString()
+          .slice(0, 10) === date
+    );
+
+    result.push({
+      date,
+      appointmentCount: row
+        ? Number(row.appointment_count)
+        : 0
+    });
+  }
+
+  return result;
+};
+
+exports.getWeeklyAppointmentStatsForDoctor = async (
+  doctorId,
+  weekDate,
+  connection = db
+) => {
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      DATE(slot_date) AS appointment_date,
+      COUNT(DISTINCT id) AS appointment_count
+    FROM appointments
+    WHERE doctor_id = ?
+      AND slot_date >= DATE_SUB(?, INTERVAL WEEKDAY(?) DAY)
+      AND slot_date < DATE_ADD(
+        DATE_SUB(?, INTERVAL WEEKDAY(?) DAY),
+        INTERVAL 7 DAY
+      )
+    GROUP BY DATE(slot_date)
+    ORDER BY DATE(slot_date)
+    `,
+    [
+      doctorId,
+      weekDate,
+      weekDate,
+      weekDate,
+      weekDate
+    ]
+  );
+
+  const result = [];
+
+  const startDate = new Date(`${weekDate}T00:00:00`);
+
+  const day = startDate.getDay();
+
+  const mondayOffset =
+    day === 0 ? -6 : 1 - day;
+
+  startDate.setDate(
+    startDate.getDate() + mondayOffset
+  );
+
+  const dayNames = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday"
+  ];
+
+  for (let i = 0; i < 7; i++) {
+
+    const currentDate = new Date(startDate);
+
+    currentDate.setDate(
+      startDate.getDate() + i
+    );
+
+    const date =
+      currentDate.toISOString().slice(0, 10);
+
+    const row = rows.find(
+      item =>
+        new Date(item.appointment_date)
+          .toISOString()
+          .slice(0, 10) === date
+    );
+
+    result.push({
+      day: dayNames[i],
+      date,
+      appointmentCount: row
+        ? Number(row.appointment_count)
+        : 0
+    });
+  }
+
+  return result;
+};
+
+exports.getWeeklyAppointmentStatsForPatient = async (
+  patientId,
+  weekDate,
+  connection = db
+) => {
+  const [rows] = await connection.query(
+    `
+    SELECT
+      DATE(a.slot_date) AS appointment_date,
+      COUNT(DISTINCT a.id) AS appointment_count
+    FROM appointments a
+
+    LEFT JOIN appointment_patients ap
+      ON ap.appointment_id = a.id
+
+    WHERE
+      (
+        a.patient_id = ?
+        OR ap.user_id = ?
+      )
+
+      AND a.slot_date >=
+        DATE_SUB(?, INTERVAL WEEKDAY(?) DAY)
+
+      AND a.slot_date <
+        DATE_ADD(
+          DATE_SUB(?, INTERVAL WEEKDAY(?) DAY),
+          INTERVAL 7 DAY
+        )
+
+    GROUP BY DATE(a.slot_date)
+
+    ORDER BY DATE(a.slot_date)
+    `,
+    [
+      patientId,
+      patientId,
+      weekDate,
+      weekDate,
+      weekDate,
+      weekDate
+    ]
+  );
+
+  const startDate = new Date(`${weekDate}T00:00:00`);
+
+  const day = startDate.getDay();
+
+  const mondayOffset =
+    day === 0
+      ? -6
+      : 1 - day;
+
+  startDate.setDate(
+    startDate.getDate() + mondayOffset
+  );
+
+  const dayNames = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday"
+  ];
+
+  const result = [];
+
+  for (let i = 0; i < 7; i++) {
+
+    const currentDate = new Date(startDate);
+
+    currentDate.setDate(
+      startDate.getDate() + i
+    );
+
+    const date =
+      currentDate.toISOString().slice(0, 10);
+
+    const row = rows.find(
+      item =>
+        new Date(item.appointment_date)
+          .toISOString()
+          .slice(0, 10) === date
+    );
+
+    result.push({
+      day: dayNames[i],
+      date,
+      appointmentCount: row
+        ? Number(row.appointment_count)
+        : 0
+    });
+  }
+
+  return result;
+};
+
+exports.getAppointmentsByDateForDoctor = async (
+  doctorId,
+  date,
+  connection = db
+) => {
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      a.id AS appointment_id,
+      a.slot_date,
+      a.start_time,
+      a.end_time,
+      a.status,
+      a.appointment_type AS mode,
+
+      a.patient_id,
+
+      COALESCE(
+        p.full_name,
+        ap.patient_name
+      ) AS patient_name,
+
+      COALESCE(
+        p.phone_number,
+        ap.patient_phone
+      ) AS patient_phone,
+
+      COALESCE(
+        p.email,
+        ap.patient_email
+      ) AS patient_email,
+
+      ap.age,
+      ap.gender,
+
+      u.full_name AS doctor_name,
+      d.specialization AS doctor_department
+
+    FROM appointments a
+
+    LEFT JOIN appointment_patients ap
+      ON ap.appointment_id = a.id
+
+    LEFT JOIN users p
+      ON p.id = a.patient_id
+
+    LEFT JOIN doctors d
+      ON d.user_id = a.doctor_id
+
+    LEFT JOIN users u
+      ON u.id = a.doctor_id
+
+    WHERE a.doctor_id = ?
+      AND a.slot_date >= ?
+      AND a.slot_date < DATE_ADD(?, INTERVAL 1 DAY)
+
+    ORDER BY a.start_time ASC
+    `,
+    [
+      doctorId,
+      date,
+      date
+    ]
+  );
+
+  return rows;
+};
+
+
 
 exports.getPatientAppointmentCount = async (
   userId,
