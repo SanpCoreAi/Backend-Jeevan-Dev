@@ -245,9 +245,6 @@ exports.getDashboardStats = async (
   return rows[0];
 };
 
-// ===============================
-// Doctor Appointment Table
-// ===============================
 exports.getDoctorAppointmentsForTable = async (
   doctorId,
   hospitalName,
@@ -483,9 +480,6 @@ exports.cancelAppointment = async (
   return result.affectedRows;
 };
 
-// ===============================
-// Auto Cancel Pending Appointments
-// ===============================
 exports.autoCancelPendingAppointments = async (
   connection = db
 ) => {
