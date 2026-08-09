@@ -10,40 +10,34 @@ const {allowRoles}=require("../../middlewares/role");
 
 router.post(
     "/create",
-    verifyToken,
     validate(doctorRegistrationValidation.createDoctorRegistration),
     doctorRegistrationController.createDoctorRegistration
 );
 
 router.get(
     "/",
-    verifyToken,
     doctorRegistrationController.getAllDoctorRegistrations
 );
 
 
 router.get(
     "/:id",
-    verifyToken,
     doctorRegistrationController.getDoctorRegistrationById
 );
 
 router.put(
     "/:id",
-    verifyToken,
     validate(doctorRegistrationValidation.updateDoctorRegistration),
     doctorRegistrationController.updateDoctorRegistration
 );
 
 router.put(
     "/:id/submit",
-    verifyToken,
     doctorRegistrationController.submitDoctorRegistration
 );
 
 router.delete(
     "/:id",
-    verifyToken,
     doctorRegistrationController.deleteDoctorRegistration
 );
 
