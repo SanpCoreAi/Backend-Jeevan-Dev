@@ -147,23 +147,28 @@ exports.sendEmailOtp = async (req, res) => {
 };
 
 exports.verifyEmailOtp = async (req, res) => {
-    try {
+  try {
+    const { email, otp } = req.body;
 
-        const result = await doctorRegistrationService.verifyEmailOtp(req.body);
+    const result =
+      await doctorRegistrationService.verifyEmailOtp({
+        email,
+        otp
+      });
 
-        return res.status(result.statusCode).json(result);
+    return res
+      .status(result.statusCode)
+      .json(result);
 
-    } catch (error) {
+  } catch (error) {
+    console.error("VERIFY EMAIL OTP ERROR:", error);
 
-        console.error("VERIFY EMAIL OTP ERROR:", error);
-
-        return res.status(500).json({
-            success: false,
-            statusCode: 500,
-            message: "Internal server error."
-        });
-
-    }
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal server error."
+    });
+  }
 };
 
 exports.uploadRegistrationDocuments = (req, res) => {

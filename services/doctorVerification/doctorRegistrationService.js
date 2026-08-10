@@ -282,29 +282,33 @@ exports.sendEmailOtp = async ({ email }) => {
 
 exports.verifyEmailOtp = async ({ email, otp }) => {
 
-  const user = await doctorRegistrationModel.verifyEmailOtp(
-    email,
-    otp
-  );
+  const user =
+    await doctorRegistrationModel.verifyEmailOtp(
+      email,
+      otp
+    );
 
   if (!user) {
-
     return {
       success: false,
       statusCode: 400,
       message: "Invalid or expired OTP."
     };
-
   }
 
-  await doctorRegistrationModel.markEmailVerified(email);
+  await doctorRegistrationModel.markEmailVerified(
+    email
+  );
+
+  await doctorRegistrationModel.clearEmailOtp(
+    email
+  );
 
   return {
     success: true,
     statusCode: 200,
     message: "Email verified successfully."
   };
-
 };
 
 exports.uploadRegistrationDocuments = async ({ registrationId, files }) => {

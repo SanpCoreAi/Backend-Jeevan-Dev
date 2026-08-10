@@ -281,40 +281,58 @@ exports.delete = async (id, conn = db) => {
 
 };
 
-exports.saveEmailOtp = async (email, otp, expiry, conn = db) => {
-
-    await conn.execute(
-        `UPDATE doctor_registrations
-        SET
-            email_otp=?,
-            email_otp_expiry=?
-        WHERE email=?`,
-        [
-            otp,
-            expiry,
-            email
-        ]
-    );
-
+exports.saveEmailOtp = async (email, otp, conn = db) => {
+  await conn.execute(
+    `
+    UPDATE doctor_registrations
+    SET
+      email_otp = ?,
+      email_otp_expiry = DATE_ADD(NOW(), INTERVAL 5 MINUTE)
+    WHERE email = ?
+    `,
+    [otp, email]
+  );
 };
 
-exports.verifyEmailOtp = async (email, otp, conn = db) => {
+exports.verifyEmailOtp = async (
+  email,
+  otp,
+  conn = db
+) => {
 
-    const [rows] = await conn.execute(
-        `SELECT id
-        FROM doctor_registrations
-        WHERE email=?
-        AND email_otp=?
-        AND email_otp_expiry > NOW()
-        LIMIT 1`,
-        [
-            email,
-            otp
-        ]
-    );
+  const [rows] = await conn.execute(
+    `
+    SELECT id
+    FROM doctor_registrations
+    WHERE email = ?
+      AND email_otp = ?
+      AND email_otp_expiry > NOW()
+    LIMIT 1
+    `,
+    [
+      email,
+      otp
+    ]
+  );
 
-    return rows[0];
+  return rows[0];
+};
 
+exports.clearEmailOtp = async (
+  email,
+  conn = db
+) => {
+
+  await conn.execute(
+    `
+    UPDATE doctor_registrations
+    SET
+      email_otp = NULL,
+      email_otp_expiry = NULL
+    WHERE email = ?
+    `,
+    [email]
+  );
 };
 
 exports.markEmailVerified = async (email, conn = db) => {
