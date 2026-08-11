@@ -1,69 +1,115 @@
 const doctorRegistrationService = require("../../services/doctorVerification/doctorRegistrationService");
 const { upload } = require("../../middlewares/multer");
+const {
+  createDoctorRegistrationValidation,
+} = require("../../validation/doctorVerification/doctorRegistrationValidation");
 
 exports.createDoctorRegistration = async (req, res) => {
-    try {
-        const result = await doctorRegistrationService.createDoctorRegistration(req.body);
+  try {
+    const { error, value } =
+      createDoctorRegistrationValidation.validate(
+        req.body,
+        {
+          abortEarly: true,
+          stripUnknown: true,
+        }
+      );
 
-        return res.status(result.statusCode).json(result);
-
-    } catch (error) {
-        console.error("CREATE DOCTOR REGISTRATION ERROR:", error);
-
-        return res.status(500).json({
-            success: false,
-            statusCode: 500,
-            message: "Internal server error."
-        });
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: error.details[0].message,
+      });
     }
+
+    const result =
+      await doctorRegistrationService.createDoctorRegistration(
+        value
+      );
+
+    return res
+      .status(result.statusCode)
+      .json(result);
+
+  } catch (error) {
+    console.error(
+      "CREATE DOCTOR REGISTRATION ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal server error.",
+    });
+  }
 };
 
 exports.getDoctorRegistrationById = async (req, res) => {
-    try {
-        const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-        const result = await doctorRegistrationService.getDoctorRegistrationById(id);
+    const result =
+      await doctorRegistrationService.getDoctorRegistrationById(id);
 
-        return res.status(result.statusCode).json(result);
+    return res
+      .status(result.statusCode)
+      .json(result);
 
-    } catch (error) {
-        console.error("GET DOCTOR REGISTRATION ERROR:", error);
+  } catch (error) {
+    console.error(
+      "GET DOCTOR REGISTRATION ERROR:",
+      error
+    );
 
-        return res.status(500).json({
-            success: false,
-            statusCode: 500,
-            message: "Internal server error."
-        });
-    }
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal server error.",
+    });
+  }
 };
 
 exports.getAllDoctorRegistrations = async (req, res) => {
-    try {
-        const {
-            page = 1,
-            limit = 10,
-            search = "",
-            status
-        } = req.query;
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      status,
+    } = req.query;
 
-        const result = await doctorRegistrationService.getAllDoctorRegistrations({
-            page: Number(page),
-            limit: Number(limit),
-            search,
-            status
-        });
+    const pageNumber = Math.max(Number(page) || 1, 1);
+    const limitNumber = Math.min(
+      Math.max(Number(limit) || 10, 1),
+      100
+    );
 
-        return res.status(result.statusCode).json(result);
+    const result =
+      await doctorRegistrationService.getAllDoctorRegistrations({
+        page: pageNumber,
+        limit: limitNumber,
+        search: search.trim(),
+        status,
+      });
 
-    } catch (error) {
-        console.error("GET ALL DOCTOR REGISTRATIONS ERROR:", error);
+    return res
+      .status(result.statusCode)
+      .json(result);
 
-        return res.status(500).json({
-            success: false,
-            statusCode: 500,
-            message: "Internal server error."
-        });
-    }
+  } catch (error) {
+    console.error(
+      "GET ALL DOCTOR REGISTRATIONS ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal server error.",
+    });
+  }
 };
 
 exports.updateDoctorRegistration = async (req, res) => {
@@ -199,17 +245,9 @@ exports.uploadRegistrationDocuments = (req, res) => {
       }
 
       const files = req.files || {};
-      const body = req.body || {};
-      const registrationId =
-        req.params?.id ||
-        body.registrationId ||
-        body.id ||
-        req.query.registrationId ||
-        req.query.id;
 
       const result =
         await doctorRegistrationService.uploadRegistrationDocuments({
-          registrationId,
           files,
         });
 
@@ -218,7 +256,6 @@ exports.uploadRegistrationDocuments = (req, res) => {
         message: result.message,
         data: result.data || null,
       });
-
     } catch (error) {
       console.error(
         "Upload Registration Documents Controller Error:",

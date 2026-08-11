@@ -44,88 +44,168 @@ exports.findByRegistrationNumber = async (
 };
 
 exports.create = async (data, conn = db) => {
+  const {
+    fullName,
+    gender,
+    age,
+    email,
+    mobile,
+    medicalRegistrationNumber,
+    medicalCouncil,
+    qualification,
+    specialization,
+    registrationExpiryDate,
 
-    const {
-        fullName,
-        gender,
-        age,
-        email,
-        mobile,
-        medicalRegistrationNumber,
-        medicalCouncil,
-        qualification,
-        specialization,
-        registrationExpiryDate
-    } = data;
+    // S3 keys
+    medicalRegistrationCertificate,
+    medicalDegreeCertificate,
+    governmentIdProof,
+    selfie,
+  } = data;
 
-    const [result] = await conn.execute(
-        `INSERT INTO doctor_registrations
+  const [result] = await conn.execute(
+    `
+    INSERT INTO doctor_registrations
     (
-        full_name,
-        gender,
-        age,
-        email,
-        mobile,
-        medical_registration_number,
-        medical_council,
-        qualification,
-        specialization,
-        registration_expiry_date,
-        onboarding_status
+      full_name,
+      gender,
+      age,
+      email,
+      mobile,
+      medical_registration_number,
+      medical_council,
+      qualification,
+      specialization,
+      registration_expiry_date,
+
+      medical_registration_certificate,
+      medical_degree_certificate,
+      government_id_proof,
+      selfie,
+
+      onboarding_status
     )
     VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT')`,
-        [
-            fullName,
-            gender,
-            age,
-            email,
-            mobile,
-            medicalRegistrationNumber,
-            medicalCouncil,
-            qualification,
-            specialization,
-            registrationExpiryDate
-        ]
-    );
+    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT')
+    `,
+    [
+      fullName,
+      gender,
+      age,
+      email,
+      mobile,
+      medicalRegistrationNumber,
+      medicalCouncil,
+      qualification,
+      specialization,
+      registrationExpiryDate,
 
-    return result.insertId;
+      medicalRegistrationCertificate || null,
+      medicalDegreeCertificate || null,
+      governmentIdProof || null,
+      selfie || null,
+    ]
+  );
+
+  return result.insertId;
 };
 
 exports.findById = async (id, conn = db) => {
+  const [rows] = await conn.execute(
+    `
+    SELECT
+      id,
+      full_name,
+      gender,
+      age,
+      email,
+      mobile,
+      medical_registration_number,
+      medical_council,
+      qualification,
+      specialization,
+      registration_expiry_date,
 
-    const [rows] = await conn.execute(
-        `SELECT *
-         FROM doctor_registrations
-         WHERE id = ?
-         AND status = 'ACTIVE'`,
-        [id]
-    );
+      medical_registration_certificate,
+      medical_degree_certificate,
+      government_id_proof,
+      selfie,
 
-    return rows[0] || null;
+      email_verified,
+      onboarding_status,
+      status,
+
+      created_at,
+      updated_at
+
+    FROM doctor_registrations
+
+    WHERE id = ?
+      AND status = 'ACTIVE'
+
+    LIMIT 1
+    `,
+    [id]
+  );
+
+  return rows[0] || null;
 };
 
 exports.findAll = async (filters, conn = db) => {
+  const {
+    limit = 10,
+    offset = 0,
+    search = "",
+    status,
+  } = filters;
 
-    const {
-        limit,
-        offset,
-        search = "",
-        status
-    } = filters;
+  const safeLimit = Math.max(
+    1,
+    Math.min(100, Number(limit) || 10)
+  );
 
-    let sql = `
-SELECT COUNT(*) total
-FROM doctor_registrations
-WHERE status='ACTIVE'
-`;
+  const safeOffset = Math.max(
+    0,
+    Number(offset) || 0
+  );
 
-    const params = [];
+  let sql = `
+    SELECT
+      id,
+      full_name,
+      gender,
+      age,
+      email,
+      mobile,
+      medical_registration_number,
+      medical_council,
+      qualification,
+      specialization,
+      registration_expiry_date,
 
-    if (search) {
+      medical_registration_certificate,
+      medical_degree_certificate,
+      government_id_proof,
+      selfie,
 
-        sql += `
-    AND (
+      email_verified,
+      onboarding_status,
+      status,
+
+      created_at,
+      updated_at
+
+    FROM doctor_registrations
+
+    WHERE status = 'ACTIVE'
+  `;
+
+  const params = [];
+
+  // Search
+  if (search) {
+    sql += `
+      AND (
         full_name LIKE ?
         OR email LIKE ?
         OR mobile LIKE ?
@@ -133,51 +213,60 @@ WHERE status='ACTIVE'
         OR medical_council LIKE ?
         OR qualification LIKE ?
         OR specialization LIKE ?
-    )
+      )
     `;
 
-        params.push(
-            `%${search}%`,
-            `%${search}%`,
-            `%${search}%`,
-            `%${search}%`,
-            `%${search}%`,
-            `%${search}%`,
-            `%${search}%`
-        );
-    }
+    const searchValue = `%${search}%`;
 
-    if (status) {
+    params.push(
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue
+    );
+  }
 
-        sql += ` AND onboarding_status=?`;
+  // Onboarding status
+  if (status) {
+    sql += `
+      AND onboarding_status = ?
+    `;
 
-        params.push(status);
+    params.push(status);
+  }
 
-    }
+  sql += `
+    ORDER BY id DESC
+    LIMIT ${safeLimit} OFFSET ${safeOffset}
+  `;
 
-    const [rows] = await conn.execute(sql, params);
+  const [rows] = await conn.execute(
+    sql,
+    params
+  );
 
-    return rows[0].total;
+  return rows;
 };
 
 exports.countAll = async (
-    search = "",
-    status,
-    conn = db
+  search = "",
+  status,
+  conn = db
 ) => {
+  let sql = `
+    SELECT COUNT(*) AS total
+    FROM doctor_registrations
+    WHERE status = 'ACTIVE'
+  `;
 
-    let sql = `
-SELECT COUNT(*) total
-FROM doctor_registrations
-WHERE status='ACTIVE'
-`;
+  const params = [];
 
-    const params = [];
-
-    if (search) {
-
-        sql += `
-    AND (
+  if (search) {
+    sql += `
+      AND (
         full_name LIKE ?
         OR email LIKE ?
         OR mobile LIKE ?
@@ -185,31 +274,36 @@ WHERE status='ACTIVE'
         OR medical_council LIKE ?
         OR qualification LIKE ?
         OR specialization LIKE ?
-    )
+      )
     `;
 
-        params.push(
-            `%${search}%`,
-            `%${search}%`,
-            `%${search}%`,
-            `%${search}%`,
-            `%${search}%`,
-            `%${search}%`,
-            `%${search}%`
-        );
-    }
+    const searchValue = `%${search}%`;
 
-    if (status) {
+    params.push(
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue
+    );
+  }
 
-        sql += ` AND onboarding_status=?`;
+  if (status) {
+    sql += `
+      AND onboarding_status = ?
+    `;
 
-        params.push(status);
+    params.push(status);
+  }
 
-    }
+  const [rows] = await conn.execute(
+    sql,
+    params
+  );
 
-    const [rows] = await conn.execute(sql, params);
-
-    return rows[0].total;
+  return Number(rows[0].total);
 };
 
 exports.update = async (id, data, conn = db) => {
@@ -347,48 +441,6 @@ exports.markEmailVerified = async (email, conn = db) => {
         [email]
     );
 
-};
-
-exports.updateDocuments = async ({
-  id,
-  medical_registration_certificate = null,
-  medical_degree_certificate = null,
-  government_id_proof = null,
-  selfie = null,
-}) => {
-
-  const sql = `
-    UPDATE doctor_registrations
-    SET
-      medical_registration_certificate =
-        COALESCE(?, medical_registration_certificate),
-
-      medical_degree_certificate =
-        COALESCE(?, medical_degree_certificate),
-
-      government_id_proof =
-        COALESCE(?, government_id_proof),
-
-      selfie =
-        COALESCE(?, selfie),
-
-      updated_at = CURRENT_TIMESTAMP
-
-    WHERE id = ?
-  `;
-
-  const [result] = await db.execute(sql, [
-    medical_registration_certificate,
-    medical_degree_certificate,
-    government_id_proof,
-    selfie,
-    id,
-  ]);
-
-  return {
-    id,
-    affectedRows: result.affectedRows,
-  };
 };
 
 exports.findDocumentsById = async (id) => {

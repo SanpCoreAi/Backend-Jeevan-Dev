@@ -10,18 +10,18 @@ const {allowRoles}=require("../../middlewares/role");
 
 router.post(
     "/create",
-    validate(doctorRegistrationValidation.createDoctorRegistration),
+    validate(doctorRegistrationValidation.createDoctorRegistrationValidation),
     doctorRegistrationController.createDoctorRegistration
 );
 
 router.get(
-    "/",
+    "/getAllDoctorRegistrations",
     doctorRegistrationController.getAllDoctorRegistrations
 );
 
 
 router.get(
-    "/:id",
+    "/getDoctorRegistrationById/:id",
     doctorRegistrationController.getDoctorRegistrationById
 );
 
