@@ -237,10 +237,22 @@ exports.uploadRegistrationDocuments = (req, res) => {
     },
   ])(req, res, async (err) => {
     try {
+      // Multer error
       if (err) {
         return res.status(400).json({
           success: false,
+          statusCode: 400,
           message: err.message,
+        });
+      }
+
+      const registrationId = req.body.registrationId;
+
+      if (!registrationId) {
+        return res.status(400).json({
+          success: false,
+          statusCode: 400,
+          message: "Registration ID is required.",
         });
       }
 
@@ -248,22 +260,26 @@ exports.uploadRegistrationDocuments = (req, res) => {
 
       const result =
         await doctorRegistrationService.uploadRegistrationDocuments({
+          registrationId,
           files,
         });
 
       return res.status(result.statusCode).json({
         success: result.success,
+        statusCode: result.statusCode,
         message: result.message,
         data: result.data || null,
       });
+
     } catch (error) {
       console.error(
-        "Upload Registration Documents Controller Error:",
+        "UPLOAD REGISTRATION DOCUMENTS CONTROLLER ERROR:",
         error
       );
 
       return res.status(500).json({
         success: false,
+        statusCode: 500,
         message: "Internal Server Error.",
       });
     }

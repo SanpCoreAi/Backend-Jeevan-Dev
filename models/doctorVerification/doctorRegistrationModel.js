@@ -1,16 +1,82 @@
 const db = require("../../config/db");
 
-exports.findByEmail = async (email, conn = db) => {
-    const [rows] = await conn.execute(
-        `SELECT *
-         FROM doctor_registrations
-         WHERE email = ?
-         AND status = 'ACTIVE'
-         LIMIT 1`,
-        [email]
-    );
+exports.findByEmail = async (
+  email,
+  conn = db
+) => {
 
-    return rows[0] || null;
+  const [rows] = await conn.execute(
+    `
+    SELECT *
+    FROM doctor_registrations
+    WHERE email = ?
+      AND status = 'ACTIVE'
+    LIMIT 1
+    `,
+    [email]
+  );
+
+  return rows[0] || null;
+};
+
+exports.findByEmailExceptId = async (
+  email,
+  id,
+  conn = db
+) => {
+  const [rows] = await conn.execute(
+    `
+    SELECT *
+    FROM doctor_registrations
+    WHERE email = ?
+      AND id != ?
+      AND status = 'ACTIVE'
+    LIMIT 1
+    `,
+    [email, id]
+  );
+
+  return rows[0] || null;
+};
+
+exports.findByMobileExceptId = async (
+  mobile,
+  id,
+  conn = db
+) => {
+  const [rows] = await conn.execute(
+    `
+    SELECT *
+    FROM doctor_registrations
+    WHERE mobile = ?
+      AND id != ?
+      AND status = 'ACTIVE'
+    LIMIT 1
+    `,
+    [mobile, id]
+  );
+
+  return rows[0] || null;
+};
+
+exports.findByRegistrationNumberExceptId = async (
+  registrationNumber,
+  id,
+  conn = db
+) => {
+  const [rows] = await conn.execute(
+    `
+    SELECT *
+    FROM doctor_registrations
+    WHERE medical_registration_number = ?
+      AND id != ?
+      AND status = 'ACTIVE'
+    LIMIT 1
+    `,
+    [registrationNumber, id]
+  );
+
+  return rows[0] || null;
 };
 
 exports.findByMobile = async (mobile, conn = db) => {
@@ -55,12 +121,6 @@ exports.create = async (data, conn = db) => {
     qualification,
     specialization,
     registrationExpiryDate,
-
-    // S3 keys
-    medicalRegistrationCertificate,
-    medicalDegreeCertificate,
-    governmentIdProof,
-    selfie,
   } = data;
 
   const [result] = await conn.execute(
@@ -77,37 +137,171 @@ exports.create = async (data, conn = db) => {
       qualification,
       specialization,
       registration_expiry_date,
-
-      medical_registration_certificate,
-      medical_degree_certificate,
-      government_id_proof,
-      selfie,
-
       onboarding_status
     )
-    VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT')
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT')
     `,
     [
-      fullName,
-      gender,
-      age,
-      email,
-      mobile,
-      medicalRegistrationNumber,
-      medicalCouncil,
-      qualification,
-      specialization,
-      registrationExpiryDate,
-
-      medicalRegistrationCertificate || null,
-      medicalDegreeCertificate || null,
-      governmentIdProof || null,
-      selfie || null,
+      fullName || null,
+      gender || null,
+      age || null,
+      email || null,
+      mobile || null,
+      medicalRegistrationNumber || null,
+      medicalCouncil || null,
+      qualification || null,
+      specialization || null,
+      registrationExpiryDate || null,
     ]
   );
 
   return result.insertId;
+};
+
+exports.updatePartial = async (
+  id,
+  data,
+  conn = db
+) => {
+
+  const fieldMap = {
+    fullName: "full_name",
+    gender: "gender",
+    age: "age",
+    email: "email",
+    mobile: "mobile",
+    medicalRegistrationNumber:
+      "medical_registration_number",
+    medicalCouncil: "medical_council",
+    qualification: "qualification",
+    specialization: "specialization",
+    registrationExpiryDate:
+      "registration_expiry_date",
+  };
+
+  const fields = [];
+  const values = [];
+
+  Object.keys(fieldMap).forEach((key) => {
+
+    if (data[key] !== undefined) {
+
+      fields.push(
+        `${fieldMap[key]} = ?`
+      );
+
+      values.push(
+        data[key] === ""
+          ? null
+          : data[key]
+      );
+    }
+  });
+
+  if (fields.length === 0) {
+    return;
+  }
+
+  fields.push(
+    "updated_at = CURRENT_TIMESTAMP"
+  );
+
+  values.push(id);
+
+  const sql = `
+    UPDATE doctor_registrations
+    SET ${fields.join(", ")}
+    WHERE id = ?
+      AND status = 'ACTIVE'
+  `;
+
+  await conn.execute(sql, values);
+};
+
+exports.updateDocuments = async (
+  id,
+  data,
+  conn = db
+) => {
+
+  const {
+    medicalRegistrationCertificate,
+    medicalDegreeCertificate,
+    governmentIdProof,
+    selfie,
+  } = data;
+
+
+  const fields = [];
+  const values = [];
+
+
+  if (medicalRegistrationCertificate !== undefined) {
+    fields.push(
+      "medical_registration_certificate = ?"
+    );
+
+    values.push(
+      medicalRegistrationCertificate
+    );
+  }
+
+
+  if (medicalDegreeCertificate !== undefined) {
+    fields.push(
+      "medical_degree_certificate = ?"
+    );
+
+    values.push(
+      medicalDegreeCertificate
+    );
+  }
+
+
+  if (governmentIdProof !== undefined) {
+    fields.push(
+      "government_id_proof = ?"
+    );
+
+    values.push(
+      governmentIdProof
+    );
+  }
+
+
+  if (selfie !== undefined) {
+    fields.push(
+      "selfie = ?"
+    );
+
+    values.push(selfie);
+  }
+
+
+  if (fields.length === 0) {
+    return;
+  }
+
+
+  fields.push(
+    "updated_at = CURRENT_TIMESTAMP"
+  );
+
+
+  values.push(id);
+
+
+  await conn.execute(
+    `
+    UPDATE doctor_registrations
+    SET
+      ${fields.join(", ")}
+    WHERE id = ?
+      AND status = 'ACTIVE'
+      AND onboarding_status = 'DRAFT'
+    `,
+    values
+  );
 };
 
 exports.findById = async (id, conn = db) => {
@@ -375,17 +569,39 @@ exports.delete = async (id, conn = db) => {
 
 };
 
-exports.saveEmailOtp = async (email, otp, conn = db) => {
-  await conn.execute(
-    `
-    UPDATE doctor_registrations
-    SET
-      email_otp = ?,
-      email_otp_expiry = DATE_ADD(NOW(), INTERVAL 5 MINUTE)
-    WHERE email = ?
-    `,
-    [otp, email]
-  );
+exports.saveEmailOtp = async (email, otp, expiryOrConn = null, conn = db) => {
+  // expiryOrConn may be either a Date (expiry) or a DB connection.
+  let expiry = null;
+
+  if (expiryOrConn && typeof expiryOrConn.execute === "function") {
+    conn = expiryOrConn;
+  } else {
+    expiry = expiryOrConn;
+  }
+
+  if (expiry) {
+    await conn.execute(
+      `
+      UPDATE doctor_registrations
+      SET
+        email_otp = ?,
+        email_otp_expiry = ?
+      WHERE email = ?
+      `,
+      [otp, expiry, email]
+    );
+  } else {
+    await conn.execute(
+      `
+      UPDATE doctor_registrations
+      SET
+        email_otp = ?,
+        email_otp_expiry = DATE_ADD(NOW(), INTERVAL 5 MINUTE)
+      WHERE email = ?
+      `,
+      [otp, email]
+    );
+  }
 };
 
 exports.verifyEmailOtp = async (

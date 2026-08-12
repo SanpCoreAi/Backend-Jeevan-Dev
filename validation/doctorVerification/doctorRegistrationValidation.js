@@ -1,138 +1,65 @@
 const Joi = require("joi");
 
 exports.createDoctorRegistrationValidation = Joi.object({
+
+  registrationId: Joi.number()
+    .integer()
+    .positive()
+    .optional(),
+
   fullName: Joi.string()
     .trim()
     .min(2)
     .max(150)
-    .required()
-    .messages({
-      "string.empty": "Full name is required.",
-      "string.min": "Full name must be at least 2 characters.",
-      "string.max": "Full name must not exceed 150 characters.",
-      "any.required": "Full name is required.",
-    }),
+    .optional(),
 
   gender: Joi.string()
-    .trim()
     .valid("MALE", "FEMALE", "OTHER")
-    .required()
-    .messages({
-      "any.only": "Gender must be MALE, FEMALE or OTHER.",
-      "any.required": "Gender is required.",
-    }),
+    .optional(),
 
   age: Joi.number()
     .integer()
     .min(18)
     .max(100)
-    .required()
-    .messages({
-      "number.base": "Age must be a number.",
-      "number.integer": "Age must be an integer.",
-      "number.min": "Age must be at least 18.",
-      "number.max": "Age must not exceed 100.",
-      "any.required": "Age is required.",
-    }),
+    .optional(),
 
   email: Joi.string()
     .trim()
     .lowercase()
     .email()
     .max(150)
-    .required()
-    .messages({
-      "string.email": "Please enter a valid email address.",
-      "string.max": "Email must not exceed 150 characters.",
-      "any.required": "Email is required.",
-    }),
+    .optional(),
 
   mobile: Joi.string()
     .trim()
     .pattern(/^[6-9]\d{9}$/)
-    .required()
-    .messages({
-      "string.pattern.base":
-        "Mobile number must be a valid 10-digit Indian mobile number.",
-      "any.required": "Mobile number is required.",
-    }),
+    .optional(),
 
   medicalRegistrationNumber: Joi.string()
     .trim()
     .max(100)
-    .required()
-    .messages({
-      "string.empty":
-        "Medical registration number is required.",
-      "any.required":
-        "Medical registration number is required.",
-    }),
+    .optional(),
 
   medicalCouncil: Joi.string()
     .trim()
     .max(150)
-    .required()
-    .messages({
-      "string.empty": "Medical council is required.",
-      "any.required": "Medical council is required.",
-    }),
+    .optional(),
 
   qualification: Joi.string()
     .trim()
     .max(150)
-    .required()
-    .messages({
-      "string.empty": "Qualification is required.",
-      "any.required": "Qualification is required.",
-    }),
+    .optional(),
 
   specialization: Joi.string()
     .trim()
     .max(150)
-    .required()
-    .messages({
-      "string.empty": "Specialization is required.",
-      "any.required": "Specialization is required.",
-    }),
+    .optional(),
 
   registrationExpiryDate: Joi.date()
     .iso()
-    .required()
-    .messages({
-      "date.base":
-        "Registration expiry date must be a valid date.",
-      "any.required":
-        "Registration expiry date is required.",
-    }),
-
-  // S3 Keys
-  medicalRegistrationCertificate: Joi.string()
-    .trim()
-    .max(500)
-    .allow(null, "")
     .optional(),
 
-  medicalDegreeCertificate: Joi.string()
-    .trim()
-    .max(500)
-    .allow(null, "")
-    .optional(),
-
-  governmentIdProof: Joi.string()
-    .trim()
-    .max(500)
-    .allow(null, "")
-    .optional(),
-
-  selfie: Joi.string()
-    .trim()
-    .max(500)
-    .allow(null, "")
-    .optional(),
-})
-  .unknown(false);
-
-  
+}).unknown(false);
 
 exports.updateDoctorRegistration = Joi.object({
 

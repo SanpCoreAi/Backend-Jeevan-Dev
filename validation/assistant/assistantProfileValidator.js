@@ -2,7 +2,7 @@ const Joi = require("joi");
 
 const genderSchema = Joi.string()
   .trim()
-  .valid("male", "female", "other");
+  .valid("Male", "Female", "Other");
 
 const ageSchema = Joi.number()
   .integer()
@@ -32,12 +32,15 @@ const languageSchema = Joi.alternatives().try(
 );
 
 const addressSchema = Joi.object({
-  address_line_1: Joi.string().trim().max(255).optional(),
-  address_line_2: Joi.string().trim().max(255).allow("").optional(),
-  city: Joi.string().trim().max(100).optional(),
-  state: Joi.string().trim().max(100).optional(),
-  country: Joi.string().trim().max(100).optional(),
-  pincode: Joi.string().trim().max(20).optional()
+  flat: Joi.string().trim().max(100).allow("").optional(),
+  building: Joi.string().trim().max(255).allow("").optional(),
+  street: Joi.string().trim().max(255).allow("").optional(),
+  area: Joi.string().trim().max(255).allow("").optional(),
+  landmark: Joi.string().trim().max(255).allow("").optional(),
+  city: Joi.string().trim().max(100).allow("").optional(),
+  district: Joi.string().trim().max(100).allow("").optional(),
+  state: Joi.string().trim().max(100).allow("").optional(),
+  pincode: Joi.string().trim().max(20).allow("").optional()
 }).unknown(false);
 
 const bioSchema = Joi.string()

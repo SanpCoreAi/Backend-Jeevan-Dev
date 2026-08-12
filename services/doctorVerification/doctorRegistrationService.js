@@ -21,117 +21,298 @@ exports.createDoctorRegistration = async (body) => {
     await connection.beginTransaction();
 
     const {
+      registrationId,
+
       fullName,
       gender,
       age,
       email,
       mobile,
+
       medicalRegistrationNumber,
       medicalCouncil,
       qualification,
       specialization,
       registrationExpiryDate,
-
-      // S3 keys received from frontend
-      medicalRegistrationCertificate,
-      medicalDegreeCertificate,
-      governmentIdProof,
-      selfie,
     } = body;
 
-    // Check Email
-    const emailExists =
-      await doctorRegistrationModel.findByEmail(
-        email,
-        connection
-      );
 
-    if (emailExists) {
-      await connection.rollback();
+    if (!registrationId) {
 
-      return {
-        success: false,
-        statusCode: 409,
-        message: "Email already exists.",
-      };
-    }
 
-    // Check Mobile
-    const mobileExists =
-      await doctorRegistrationModel.findByMobile(
-        mobile,
-        connection
-      );
+      if (
+        !fullName ||
+        !gender ||
+        !age ||
+        !email ||
+        !mobile
+      ) {
+        await connection.rollback();
 
-    if (mobileExists) {
-      await connection.rollback();
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "Full name, gender, age, email and mobile are required to start registration.",
+        };
+      }
 
-      return {
-        success: false,
-        statusCode: 409,
-        message: "Mobile number already exists.",
-      };
-    }
 
-    // Check Medical Registration Number
-    const registrationExists =
-      await doctorRegistrationModel.findByRegistrationNumber(
-        medicalRegistrationNumber,
-        connection
-      );
-
-    if (registrationExists) {
-      await connection.rollback();
-
-      return {
-        success: false,
-        statusCode: 409,
-        message:
-          "Medical registration number already exists.",
-      };
-    }
-
-    // Create Registration
-    const registrationId =
-      await doctorRegistrationModel.create(
-        {
-          fullName,
-          gender,
-          age,
+      const emailExists =
+        await doctorRegistrationModel.findByEmail(
           email,
-          mobile,
-          medicalRegistrationNumber,
-          medicalCouncil,
-          qualification,
-          specialization,
-          registrationExpiryDate,
+          connection
+        );
 
-          // S3 keys
-          medicalRegistrationCertificate,
-          medicalDegreeCertificate,
-          governmentIdProof,
-          selfie,
+      if (emailExists) {
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 409,
+          message: "Email already exists.",
+        };
+      }
+
+
+      const mobileExists =
+        await doctorRegistrationModel.findByMobile(
+          mobile,
+          connection
+        );
+
+      if (mobileExists) {
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 409,
+          message: "Mobile number already exists.",
+        };
+      }
+
+      if (medicalRegistrationNumber) {
+
+        const registrationExists =
+          await doctorRegistrationModel
+            .findByRegistrationNumber(
+              medicalRegistrationNumber,
+              connection
+            );
+
+        if (registrationExists) {
+          await connection.rollback();
+
+          return {
+            success: false,
+            statusCode: 409,
+            message:
+              "Medical registration number already exists.",
+          };
+        }
+      }
+
+      const newRegistrationId =
+        await doctorRegistrationModel.create(
+          {
+            fullName,
+            gender,
+            age,
+            email,
+            mobile,
+
+            medicalRegistrationNumber:
+              medicalRegistrationNumber || null,
+
+            medicalCouncil:
+              medicalCouncil || null,
+
+            qualification:
+              qualification || null,
+
+            specialization:
+              specialization || null,
+
+            registrationExpiryDate:
+              registrationExpiryDate || null,
+          },
+          connection
+        );
+
+
+      await connection.commit();
+
+
+      return {
+        success: true,
+        statusCode: 201,
+        message:
+          "Doctor registration draft created successfully.",
+        data: {
+          registrationId: newRegistrationId,
         },
+      };
+    }
+
+    const existingRegistration =
+      await doctorRegistrationModel.findById(
+        registrationId,
         connection
       );
+
+    if (!existingRegistration) {
+
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 404,
+        message:
+          "Doctor registration not found.",
+      };
+    }
+
+    if (
+      existingRegistration.onboarding_status !==
+      "DRAFT"
+    ) {
+
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 400,
+        message:
+          "Doctor registration cannot be updated after submission.",
+      };
+    }
+
+    if (
+      email &&
+      email !== existingRegistration.email
+    ) {
+
+      const emailExists =
+        await doctorRegistrationModel
+          .findByEmailExceptId(
+            email,
+            registrationId,
+            connection
+          );
+
+      if (emailExists) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 409,
+          message:
+            "Email already exists.",
+        };
+      }
+    }
+
+    if (
+      mobile &&
+      mobile !== existingRegistration.mobile
+    ) {
+
+      const mobileExists =
+        await doctorRegistrationModel
+          .findByMobileExceptId(
+            mobile,
+            registrationId,
+            connection
+          );
+
+      if (mobileExists) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 409,
+          message:
+            "Mobile number already exists.",
+        };
+      }
+    }
+
+    if (
+      medicalRegistrationNumber &&
+      medicalRegistrationNumber !==
+        existingRegistration.medical_registration_number
+    ) {
+
+      const registrationExists =
+        await doctorRegistrationModel
+          .findByRegistrationNumberExceptId(
+            medicalRegistrationNumber,
+            registrationId,
+            connection
+          );
+
+      if (registrationExists) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 409,
+          message:
+            "Medical registration number already exists.",
+        };
+      }
+    }
+
+    await doctorRegistrationModel.updatePartial(
+      registrationId,
+      {
+        fullName,
+        gender,
+        age,
+        email,
+        mobile,
+
+        medicalRegistrationNumber,
+        medicalCouncil,
+        qualification,
+        specialization,
+        registrationExpiryDate,
+      },
+      connection
+    );
 
     await connection.commit();
 
+
     return {
       success: true,
-      statusCode: 201,
-      message: "Doctor registration created successfully.",
+      statusCode: 200,
+      message:
+        "Doctor registration draft updated successfully.",
       data: {
         registrationId,
       },
     };
+
+
   } catch (error) {
+
     if (connection) {
       await connection.rollback();
     }
 
+    console.error(
+      "CREATE DOCTOR REGISTRATION SERVICE ERROR:",
+      error
+    );
+
     throw error;
+
   } finally {
+
     if (connection) {
       connection.release();
     }
@@ -356,16 +537,31 @@ exports.verifyEmailOtp = async ({ email, otp }) => {
   };
 };
 
-exports.uploadRegistrationDocuments = async ({ files }) => {
+exports.uploadRegistrationDocuments = async ({
+  registrationId,
+  files,
+}) => {
+
   const uploadedKeys = [];
 
   try {
+
+    if (!registrationId) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Registration ID is required.",
+      };
+    }
+
+
     const allFiles = [
       ...(files?.medicalRegistrationCertificate || []),
       ...(files?.medicalDegreeCertificate || []),
       ...(files?.governmentIdProof || []),
       ...(files?.selfie || []),
     ];
+
 
     if (allFiles.length === 0) {
       return {
@@ -375,7 +571,9 @@ exports.uploadRegistrationDocuments = async ({ files }) => {
       };
     }
 
+
     for (const file of allFiles) {
+
       const error = validateFile(file);
 
       if (error) {
@@ -387,17 +585,50 @@ exports.uploadRegistrationDocuments = async ({ files }) => {
       }
     }
 
-    const uploadToS3 = async (file, folder) => {
-      const extension = path.extname(file.originalname);
+    const registration =
+      await doctorRegistrationModel.findById(
+        registrationId
+      );
 
-      const fileKey = `${folder}/${uuidv4()}${extension}`;
+
+    if (!registration) {
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Doctor registration not found.",
+      };
+    }
+
+    if (
+      registration.onboarding_status !== "DRAFT"
+    ) {
+      return {
+        success: false,
+        statusCode: 400,
+        message:
+          "Documents cannot be uploaded after registration submission.",
+      };
+    }
+
+    const uploadToS3 = async (file, folder) => {
+
+      const extension =
+        path.extname(file.originalname);
+
+      const fileKey =
+        `${folder}/${uuidv4()}${extension}`;
 
       await s3.send(
         new PutObjectCommand({
-          Bucket: process.env.AWS_BUCKET_NAME,
+          Bucket:
+            process.env.AWS_BUCKET_NAME,
+
           Key: fileKey,
+
           Body: file.buffer,
+
           ContentType: file.mimetype,
+
           ContentDisposition: "inline",
         })
       );
@@ -413,86 +644,129 @@ exports.uploadRegistrationDocuments = async ({ files }) => {
 
     const data = {};
 
-    if (files?.medicalRegistrationCertificate?.length) {
+    if (
+      files?.medicalRegistrationCertificate?.length
+    ) {
+
       const key = await uploadToS3(
         files.medicalRegistrationCertificate[0],
         "doctor-registration"
       );
 
       data.medicalRegistrationCertificate = {
-        key: key,
+        key,
         value: `${baseUrl}/${key}`,
       };
     }
 
-    if (files?.medicalDegreeCertificate?.length) {
+    if (
+      files?.medicalDegreeCertificate?.length
+    ) {
+
       const key = await uploadToS3(
         files.medicalDegreeCertificate[0],
         "doctor-degree"
       );
 
       data.medicalDegreeCertificate = {
-        key: key,
+        key,
         value: `${baseUrl}/${key}`,
       };
     }
 
-    if (files?.governmentIdProof?.length) {
+    if (
+      files?.governmentIdProof?.length
+    ) {
+
       const key = await uploadToS3(
         files.governmentIdProof[0],
         "government-id"
       );
 
       data.governmentIdProof = {
-        key: key,
+        key,
         value: `${baseUrl}/${key}`,
       };
     }
 
-    if (files?.selfie?.length) {
+
+    if (
+      files?.selfie?.length
+    ) {
+
       const key = await uploadToS3(
         files.selfie[0],
         "doctor-selfie"
       );
 
       data.selfie = {
-        key: key,
+        key,
         value: `${baseUrl}/${key}`,
       };
     }
 
+    await doctorRegistrationModel.updateDocuments(
+      registrationId,
+      {
+        medicalRegistrationCertificate:
+          data.medicalRegistrationCertificate?.key,
+
+        medicalDegreeCertificate:
+          data.medicalDegreeCertificate?.key,
+
+        governmentIdProof:
+          data.governmentIdProof?.key,
+
+        selfie:
+          data.selfie?.key,
+      }
+    );
+
     return {
       success: true,
       statusCode: 200,
-      message: "Registration documents uploaded successfully.",
+      message:
+        "Registration documents uploaded successfully.",
       data,
     };
+
+
   } catch (error) {
+
     console.error(
-      "Upload Registration Documents Service Error:",
+      "UPLOAD REGISTRATION DOCUMENTS SERVICE ERROR:",
       error
     );
 
+
     for (const key of uploadedKeys) {
+
       try {
+
         await s3.send(
           new DeleteObjectCommand({
-            Bucket: process.env.AWS_BUCKET_NAME,
+            Bucket:
+              process.env.AWS_BUCKET_NAME,
+
             Key: key,
           })
         );
+
       } catch (rollbackError) {
+
         console.error(
-          "S3 Rollback Error:",
+          "S3 ROLLBACK ERROR:",
           rollbackError
         );
       }
     }
 
+
     return {
       success: false,
       statusCode: 500,
-      message: "Failed to upload registration documents.",
+      message:
+        "Failed to upload registration documents.",
     };
   }
 };
