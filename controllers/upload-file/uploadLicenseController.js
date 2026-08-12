@@ -14,6 +14,7 @@ const {
 const uploadFile = (req, res) => {
   upload.single("file")(req, res, async (err) => {
     try {
+
       if (err) {
         return res.status(400).json({
           success: false,
@@ -30,7 +31,14 @@ const uploadFile = (req, res) => {
         });
       }
 
-      const { error } = uploadFileQuerySchema.validate(req.query);
+      const { error, value } =
+        uploadFileQuerySchema.validate(
+          req.query,
+          {
+            abortEarly: false,
+            stripUnknown: true,
+          }
+        );
 
       if (error) {
         return res.status(400).json({
@@ -39,7 +47,8 @@ const uploadFile = (req, res) => {
         });
       }
 
-      const fileError = validateFile(req.file);
+      const fileError =
+        validateFile(req.file);
 
       if (fileError) {
         return res.status(400).json({
@@ -48,16 +57,23 @@ const uploadFile = (req, res) => {
         });
       }
 
-      const { folder } = req.query;
-
-      const result = await uploadDoctorFile({
-        doctorId,
-        file: req.file,
+      const {
         folder,
-      });
+        documentType,
+      } = value;
+
+      const result =
+        await uploadDoctorFile({
+          doctorId,
+          file: req.file,
+          folder,
+          documentType,
+        });
 
       if (!result.success) {
-        return res.status(result.statusCode || 500).json({
+        return res.status(
+          result.statusCode || 500
+        ).json({
           success: false,
           message: result.message,
         });
@@ -65,15 +81,22 @@ const uploadFile = (req, res) => {
 
       return res.status(201).json({
         success: true,
-        message: "File uploaded successfully.",
+        message:
+          "File uploaded successfully.",
         data: result.data,
       });
+
     } catch (error) {
-      console.error("Upload File Controller Error:", error);
+
+      console.error(
+        "Upload File Controller Error:",
+        error
+      );
 
       return res.status(500).json({
         success: false,
-        message: "Internal Server Error.",
+        message:
+          "Internal Server Error.",
       });
     }
   });

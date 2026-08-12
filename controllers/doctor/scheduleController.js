@@ -8,31 +8,41 @@ const {
 
 exports.create = async (req, res) => {
   try {
-    const { error } = createScheduleValidation.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true
-    });
+    const { error, value } = createScheduleValidation.validate(
+      req.body,
+      {
+        abortEarly: false,
+        stripUnknown: true
+      }
+    );
 
     if (error) {
       return res.status(400).json({
         success: false,
         statusCode: 400,
         message: "Validation failed",
-        errors: error.details.map(err => err.message)
+        errors: error.details.map((err) => err.message)
       });
     }
 
     const result = await ScheduleService.createSchedule(
       req.user.id,
-      req.body
+      value
     );
 
     return res
-      .status(result.statusCode || (result.success ? 201 : 400))
+      .status(
+        result.statusCode ||
+        (result.success ? 201 : 400)
+      )
       .json(result);
 
   } catch (error) {
-    console.error("CREATE SCHEDULE CONTROLLER ERROR:", error);
+
+    console.error(
+      "CREATE SCHEDULE CONTROLLER ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,

@@ -9,54 +9,116 @@ const {
 } = require("../../utils/sendEmail");
 
 function normalizeDateValue(value) {
-  if (!value) return null;
+  if (!value) {
+    return null;
+  }
 
   if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+    if (Number.isNaN(value.getTime())) {
+      return null;
+    }
+
+    return value.toISOString().slice(0, 10);
   }
 
-  const valueString = String(value).trim();
-  if (!valueString) return null;
+  const dateString = String(value).trim();
 
-  const dateOnly = valueString.split("T")[0].split(" ")[0];
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
-    return dateOnly;
+  if (!dateString) {
+    return null;
   }
 
-  const parsed = new Date(valueString);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+  const match = dateString.match(
+    /^(\d{4})-(\d{2})-(\d{2})/
+  );
+
+  if (match) {
+    return `${match[1]}-${match[2]}-${match[3]}`;
+  }
+
+  const parsedDate = new Date(dateString);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return parsedDate
+    .toISOString()
+    .slice(0, 10);
 }
 
-async function generateScheduleSlots(scheduleId, payload, connection = db) {
+async function generateScheduleSlots(
+  scheduleId,
+  payload,
+  connection = db
+) {
   const doctorId = payload.doctor_id;
+
   const start24 = payload.start_time;
   const end24 = payload.end_time;
-  const slotDuration = Number(payload.slot_duration);
-  const breakMinutes = Number(payload.break_minutes || 0);
 
-  if (!doctorId || !start24 || !end24 || !slotDuration || slotDuration <= 0) {
+  const slotDuration = Number(
+    payload.slot_duration
+  );
+
+  const breakMinutes = Number(
+    payload.break_minutes || 0
+  );
+
+  if (
+    !doctorId ||
+    !start24 ||
+    !end24 ||
+    !slotDuration ||
+    slotDuration <= 0
+  ) {
     return 0;
   }
 
-  const slots = generateSlots12(start24, end24, slotDuration, breakMinutes);
+  const slots = generateSlots12(
+    start24,
+    end24,
+    slotDuration,
+    breakMinutes
+  );
 
   if (!slots.length) {
     return 0;
   }
 
-  const startDateStr = normalizeDateValue(payload.start_date);
-  const endDateStr = normalizeDateValue(payload.end_date);
+  const startDateStr = normalizeDateValue(
+    payload.start_date
+  );
+
+  const endDateStr = normalizeDateValue(
+    payload.end_date
+  );
+
+  if (!startDateStr || !endDateStr) {
+    return 0;
+  }
 
   let activeDays = [];
+
   if (Array.isArray(payload.active_days)) {
+
     activeDays = payload.active_days;
-  } else if (typeof payload.active_days === "string") {
+
+  } else if (
+    typeof payload.active_days === "string"
+  ) {
+
     try {
-      const parsedDays = JSON.parse(payload.active_days);
+
+      const parsedDays = JSON.parse(
+        payload.active_days
+      );
+
       if (Array.isArray(parsedDays)) {
         activeDays = parsedDays;
       }
+
     } catch {
+
       activeDays = payload.active_days
         .split(",")
         .map((day) => String(day).trim())
@@ -64,77 +126,173 @@ async function generateScheduleSlots(scheduleId, payload, connection = db) {
     }
   }
 
-  if (!startDateStr || !endDateStr) return 0;
 
   const normalizedDays = activeDays
     .map((day) => String(day).trim())
     .filter(Boolean)
     .map((day) => {
-      const normalized = String(day).slice(0, 3).toLowerCase();
+
+      const normalized = String(day)
+        .slice(0, 3)
+        .toLowerCase();
+
       switch (normalized) {
+
         case "sun":
           return "Sun";
+
         case "mon":
           return "Mon";
+
         case "tue":
           return "Tue";
+
         case "wed":
           return "Wed";
+
         case "thu":
           return "Thu";
+
         case "fri":
           return "Fri";
+
         case "sat":
           return "Sat";
+
         default:
           return null;
       }
     })
     .filter(Boolean);
 
-  if (!normalizedDays.length) return 0;
 
-  const endDayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(endDateStr + "T00:00:00Z").getUTCDay()];
-  if (endDayName && !normalizedDays.includes(endDayName)) {
-    normalizedDays.push(endDayName);
+  if (!normalizedDays.length) {
+    return 0;
   }
 
-  const startDate = new Date(startDateStr + "T00:00:00Z");
-  const endDate = new Date(endDateStr + "T00:00:00Z");
+  const startDate = new Date(
+    startDateStr + "T00:00:00Z"
+  );
 
-  // Use UTC midnight to avoid timezone shifts when iterating dates
+  const endDate = new Date(
+    endDateStr + "T00:00:00Z"
+  );
+
+
+  const dayNames = [
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ];
+
+
   const slotRows = [];
-  let currentDate = new Date(startDate);
+
+  let currentDate = new Date(
+    startDate
+  );
 
   while (currentDate <= endDate) {
-    const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][currentDate.getUTCDay()];
+
+    const dayName =
+      dayNames[currentDate.getUTCDay()];
+
 
     if (normalizedDays.includes(dayName)) {
-      const dateStr = currentDate.toISOString().slice(0, 10);
+
+      const dateStr =
+        currentDate
+          .toISOString()
+          .slice(0, 10);
+
+      let tokenNumber = 1;
+
 
       for (const slot of slots) {
+
         slotRows.push({
+
           schedule_id: scheduleId,
+
           doctor_id: doctorId,
+
           start_date: dateStr,
+
           end_date: dateStr,
-          start_time: parse12to24(slot.start),
-          end_time: parse12to24(slot.end),
-          status: "active"
+
+          start_time:
+            parse12to24(slot.start),
+
+          end_time:
+            parse12to24(slot.end),
+
+          status: "active",
+
+          token_number: tokenNumber
         });
+
+
+        tokenNumber++;
       }
     }
 
-    // advance by one day in UTC
-    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    currentDate.setUTCDate(
+      currentDate.getUTCDate() + 1
+    );
   }
+
 
   if (!slotRows.length) {
     return 0;
   }
 
-  await SlotModel.insertSlots(slotRows, connection);
-  return slotRows.length;
+  const insertedSlots =
+    await SlotModel.insertSlots(
+      slotRows,
+      connection
+    );
+
+
+  if (!insertedSlots.length) {
+    throw new Error(
+      "Unable to create schedule slots."
+    );
+  }
+
+  const tokenRows =
+    insertedSlots.map((slot) => ({
+
+      schedule_id:
+        scheduleId,
+
+      doctor_id:
+        doctorId,
+
+      slot_id:
+        slot.id,
+
+      token_number:
+        slot.token_number,
+
+      token_date:
+        slot.start_date,
+
+      status:
+        "active"
+    }));
+
+
+  await SlotModel.insertTokens(
+    tokenRows,
+    connection
+  );
+
+
+  return insertedSlots.length;
 }
 
 async function createSchedule(doctorId, body) {
@@ -165,7 +323,10 @@ async function createSchedule(doctorId, body) {
       };
     }
 
-    if (!body.slot_duration || Number(body.slot_duration) <= 0) {
+    if (
+      !body.slot_duration ||
+      Number(body.slot_duration) <= 0
+    ) {
       await connection.rollback();
 
       return {
@@ -175,8 +336,13 @@ async function createSchedule(doctorId, body) {
       };
     }
 
-    const start24 = parse12to24(body.start_time);
-    const end24 = parse12to24(body.end_time);
+    const start24 = parse12to24(
+      body.start_time
+    );
+
+    const end24 = parse12to24(
+      body.end_time
+    );
 
     if (!start24 || !end24) {
       await connection.rollback();
@@ -189,31 +355,50 @@ async function createSchedule(doctorId, body) {
     }
 
     if (start24 >= end24) {
-      const startDate = body.start_date ? new Date(body.start_date) : null;
-      const endDate = body.end_date ? new Date(body.end_date) : null;
+      const startDate = body.start_date
+        ? new Date(body.start_date)
+        : null;
 
-      if (!(startDate && endDate && startDate < endDate)) {
+      const endDate = body.end_date
+        ? new Date(body.end_date)
+        : null;
+
+      if (
+        !(
+          startDate &&
+          endDate &&
+          startDate < endDate
+        )
+      ) {
         await connection.rollback();
 
         return {
           success: false,
           statusCode: 400,
-          message: "End time must be greater than start time."
+          message:
+            "End time must be greater than start time."
         };
       }
     }
 
-    const duplicate = await ScheduleModel.findOverlappingSchedule(
-      {
-        doctor_id: doctorId,
-        hospital_name: body.hospital_name ?? null,
-        start_time: start24,
-        end_time: end24,
-        start_date: body.start_date,
-        end_date: body.end_date
-      },
-      connection
-    );
+    const duplicate =
+      await ScheduleModel.findOverlappingSchedule(
+        {
+          doctor_id: doctorId,
+
+          hospital_name:
+            body.hospital_name ?? null,
+
+          start_time: start24,
+
+          end_time: end24,
+
+          start_date: body.start_date,
+
+          end_date: body.end_date
+        },
+        connection
+      );
 
     if (duplicate) {
       await connection.rollback();
@@ -221,42 +406,77 @@ async function createSchedule(doctorId, body) {
       return {
         success: false,
         statusCode: 409,
-        message: "Schedule already exists for selected hospital and timing."
+        message:
+          "Schedule already exists for selected hospital and timing."
       };
     }
 
-    const scheduleId = await ScheduleModel.createSchedule(
-      {
-        doctor_id: doctorId,
-        location_id: body.location_id ?? null,
-        hospital_name: body.hospital_name ?? null,
-        start_time: start24,
-        end_time: end24,
-        slot_duration: Number(body.slot_duration),
-        break_minutes: Number(body.break_minutes || 0),
-        active_days: body.active_days || [],
-        start_date: body.start_date,
-        end_date: body.end_date,
-        note: body.note ?? null,
-        offlinepatient_number: body.offlinepatient_number ?? null
-      },
-      connection
-    );
+    const scheduleId =
+      await ScheduleModel.createSchedule(
+        {
+          doctor_id: doctorId,
 
-    const totalSlots = await generateScheduleSlots(
-      scheduleId,
-      {
-        doctor_id: doctorId,
-        start_time: start24,
-        end_time: end24,
-        slot_duration: Number(body.slot_duration),
-        break_minutes: Number(body.break_minutes || 0),
-        start_date: body.start_date,
-        end_date: body.end_date,
-        active_days: body.active_days || []
-      },
-      connection
-    );
+          location_id:
+            body.location_id ?? null,
+
+          hospital_name:
+            body.hospital_name ?? null,
+
+          start_time: start24,
+
+          end_time: end24,
+
+          slot_duration:
+            Number(body.slot_duration),
+
+          break_minutes:
+            Number(body.break_minutes || 0),
+
+          active_days:
+            body.active_days || [],
+
+          start_date:
+            body.start_date,
+
+          end_date:
+            body.end_date,
+
+          note:
+            body.note ?? null,
+
+          offlinepatient_number:
+            body.offlinepatient_number ?? null
+        },
+        connection
+      );
+
+    const totalSlots =
+      await generateScheduleSlots(
+        scheduleId,
+        {
+          doctor_id: doctorId,
+
+          start_time: start24,
+
+          end_time: end24,
+
+          slot_duration:
+            Number(body.slot_duration),
+
+          break_minutes:
+            Number(body.break_minutes || 0),
+
+          start_date:
+            body.start_date,
+
+          end_date:
+            body.end_date,
+
+          active_days:
+            body.active_days || []
+        },
+        connection
+      );
 
     if (!totalSlots) {
       await connection.rollback();
@@ -264,7 +484,8 @@ async function createSchedule(doctorId, body) {
       return {
         success: false,
         statusCode: 400,
-        message: "Unable to generate schedule slots."
+        message:
+          "Unable to generate schedule slots."
       };
     }
 
@@ -273,7 +494,8 @@ async function createSchedule(doctorId, body) {
     return {
       success: true,
       statusCode: 201,
-      message: "Schedule created successfully.",
+      message:
+        "Schedule, slots and tokens created successfully.",
       data: {
         scheduleId,
         totalSlots
@@ -286,7 +508,10 @@ async function createSchedule(doctorId, body) {
       await connection.rollback();
     }
 
-    console.error("Create Schedule Service Error:", error);
+    console.error(
+      "CREATE SCHEDULE SERVICE ERROR:",
+      error
+    );
 
     return {
       success: false,
@@ -299,7 +524,6 @@ async function createSchedule(doctorId, body) {
     if (connection) {
       connection.release();
     }
-
   }
 }
 

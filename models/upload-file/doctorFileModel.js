@@ -4,28 +4,34 @@ const create = async ({
   doctorId,
   fileKey,
   folderName,
+  documentType,
 }) => {
+
   const sql = `
     INSERT INTO doctor_files
     (
       doctor_id,
       file_key,
-      folder_name
+      folder_name,
+      document_type
     )
-    VALUES (?, ?, ?)
+    VALUES (?, ?, ?, ?)
   `;
 
-  const [result] = await db.execute(sql, [
-    doctorId,
-    fileKey,
-    folderName,
-  ]);
+  const [result] =
+    await db.execute(sql, [
+      doctorId,
+      fileKey,
+      folderName,
+      documentType,
+    ]);
 
   return {
     id: result.insertId,
     doctorId,
     fileKey,
     folderName,
+    documentType,
   };
 };
 

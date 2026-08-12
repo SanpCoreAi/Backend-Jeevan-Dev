@@ -32,7 +32,9 @@ const uploadDoctorFile = async ({
   doctorId,
   file,
   folder,
+  documentType,
 }) => {
+
   if (!doctorId) {
     return {
       success: false,
@@ -57,14 +59,27 @@ const uploadDoctorFile = async ({
     };
   }
 
+  // agar documentType required hai
+  if (!documentType) {
+    return {
+      success: false,
+      statusCode: 400,
+      message: "Document type is required.",
+    };
+  }
+
   let fileKey = null;
 
   try {
-    const cleanFolder = folder.replace(/^\/+|\/+$/g, "");
 
-    const extension = path.extname(file.originalname);
+    const cleanFolder =
+      folder.replace(/^\/+|\/+$/g, "");
 
-    fileKey = `${cleanFolder}/${uuidv4()}${extension}`;
+    const extension =
+      path.extname(file.originalname);
+
+    fileKey =
+      `${cleanFolder}/${uuidv4()}${extension}`;
 
     await s3.send(
       new PutObjectCommand({
@@ -76,34 +91,45 @@ const uploadDoctorFile = async ({
       })
     );
 
-    const savedFile = await DoctorFileModel.create({
-      doctorId,
-      fileKey,
-      folderName: cleanFolder,
-    });
+    const savedFile =
+      await DoctorFileModel.create({
+        doctorId,
+        fileKey,
+        folderName: cleanFolder,
+        documentType,
+      });
 
     return {
       success: true,
       statusCode: 201,
       data: {
         ...savedFile,
-        fileUrl: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`,
+        fileUrl:
+          `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`,
       },
     };
-  } catch (error) {
-    console.error("Upload Doctor File Error:", error);
 
-    // Rollback S3 file if DB failed
+  } catch (error) {
+
+    console.error(
+      "Upload Doctor File Error:",
+      error
+    );
+
     if (fileKey) {
       try {
         await s3.send(
           new DeleteObjectCommand({
-            Bucket: process.env.AWS_BUCKET_NAME,
+            Bucket:
+              process.env.AWS_BUCKET_NAME,
             Key: fileKey,
           })
         );
       } catch (deleteError) {
-        console.error("S3 Rollback Error:", deleteError);
+        console.error(
+          "S3 Rollback Error:",
+          deleteError
+        );
       }
     }
 

@@ -396,7 +396,6 @@ exports.findAll = async (filters, conn = db) => {
 
   const params = [];
 
-  // Search
   if (search) {
     sql += `
       AND (
@@ -423,7 +422,6 @@ exports.findAll = async (filters, conn = db) => {
     );
   }
 
-  // Onboarding status
   if (status) {
     sql += `
       AND onboarding_status = ?

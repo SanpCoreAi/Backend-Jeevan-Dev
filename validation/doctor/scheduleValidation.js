@@ -60,10 +60,11 @@ const createScheduleValidation = Joi.object({
     .max(500)
     .allow("", null),
 
-  offlinepatient_number: Joi.number()
-    .integer()
-    .min(1)
-    .allow(null)
+ offlinepatient_number: Joi.number()
+  .integer()
+  .min(1)
+  .optional()
+  .allow(null)
 
 });
 
