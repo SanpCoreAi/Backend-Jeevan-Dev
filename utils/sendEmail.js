@@ -666,40 +666,58 @@ This is an automated email. Please do not reply.
 };
 
 exports.sendResetPasswordEmail = async (email, token) => {
-
   try {
-
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+    const resetLink =
+      `${process.env.FRONTEND_URL}/reset-password/${token}`;
 
     await transporter.sendMail({
-
       from: `"Hospital Portal" <${process.env.EMAIL_USER}>`,
 
       to: email,
 
-      subject: "🔒 Reset Your Password - Hospital Portal",
+      subject:
+        "🔒 Reset Your Password - Hospital Portal",
 
+      // Plain text version
       text: `You requested to reset your password.
 
-Reset Link:
+Click the link below to reset your password:
+
 ${resetLink}
 
 This link will expire shortly.
 
-If you did not request a password reset, please ignore this email.`,
+If you did not request this password reset, please ignore this email.`,
 
+      // HTML version
       html: `
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Reset Password</title>
 </head>
 
-<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;">
+<body
+style="
+margin:0;
+padding:0;
+background:#f4f7fb;
+font-family:Arial,Helvetica,sans-serif;
+"
+>
 
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:40px 0;">
+<table
+width="100%"
+cellpadding="0"
+cellspacing="0"
+style="
+background:#f4f7fb;
+padding:40px 0;
+"
+>
 
 <tr>
 
@@ -714,7 +732,8 @@ background:#ffffff;
 border-radius:12px;
 overflow:hidden;
 box-shadow:0 4px 20px rgba(0,0,0,.08);
-">
+"
+>
 
 <!-- Header -->
 
@@ -726,13 +745,24 @@ background:linear-gradient(135deg,#0f766e,#0891b2);
 padding:30px;
 text-align:center;
 color:#ffffff;
-">
+"
+>
 
-<h1 style="margin:0;font-size:28px;">
+<h1
+style="
+margin:0;
+font-size:28px;
+"
+>
 🏥 Hospital Portal
 </h1>
 
-<p style="margin-top:8px;font-size:15px;">
+<p
+style="
+margin-top:8px;
+font-size:15px;
+"
+>
 Password Reset Request
 </p>
 
@@ -744,9 +774,18 @@ Password Reset Request
 
 <tr>
 
-<td style="padding:40px;">
+<td
+style="
+padding:40px;
+"
+>
 
-<h2 style="margin-top:0;color:#222;">
+<h2
+style="
+margin-top:0;
+color:#222;
+"
+>
 Reset Your Password
 </h2>
 
@@ -755,7 +794,8 @@ style="
 font-size:16px;
 color:#555;
 line-height:28px;
-">
+"
+>
 
 We received a request to reset your Hospital Portal account password.
 
@@ -763,7 +803,14 @@ Click the button below to create a new password.
 
 </p>
 
-<div style="text-align:center;margin:35px 0;">
+<!-- Reset Button -->
+
+<div
+style="
+text-align:center;
+margin:35px 0;
+"
+>
 
 <a
 href="${resetLink}"
@@ -775,7 +822,8 @@ border-radius:8px;
 text-decoration:none;
 font-weight:bold;
 display:inline-block;
-">
+"
+>
 
 Reset Password
 
@@ -783,29 +831,7 @@ Reset Password
 
 </div>
 
-<p
-style="
-font-size:15px;
-color:#555;
-">
-
-If the button doesn't work, copy and paste the following link into your browser:
-
-</p>
-
-<p
-style="
-background:#f8fafc;
-padding:12px;
-border-radius:6px;
-word-break:break-all;
-font-size:13px;
-color:#0f766e;
-">
-
-${resetLink}
-
-</p>
+<!-- Security Notice -->
 
 <div
 style="
@@ -814,9 +840,14 @@ padding:18px;
 background:#fff7ed;
 border-left:5px solid #f59e0b;
 border-radius:8px;
-">
+"
+>
 
-<strong style="color:#b45309;">
+<strong
+style="
+color:#b45309;
+"
+>
 🔒 Security Notice
 </strong>
 
@@ -826,15 +857,24 @@ margin-top:10px;
 padding-left:20px;
 line-height:28px;
 color:#555;
-">
+"
+>
 
-<li>This password reset link is valid for a limited time.</li>
+<li>
+This password reset link is valid for 15 minutes.
+</li>
 
-<li>If you didn't request this password reset, simply ignore this email.</li>
+<li>
+If you didn't request this password reset, simply ignore this email.
+</li>
 
-<li>Your password will remain unchanged until you create a new one.</li>
+<li>
+Your password will remain unchanged until you create a new one.
+</li>
 
-<li>Never share your account credentials with anyone.</li>
+<li>
+Never share your account credentials with anyone.
+</li>
 
 </ul>
 
@@ -855,7 +895,8 @@ padding:25px;
 text-align:center;
 font-size:13px;
 color:#777;
-">
+"
+>
 
 <p style="margin:0;">
 Thank you for using Hospital Portal.
@@ -885,21 +926,24 @@ This is an automated email. Please do not reply.
 </body>
 
 </html>
-`
+`,
     });
 
-    console.log(`✅ Reset password email sent to ${email}`);
+    console.log(
+      `✅ Reset password email sent to ${email}`
+    );
 
     return true;
 
   } catch (error) {
 
-    console.error("❌ Reset password email error:", error.message);
+    console.error(
+      "❌ Reset password email error:",
+      error.message
+    );
 
     throw error;
-
   }
-
 };
 
 
