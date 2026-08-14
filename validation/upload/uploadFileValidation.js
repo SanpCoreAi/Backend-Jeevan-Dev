@@ -15,10 +15,14 @@ const uploadFileQuerySchema = Joi.object({
     .required()
     .messages({
       "string.empty": "Folder is required.",
+
       "any.required": "Folder is required.",
+
       "string.pattern.base":
         "Folder can contain only lowercase letters, numbers and hyphens.",
-      "any.only": `Folder must be one of: ${ALLOWED_FOLDERS.join(", ")}`,
+
+      "any.only":
+        `Folder must be one of: ${ALLOWED_FOLDERS.join(", ")}`,
     }),
 });
 
@@ -56,9 +60,12 @@ const getFilesSchema = Joi.object({
     .messages({
       "string.pattern.base":
         "Folder can contain only lowercase letters, numbers and hyphens.",
-      "any.only": `Folder must be one of: ${ALLOWED_FOLDERS.join(", ")}`,
+
+      "any.only":
+        `Folder must be one of: ${ALLOWED_FOLDERS.join(", ")}`,
     }),
 });
+
 
 module.exports = {
   uploadFileQuerySchema,

@@ -4,38 +4,56 @@ const create = async ({
   doctorId,
   fileKey,
   folderName,
-  documentType,
 }) => {
-
   const sql = `
     INSERT INTO doctor_files
     (
       doctor_id,
       file_key,
-      folder_name,
-      document_type
+      folder_name
     )
-    VALUES (?, ?, ?, ?)
+    VALUES (?, ?, ?)
   `;
 
-  const [result] =
-    await db.execute(sql, [
-      doctorId,
-      fileKey,
-      folderName,
-      documentType,
-    ]);
-
-  return {
-    id: result.insertId,
+  const [result] = await db.execute(sql, [
     doctorId,
     fileKey,
     folderName,
-    documentType,
+  ]);
+
+  const [rows] = await db.execute(
+    `
+      SELECT
+        id,
+        doctor_id,
+        file_key,
+        folder_name,
+        created_at
+      FROM doctor_files
+      WHERE id = ?
+      LIMIT 1
+    `,
+    [result.insertId]
+  );
+
+  if (!rows.length) {
+    return null;
+  }
+
+  return {
+    id: rows[0].id,
+    doctorId: rows[0].doctor_id,
+    file_key: rows[0].file_key,
+    folder_name: rows[0].folder_name,
+    created_at: rows[0].created_at,
   };
 };
 
-const findByDoctorId = async (doctorId, folderName = null) => {
+const findByDoctorId = async (
+  doctorId,
+  folderName = null
+) => {
+
   let sql = `
     SELECT
       id,
@@ -54,23 +72,34 @@ const findByDoctorId = async (doctorId, folderName = null) => {
     params.push(folderName);
   }
 
+
   sql += ` ORDER BY created_at DESC`;
 
-  const [rows] = await db.execute(sql, params);
 
-  console.log("Rows:", rows);
+  const [rows] = await db.execute(
+    sql,
+    params
+  );
+
 
   return rows.map((row) => ({
     id: row.id,
+
     doctorId: row.doctor_id,
-    fileKey: row.file_key,
-    folderName: row.folder_name,
-    fileUrl: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${row.file_key}`,
+
+    file_key: row.file_key,
+
+    folder_name: row.folder_name,
+
+    // fileUrl:
+    //   `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${row.file_key}`,
+
     createdAt: row.created_at,
   }));
 };
 
 const findById = async (id) => {
+
   const sql = `
     SELECT
       id,
@@ -80,15 +109,28 @@ const findById = async (id) => {
       created_at
     FROM doctor_files
     WHERE id = ?
+      AND deleted_at IS NULL
     LIMIT 1
   `;
 
-  const [rows] = await db.execute(sql, [id]);
+  const [rows] = await db.execute(
+    sql,
+    [id]
+  );
 
-  return rows.length ? rows[0] : null;
+  return rows.length
+    ? {
+        id: rows[0].id,
+        doctorId: rows[0].doctor_id,
+        file_key: rows[0].file_key,
+        folder_name: rows[0].folder_name,
+        createdAt: rows[0].created_at,
+      }
+    : null;
 };
 
 const softDelete = async (id) => {
+
   const sql = `
     UPDATE doctor_files
     SET deleted_at = NOW()
@@ -96,10 +138,14 @@ const softDelete = async (id) => {
       AND deleted_at IS NULL
   `;
 
-  const [result] = await db.execute(sql, [id]);
+  const [result] = await db.execute(
+    sql,
+    [id]
+  );
 
   return result.affectedRows > 0;
 };
+
 
 module.exports = {
   create,

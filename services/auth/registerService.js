@@ -25,10 +25,6 @@ exports.registerUserOrAssistant = async (data) => {
     email = email.trim().toLowerCase();
     phone_number = phone_number.trim();
 
-    // ============================
-    // Check Email
-    // ============================
-
     const existingEmail =
       await User.findByEmail(email);
 
@@ -41,10 +37,6 @@ exports.registerUserOrAssistant = async (data) => {
       };
     }
 
-    // ============================
-    // Check Phone Number
-    // ============================
-
     const existingPhone =
       await User.findByPhone(phone_number);
 
@@ -56,9 +48,6 @@ exports.registerUserOrAssistant = async (data) => {
         },
       };
     }
-    // ============================
-// Create User Account
-// ============================
 
 const createAccount = async ({
   roleId,
@@ -85,9 +74,6 @@ const createAccount = async ({
   });
 
 };
-// ============================
-// Doctor Registration
-// ============================
 
 if (role_id === 2) {
 

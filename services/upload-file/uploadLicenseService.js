@@ -1,12 +1,16 @@
 const multer = require("multer");
-const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const {
+  PutObjectCommand,
+  DeleteObjectCommand,
+} = require("@aws-sdk/client-s3");
 const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 
 const s3 = require("../../config/s3");
 const DoctorFileModel = require("../../models/upload-file/doctorFileModel");
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; 
 
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -16,12 +20,16 @@ const ALLOWED_TYPES = [
 
 const upload = multer({
   storage: multer.memoryStorage(),
+
   limits: {
     fileSize: MAX_FILE_SIZE,
   },
+
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_TYPES.includes(file.mimetype)) {
-      return cb(new Error("Only PDF, JPG and PNG files are allowed."));
+      return cb(
+        new Error("Only PDF, JPG and PNG files are allowed.")
+      );
     }
 
     cb(null, true);
@@ -32,7 +40,6 @@ const uploadDoctorFile = async ({
   doctorId,
   file,
   folder,
-  documentType,
 }) => {
 
   if (!doctorId) {
@@ -59,34 +66,32 @@ const uploadDoctorFile = async ({
     };
   }
 
-  // agar documentType required hai
-  if (!documentType) {
-    return {
-      success: false,
-      statusCode: 400,
-      message: "Document type is required.",
-    };
-  }
 
   let fileKey = null;
 
   try {
 
-    const cleanFolder =
-      folder.replace(/^\/+|\/+$/g, "");
+    const cleanFolder = folder.replace(
+      /^\/+|\/+$/g,
+      ""
+    );
 
-    const extension =
-      path.extname(file.originalname);
+    const extension = path.extname(
+      file.originalname
+    ).toLowerCase();
 
-    fileKey =
-      `${cleanFolder}/${uuidv4()}${extension}`;
+    fileKey = `${cleanFolder}/${uuidv4()}${extension}`;
 
     await s3.send(
       new PutObjectCommand({
         Bucket: process.env.AWS_BUCKET_NAME,
+
         Key: fileKey,
+
         Body: file.buffer,
+
         ContentType: file.mimetype,
+
         ContentDisposition: "inline",
       })
     );
@@ -96,16 +101,19 @@ const uploadDoctorFile = async ({
         doctorId,
         fileKey,
         folderName: cleanFolder,
-        documentType,
       });
+
+    const fileUrl =
+      `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
+
 
     return {
       success: true,
       statusCode: 201,
+
       data: {
         ...savedFile,
-        fileUrl:
-          `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`,
+        fileUrl,
       },
     };
 
@@ -117,21 +125,27 @@ const uploadDoctorFile = async ({
     );
 
     if (fileKey) {
+
       try {
+
         await s3.send(
           new DeleteObjectCommand({
             Bucket:
               process.env.AWS_BUCKET_NAME,
+
             Key: fileKey,
           })
         );
+
       } catch (deleteError) {
+
         console.error(
           "S3 Rollback Error:",
           deleteError
         );
       }
     }
+
 
     return {
       success: false,
@@ -145,6 +159,7 @@ const getDoctorFiles = async (
   doctorId,
   folder = null
 ) => {
+
   if (!doctorId) {
     return {
       success: false,
@@ -153,19 +168,29 @@ const getDoctorFiles = async (
     };
   }
 
+
   try {
-    const files = await DoctorFileModel.findByDoctorId(
-      doctorId,
-      folder
-    );
+
+    const files =
+      await DoctorFileModel.findByDoctorId(
+        doctorId,
+        folder
+      );
+
 
     return {
       success: true,
       statusCode: 200,
       data: files,
     };
+
   } catch (error) {
-    console.error("Get Doctor Files Error:", error);
+
+    console.error(
+      "Get Doctor Files Error:",
+      error
+    );
+
 
     return {
       success: false,
