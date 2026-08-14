@@ -37,9 +37,16 @@ const transporter = nodemailer.createTransport(transporterOptions);
 
 transporter.verify((err, success) => {
   if (err) {
-    console.error("SMTP connection error:", err.message || err);
+    console.error("❌ SMTP connection error:", err.message || err);
+    console.error("SMTP Config:", {
+      host: smtpHost, 
+      port: smtpPort,
+      user: smtpUser ? smtpUser.substring(0, 5) + '***' : 'NOT SET',
+      pass: smtpPass ? 'SET' : 'NOT SET'
+    });
   } else {
     console.log("✅ SMTP connection verified successfully");
+    console.log("Email Sender:", smtpUser);
   }
 });
 

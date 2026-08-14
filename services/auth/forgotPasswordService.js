@@ -1,37 +1,21 @@
 const crypto = require("crypto");
+
 const User = require("../../models/usermodel");
-const {sendResetPasswordEmail,} = require("../../utils/sendEmail");
+const {
+  sendResetPasswordEmail,
+} = require("../../utils/sendEmail");
 
 exports.forgotPassword = async (email) => {
-
   try {
 
-    if (!process.env.JWT_REFRESH_SECRET) {
-      throw new Error(
-        "RESET_PASSWORD_SECRET is missing"
-      );
-    }
-
-    const user =
-      await User.findByEmail(email);
+    const user = await User.findByEmail(email);
 
     if (!user) {
-      return {
-        statusCode: 200,
-        body: {
-          message:
-            "If the email exists, a password reset link has been sent.",
-        },
-      };
-    }
 
-    if (
-      user.status &&
-      user.status !== "ACTIVE"
-    ) {
       return {
         statusCode: 200,
         body: {
+          success: true,
           message:
             "If the email exists, a password reset link has been sent.",
         },
@@ -48,7 +32,9 @@ exports.forgotPassword = async (email) => {
         .digest("hex");
 
     const expiry =
-      new Date(Date.now() + 15 * 60 * 1000);
+      new Date(
+        Date.now() + 15 * 60 * 1000
+      );
 
     await User.saveResetToken(
       user.id,
@@ -56,14 +42,35 @@ exports.forgotPassword = async (email) => {
       expiry
     );
 
-    await sendResetPasswordEmail(
-      email,
-      resetToken
-    );
+    try {
+      await sendResetPasswordEmail(
+        email,
+        resetToken
+      );
+
+
+
+    } catch (emailError) {
+
+      console.error(
+        "❌ Email Send Error:",
+        emailError.message || emailError
+      );
+
+      return {
+        statusCode: 500,
+        body: {
+          success: false,
+          message:
+            "Failed to send reset email. Please try again later.",
+        },
+      };
+    }
 
     return {
       statusCode: 200,
       body: {
+        success: true,
         message:
           "If the email exists, a password reset link has been sent.",
       },
@@ -72,18 +79,17 @@ exports.forgotPassword = async (email) => {
   } catch (error) {
 
     console.error(
-      "Forgot Password Service Error:",
-      error
+      "❌ Forgot Password Service Error:",
+      error.message || error
     );
 
     return {
       statusCode: 500,
       body: {
+        success: false,
         message:
-          "Internal Server Error",
+          "Internal Server Error.",
       },
     };
-
   }
-
 };
