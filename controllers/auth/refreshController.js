@@ -6,6 +6,13 @@ const {
 
 exports.refreshTokenController = async (req, res) => {
   try {
+    if (!req.body || !req.body.refreshToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Refresh token is required.",
+      });
+    }
+
     const validationError =
       refreshTokenValidation(req.body);
 

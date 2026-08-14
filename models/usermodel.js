@@ -138,6 +138,40 @@ exports.findById = async (id) => {
   }
 };
 
+exports.findByRefreshToken = async (
+  userId,
+  refreshToken
+) => {
+  try {
+
+    const [rows] = await db.query(
+      `
+      SELECT
+        id,
+        full_name,
+        email,
+        phone_number,
+        doctor_id,
+        role_id,
+        status,
+        refresh_token
+      FROM users
+      WHERE id = ? AND refresh_token = ?
+      LIMIT 1
+      `,
+      [userId, refreshToken]
+    );
+
+    return rows[0] || null;
+
+  } catch (error) {
+
+    console.error("Find By Refresh Token Model Error:", error);
+    throw error;
+
+  }
+};
+
 exports.verifyUserByToken = async (token) => {
   try {
 

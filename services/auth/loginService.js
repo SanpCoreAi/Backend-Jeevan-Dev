@@ -86,7 +86,7 @@ if (
       process.env.REFRESH_SECRET,
       {
         expiresIn:
-          process.env.REFRESH_TOKEN_EXPIRE || "7d",
+          process.env.JWT_EXPIRES_IN || "7d",
       }
     );
 
