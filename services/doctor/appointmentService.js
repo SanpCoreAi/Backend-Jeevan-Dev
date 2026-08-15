@@ -1972,12 +1972,11 @@ exports.getDoctorSlots = async ({
   date
 }) => {
 
-  const slots =
-    await SlotModel.getDoctorSlots(
-      doctorId,
-      hospitalName,
-      date
-    );
+  const slots = await SlotModel.getDoctorSlots(
+    doctorId,
+    hospitalName,
+    date
+  );
 
   return {
     success: true,
@@ -1993,12 +1992,12 @@ exports.getDoctorSlots = async ({
 
     slots: slots.map((slot) => ({
       slotId: slot.id,
+      tokenNumber: slot.token_number,
       startTime: slot.start_time,
       endTime: slot.end_time,
       status: slot.status
     }))
   };
-
 };
 
 

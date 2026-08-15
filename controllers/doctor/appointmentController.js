@@ -674,24 +674,18 @@ exports.getDoctorSlots = async (req, res) => {
       doctorId = req.user.id;
     }
 
-    if (
-      !doctorId ||
-      !hospitalName ||
-      !date
-    ) {
+    if (!doctorId || !hospitalName || !date) {
       return res.status(400).json({
         success: false,
-        message:
-          "doctorId, hospitalName and date are required"
+        message: "doctorId, hospitalName and date are required"
       });
     }
 
-    const result =
-      await appointmentService.getDoctorSlots({
-        doctorId: Number(doctorId),
-        hospitalName,
-        date
-      });
+    const result = await appointmentService.getDoctorSlots({
+      doctorId: Number(doctorId),
+      hospitalName,
+      date
+    });
 
     return res.status(200).json({
       success: true,
@@ -700,10 +694,7 @@ exports.getDoctorSlots = async (req, res) => {
 
   } catch (error) {
 
-    console.error(
-      "Get Doctor Slots Error:",
-      error
-    );
+    console.error("Get Doctor Slots Error:", error);
 
     return res.status(500).json({
       success: false,
