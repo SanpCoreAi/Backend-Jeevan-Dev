@@ -52,6 +52,44 @@ const getEstimatedTime = (startTime) => {
   ).padStart(2, "0")} ${estimatedPeriod}`;
 };
 
+const formatTime = (time) => {
+  if (!time) return null;
+
+  // If MySQL returns Date object
+  if (time instanceof Date) {
+    return time.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    });
+  }
+
+  const value = String(time).trim();
+
+  // HH:mm:ss or HH:mm
+  const match = value.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+
+  if (match) {
+    let hour = Number(match[1]);
+    const minute = Number(match[2]);
+
+    const period = hour >= 12 ? "PM" : "AM";
+
+    hour = hour % 12;
+
+    if (hour === 0) {
+      hour = 12;
+    }
+
+    return `${String(hour).padStart(2, "0")}:${String(
+      minute
+    ).padStart(2, "0")} ${period}`;
+  }
+
+  // Already AM/PM format
+  return value;
+};
+
 exports.bookAppointment = async (
   patientId,
   patientEmail,
@@ -69,6 +107,7 @@ exports.bookAppointment = async (
       end_time,
       reason_for_visit,
       booking_type,
+      token_number,
       mode,
       hospital_name,
       patient
@@ -89,11 +128,27 @@ exports.bookAppointment = async (
       };
     }
 
+    const requestedToken = Number(token_number);
+
+    if (
+      !Number.isInteger(requestedToken) ||
+      requestedToken <= 0
+    ) {
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Valid token number is required."
+      };
+    }
+
     const apptDate =
       dayjs(appointment_date).format("YYYY-MM-DD");
 
     const emailDate =
       dayjs(appointment_date).format("DD MMM YYYY");
+
 
     const totalAppointments =
       await Appointment.countTodayAppointments(
@@ -139,6 +194,7 @@ exports.bookAppointment = async (
     let slot = null;
 
     for (const s of schedules) {
+
       let days = s.active_days;
 
       if (typeof days === "string") {
@@ -186,7 +242,9 @@ exports.bookAppointment = async (
           s.id,
           doctorId,
           apptDate,
-          start24
+          start24,
+          requestedToken,
+          connection
         );
 
       if (candidate) {
@@ -207,13 +265,15 @@ exports.bookAppointment = async (
       };
     }
 
+
     if (!slot) {
       await connection.rollback();
 
       return {
         success: false,
-        statusCode: 400,
-        message: "Slot not available"
+        statusCode: 409,
+        message:
+          `Token ${requestedToken} with start time ${start_time} is not available.`
       };
     }
 
@@ -236,9 +296,33 @@ exports.bookAppointment = async (
       };
     }
 
+    const tokenNumber =
+      Number(slot.token_number);
+
+    if (
+      !Number.isInteger(tokenNumber) ||
+      tokenNumber <= 0
+    ) {
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 400,
+        message:
+          "Token number is not available for this slot."
+      };
+    }
+
+    const slotStartTime =
+      slot.start_time;
+
+    const slotEndTime =
+      slot.end_time;
+
     let code;
 
     do {
+
       code = Math.floor(
         1000 + Math.random() * 9000
       );
@@ -252,47 +336,38 @@ exports.bookAppointment = async (
       )
     );
 
-    const tokenNumber =
-      slot.token_number;
-
-    if (
-      tokenNumber === null ||
-      tokenNumber === undefined
-    ) {
-      await connection.rollback();
-
-      return {
-        success: false,
-        statusCode: 400,
-        message:
-          "Token number is not available for this slot."
-      };
-    }
-
     const appointmentId =
       await Appointment.create(
         {
-          token_number: tokenNumber,
+          token_number:
+            tokenNumber,
 
           code,
 
-          appointment_date: apptDate,
+          appointment_date:
+            apptDate,
 
-          start_time: start24,
+          start_time:
+            slotStartTime,
 
-          end_time: end24,
+          end_time:
+            slotEndTime,
 
-          patient_id: patientId,
+          patient_id:
+            patientId,
 
-          doctor_id: doctorId,
+          doctor_id:
+            doctorId,
 
-          schedule_id: schedule.id,
+          schedule_id:
+            schedule.id,
 
           booking_type,
 
           mode,
 
-          hospital_name,
+          hospital_name:
+            schedule.hospital_name,
 
           reason_for_visit
         },
@@ -303,87 +378,149 @@ exports.bookAppointment = async (
       booking_type === "someone_else" &&
       patient
     ) {
+
       await Appointment.insertOtherPatient(
         {
-          appointment_id: appointmentId,
+          appointment_id:
+            appointmentId,
 
-          user_id: patientId,
+          user_id:
+            patientId,
 
-          name: patient.name,
+          name:
+            patient.name,
 
-          age: patient.age,
+          age:
+            patient.age || null,
 
-          gender: patient.gender,
+          gender:
+            patient.gender || null,
 
-          phone: patient.phone,
+          phone:
+            patient.phone || null,
 
-          email: patient.email
+          email:
+            patient.email || null
         },
         connection
       );
     }
 
-    await SlotModel.deactivateSlot(
-      slot.id,
-      connection
-    );
+    const slotUpdated =
+      await SlotModel.deactivateSlot(
+        slot.id,
+        connection
+      );
 
-    await notificationService.createNotification({
-      userId: patientId,
+    if (
+      slotUpdated &&
+      slotUpdated.affectedRows === 0
+    ) {
 
-      title: "Appointment Booked",
+      await connection.rollback();
 
-      message:
-        `Your appointment has been booked successfully. ` +
-        `Token No: ${tokenNumber}. ` +
-        `Booking Code: ${code}`,
+      return {
+        success: false,
+        statusCode: 409,
+        message:
+          "This slot was already booked."
+      };
+    }
 
-      type: "SUCCESS",
+    try {
 
-      createdBy: doctorId
-    });
+      await notificationService.createNotification({
+
+        userId:
+          patientId,
+
+        title:
+          "Appointment Booked",
+
+        message:
+          `Your appointment has been booked successfully. ` +
+          `Token No: ${tokenNumber}. ` +
+          `Booking Code: ${code}. ` +
+          `Time: ${slotStartTime} - ${slotEndTime}`,
+
+        type:
+          "SUCCESS",
+
+        createdBy:
+          doctorId
+      });
+
+    } catch (notificationError) {
+
+      console.error(
+        "Notification Error:",
+        notificationError
+      );
+    }
 
     await connection.commit();
 
     connection.release();
 
     try {
-      const estimatedTime = getEstimatedTime(start_time);
+
+      const estimatedTime =
+        getEstimatedTime(
+          formatTime(slotStartTime)
+        );
 
       await sendAppointmentEmail({
-        to: patientEmail,
+
+        to:
+          patientEmail,
 
         code,
 
         tokenNumber,
 
-        date: emailDate,
+        date:
+          emailDate,
 
         estimatedTime,
 
-        hospitalName: hospital_name
+        hospitalName:
+          schedule.hospital_name
       });
 
     } catch (emailError) {
+
       console.error(
         "Appointment Email Error:",
         emailError
       );
-
     }
 
     return {
+
       success: true,
 
       message:
         "Appointment booked successfully",
 
       data: {
+
         appointmentId,
 
         code,
 
-        tokenNumber
+        tokenNumber,
+
+        appointment_date:
+          apptDate,
+
+        start_time:
+          formatTime(slotStartTime),
+
+        end_time:
+          formatTime(slotEndTime),
+
+        hospital_name:
+          schedule.hospital_name
       }
     };
 
@@ -413,9 +550,14 @@ exports.bookAppointment = async (
     );
 
     return {
+
       success: false,
+
       statusCode: 500,
-      message: "Internal server error"
+
+      message:
+        error.message ||
+        "Internal server error"
     };
   }
 };

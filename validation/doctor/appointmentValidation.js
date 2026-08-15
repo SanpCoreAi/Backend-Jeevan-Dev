@@ -5,19 +5,38 @@ exports.bookAppointmentValidation = Joi.object({
   appointment_date: Joi.date()
     .required()
     .messages({
-      "any.required": "Appointment date is required"
+      "any.required": "Appointment date is required",
+      "date.base": "Valid appointment date is required"
     }),
 
   start_time: Joi.string()
+    .pattern(/^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i)
     .required()
     .messages({
-      "any.required": "Start time is required"
+      "any.required": "Start time is required",
+      "string.pattern.base":
+        "Start time must be in format 10:50 AM"
     }),
 
   end_time: Joi.string()
+    .pattern(/^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i)
     .required()
     .messages({
-      "any.required": "End time is required"
+      "any.required": "End time is required",
+      "string.pattern.base":
+        "End time must be in format 10:55 AM"
+    }),
+
+  // ✅ FIXED
+  token_number: Joi.number()
+    .integer()
+    .positive()
+    .required()
+    .messages({
+      "any.required": "Token number is required",
+      "number.base": "Token number must be a number",
+      "number.integer": "Token number must be an integer",
+      "number.positive": "Token number must be greater than 0"
     }),
 
   reason_for_visit: Joi.string()
@@ -34,16 +53,18 @@ exports.bookAppointmentValidation = Joi.object({
 
   hospital_name: Joi.when("mode", {
     is: "offline",
-    then: Joi.string().trim().required(),
-    otherwise: Joi.string().allow("", null)
+    then: Joi.string()
+      .trim()
+      .required(),
+    otherwise: Joi.string()
+      .trim()
+      .allow("", null)
   }),
 
   patient: Joi.when("booking_type", {
-
     is: "someone_else",
 
     then: Joi.object({
-
       name: Joi.string()
         .trim()
         .required(),
@@ -55,11 +76,7 @@ exports.bookAppointmentValidation = Joi.object({
         .required(),
 
       gender: Joi.string()
-        .valid(
-          "Male",
-          "Female",
-          "Other"
-        )
+        .valid("Male", "Female", "Other")
         .required(),
 
       phone: Joi.string()
@@ -73,9 +90,7 @@ exports.bookAppointmentValidation = Joi.object({
     }).required(),
 
     otherwise: Joi.forbidden()
-
   })
-
 });
 
 exports.bookAppointmentByAssistantValidation = Joi.object({

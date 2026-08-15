@@ -25,13 +25,14 @@ const getDoctorIdFromUser = async (user) => {
 exports.create = async (req, res) => {
   try {
 
-    const { error, value } = bookAppointmentValidation.validate(
-      req.body,
-      {
-        abortEarly: true,
-        stripUnknown: true
-      }
-    );
+    const { error, value } =
+      bookAppointmentValidation.validate(
+        req.body,
+        {
+          abortEarly: true,
+          stripUnknown: true
+        }
+      );
 
     if (error) {
       return res.status(400).json({
@@ -58,7 +59,8 @@ exports.create = async (req, res) => {
       });
     }
 
-    const patient = await appointmentService.getUserById(patientId);
+    const patient =
+      await appointmentService.getUserById(patientId);
 
     if (!patient) {
       return res.status(404).json({
@@ -67,12 +69,18 @@ exports.create = async (req, res) => {
       });
     }
 
-    const result = await appointmentService.bookAppointment(
-      patientId,
-      patient.email,
-      doctorId,
-      value
+    console.log(
+      "TOKEN BEFORE SERVICE:",
+      value.token_number
     );
+
+    const result =
+      await appointmentService.bookAppointment(
+        patientId,
+        patient.email,
+        doctorId,
+        value
+      );
 
     if (!result.success) {
       return res.status(result.statusCode || 400).json({
@@ -90,10 +98,11 @@ exports.create = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("BOOK APPOINTMENT CONTROLLER ERROR:", {
-      message: error.message,
-      stack: error.stack
-    });
+
+    console.error(
+      "BOOK APPOINTMENT CONTROLLER ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
