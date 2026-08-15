@@ -25,7 +25,7 @@ exports.bookAppointmentValidation = Joi.object({
     .allow("", null),
 
   booking_type: Joi.string()
-    .valid("myself","someone_else")
+    .valid("myself", "someone_else")
     .required(),
 
   mode: Joi.string()
@@ -95,16 +95,14 @@ exports.bookAppointmentByAssistantValidation = Joi.object({
     .valid("someone_else")
     .required(),
 
-  time: Joi.string()
-    .pattern(
-      /^(?:[01]\d|2[0-3]):[0-5]\d\s+to\s+(?:[01]\d|2[0-3]):[0-5]\d$/
-    )
+  start_time: Joi.string()
+    .pattern(/^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i)
     .required()
     .messages({
       "string.pattern.base":
-        'Time must be in format "10:00 to 10:05".',
+        'Start time must be in format "10:00 AM".',
       "any.required":
-        "Appointment time is required."
+        "Start time is required."
     }),
 
   token: Joi.number()
@@ -151,79 +149,79 @@ exports.bookAppointmentByAssistantValidation = Joi.object({
 
 
 exports.cancelAppointmentValidation =
-Joi.object({
+  Joi.object({
 
-  reason: Joi.string()
-    .trim()
-    .min(5)
-    .max(255)
-    .required()
+    reason: Joi.string()
+      .trim()
+      .min(5)
+      .max(255)
+      .required()
 
-});
+  });
 
 
 exports.appointmentIdValidation =
-Joi.object({
+  Joi.object({
 
-  appointmentId: Joi.number()
-    .integer()
-    .positive()
-    .required()
+    appointmentId: Joi.number()
+      .integer()
+      .positive()
+      .required()
 
-});
+  });
 
 
 exports.getDoctorSlotsValidation =
-Joi.object({
+  Joi.object({
 
-  doctorId: Joi.number()
-    .integer()
-    .positive()
-    .required(),
+    doctorId: Joi.number()
+      .integer()
+      .positive()
+      .required(),
 
-  hospitalName: Joi.string()
-    .trim()
-    .required(),
+    hospitalName: Joi.string()
+      .trim()
+      .required(),
 
-  date: Joi.date()
-    .required()
+    date: Joi.date()
+      .required()
 
-});
+  });
 
 
 exports.getDoctorAppointmentsValidation =
-Joi.object({
+  Joi.object({
 
-  hospitalName: Joi.string()
-    .trim()
-    .required(),
+    hospitalName: Joi.string()
+      .trim()
+      .required(),
 
-  mode: Joi.string()
-    .valid("online", "offline")
-    .optional(),
+    mode: Joi.string()
+      .valid("online", "offline")
+      .optional(),
 
-  slot_date: Joi.date()
-    .optional(),
+    slot_date: Joi.date()
+      .optional(),
 
-  status: Joi.string()
-    .valid(
-      "PENDING",
-      "IN_PROGRESS",
-      "COMPLETED",
-      "CANCELLED"
-    )
-    .optional(),
+    status: Joi.string()
+      .valid(
+        "PENDING",
+        "IN_PROGRESS",
+        "COMPLETED",
+        "CANCELLED"
+      )
+      .optional(),
 
-  page: Joi.number()
-    .integer()
-    .min(1)
-    .default(1),
+    page: Joi.number()
+      .integer()
+      .min(1)
+      .default(1),
 
-  limit: Joi.number()
-    .integer()
-    .min(1)
-    .max(100)
-    .default(10)
+    limit: Joi.number()
+      .integer()
+      .min(1)
+      .max(100)
+      .default(10)
 
-});
+  });
 

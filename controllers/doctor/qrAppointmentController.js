@@ -9,7 +9,7 @@ exports.scanBook = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Valid doctor id is required.",
-        data: null,
+        data: null
       });
     }
 
@@ -25,36 +25,44 @@ exports.scanBook = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Hospital name is required.",
-        data: null,
+        data: null
       });
     }
 
     const appointmentDate =
       req.body.date ||
       new Date().toLocaleDateString("en-CA", {
-        timeZone: "Asia/Kolkata",
+        timeZone: "Asia/Kolkata"
       });
 
     if (!appointmentDate) {
       return res.status(400).json({
         success: false,
         message: "Appointment date is required.",
-        data: null,
+        data: null
       });
     }
 
-    const time = req.body.time;
+    const startTime =
+      req.body.start_time;
 
-    if (!time || typeof time !== "string") {
+    if (
+      !startTime ||
+      typeof startTime !== "string" ||
+      !startTime.trim()
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Time is required.",
-        data: null,
+        message: "Start time is required.",
+        data: null
       });
     }
-    const tokenNumber = Number(
-      req.body.token
-    );
+
+    const tokenNumber =
+      Number(
+        req.body.token ??
+        req.body.token_number
+      );
 
     if (
       !Number.isInteger(tokenNumber) ||
@@ -62,32 +70,33 @@ exports.scanBook = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "Valid token is required.",
-        data: null,
+        message: "Valid token number is required.",
+        data: null
       });
     }
 
     const result =
       await AppointmentService.scanBook({
         user: req.user,
-
         doctorId,
         hospitalName,
         date: appointmentDate,
-        time,
-        tokenNumber,
+        start_time: startTime.trim(),
+        tokenNumber
       });
 
     return res.status(
-      result.statusCode || 500
+      result.statusCode || (result.success ? 201 : 400)
     ).json({
       success: result.success,
-
       message:
-        result.body?.message || "",
-
+        result.body?.message ||
+        result.message ||
+        "",
       data:
-        result.body?.data || null,
+        result.body?.data ||
+        result.data ||
+        null
     });
 
   } catch (error) {
@@ -100,7 +109,7 @@ exports.scanBook = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal Server Error.",
-      data: null,
+      data: null
     });
   }
 };

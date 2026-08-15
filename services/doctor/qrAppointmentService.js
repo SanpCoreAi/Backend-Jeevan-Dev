@@ -69,21 +69,76 @@ const formatTime = (time) => {
 };
 
 
-const getEstimatedTime = (time) => {
-  const [hours, minutes] = String(time)
-    .split(":")
-    .map(Number);
+const getEstimatedTime = (startTime) => {
+  if (!startTime) {
+    return null;
+  }
 
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
+  const value = String(startTime).trim();
 
-  date.setMinutes(date.getMinutes() + 10);
+  let hour;
+  let minute;
 
-  return date.toLocaleTimeString("en-IN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true
-  });
+  // DB format: 10:00:00 / 10:00
+  const dbTimeMatch = value.match(
+    /^(\d{1,2}):(\d{2})(?::\d{2})?$/
+  );
+
+  // Request/display format: 10:00 AM
+  const amPmMatch = value.match(
+    /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i
+  );
+
+  if (dbTimeMatch) {
+    hour = Number(dbTimeMatch[1]);
+    minute = Number(dbTimeMatch[2]);
+
+  } else if (amPmMatch) {
+    hour = Number(amPmMatch[1]);
+    minute = Number(amPmMatch[2]);
+
+    const period = amPmMatch[3].toUpperCase();
+
+    if (period === "AM" && hour === 12) {
+      hour = 0;
+    }
+
+    if (period === "PM" && hour !== 12) {
+      hour += 12;
+    }
+
+  } else {
+    return null;
+  }
+
+  // Estimated Time = Start Time + 30 minutes
+  let totalMinutes =
+    hour * 60 + minute + 30;
+
+  totalMinutes =
+    totalMinutes % (24 * 60);
+
+  let estimatedHour =
+    Math.floor(totalMinutes / 60);
+
+  const estimatedMinute =
+    totalMinutes % 60;
+
+  const estimatedPeriod =
+    estimatedHour >= 12
+      ? "PM"
+      : "AM";
+
+  estimatedHour =
+    estimatedHour % 12;
+
+  if (estimatedHour === 0) {
+    estimatedHour = 12;
+  }
+
+  return `${String(estimatedHour).padStart(2, "0")}:${String(
+    estimatedMinute
+  ).padStart(2, "0")} ${estimatedPeriod}`;
 };
 
 exports.scanBook = async ({
@@ -91,7 +146,7 @@ exports.scanBook = async ({
   doctorId,
   hospitalName,
   date,
-  time,
+  start_time,
   tokenNumber
 }) => {
 
@@ -99,8 +154,7 @@ exports.scanBook = async ({
 
   try {
 
-    connection =
-      await db.getConnection();
+    connection = await db.getConnection();
 
     await connection.beginTransaction();
 
@@ -113,18 +167,16 @@ exports.scanBook = async ({
         statusCode: 401,
 
         body: {
-          message:
-            "Unauthorized user.",
+          message: "Unauthorized user.",
           data: null
         }
       };
     }
 
-    const patientId =
-      Number(user.id);
 
-    doctorId =
-      Number(doctorId);
+    const patientId = Number(user.id);
+
+    doctorId = Number(doctorId);
 
     if (
       !Number.isInteger(doctorId) ||
@@ -138,8 +190,7 @@ exports.scanBook = async ({
         statusCode: 400,
 
         body: {
-          message:
-            "Valid doctor id is required.",
+          message: "Valid doctor id is required.",
           data: null
         }
       };
@@ -150,6 +201,7 @@ exports.scanBook = async ({
         ? hospitalName.trim()
         : "";
 
+
     if (!hospitalName) {
 
       await connection.rollback();
@@ -159,8 +211,7 @@ exports.scanBook = async ({
         statusCode: 400,
 
         body: {
-          message:
-            "Hospital name is required.",
+          message: "Hospital name is required.",
           data: null
         }
       };
@@ -175,8 +226,7 @@ exports.scanBook = async ({
         statusCode: 400,
 
         body: {
-          message:
-            "Appointment date is required.",
+          message: "Appointment date is required.",
           data: null
         }
       };
@@ -202,16 +252,15 @@ exports.scanBook = async ({
         statusCode: 400,
 
         body: {
-          message:
-            "Invalid appointment date.",
+          message: "Invalid appointment date.",
           data: null
         }
       };
     }
 
     if (
-      !time ||
-      typeof time !== "string"
+      !start_time ||
+      typeof start_time !== "string"
     ) {
 
       await connection.rollback();
@@ -221,15 +270,18 @@ exports.scanBook = async ({
         statusCode: 400,
 
         body: {
-          message:
-            "Time is required.",
+          message: "Start time is required.",
           data: null
         }
       };
     }
 
-    tokenNumber =
-      Number(tokenNumber);
+
+    const requestedStartTime =
+      start_time.trim();
+
+    tokenNumber = Number(tokenNumber);
+
 
     if (
       !Number.isInteger(tokenNumber) ||
@@ -243,8 +295,7 @@ exports.scanBook = async ({
         statusCode: 400,
 
         body: {
-          message:
-            "Valid token number is required.",
+          message: "Valid token number is required.",
           data: null
         }
       };
@@ -274,8 +325,7 @@ exports.scanBook = async ({
         statusCode: 404,
 
         body: {
-          message:
-            "Patient not found.",
+          message: "Patient not found.",
           data: null
         }
       };
@@ -308,12 +358,12 @@ exports.scanBook = async ({
         statusCode: 404,
 
         body: {
-          message:
-            "Doctor not found.",
+          message: "Doctor not found.",
           data: null
         }
       };
     }
+
 
     const [scheduleRows] =
       await connection.execute(
@@ -360,9 +410,9 @@ exports.scanBook = async ({
       };
     }
 
+
     const appointmentDay =
-      dayjs(appointmentDate)
-        .format("ddd");
+      dayjs(appointmentDate).format("ddd");
 
 
     let schedule = null;
@@ -397,7 +447,9 @@ exports.scanBook = async ({
       if (
         !Array.isArray(activeDays)
       ) {
+
         activeDays = [];
+
       }
 
 
@@ -430,6 +482,7 @@ exports.scanBook = async ({
         }
       };
     }
+
 
     const [bookingRows] =
       await connection.execute(
@@ -472,6 +525,8 @@ exports.scanBook = async ({
       };
     }
 
+
+
     const [slotRows] =
       await connection.execute(
         `
@@ -489,6 +544,7 @@ exports.scanBook = async ({
           AND doctor_id = ?
           AND DATE(start_date) = ?
           AND token_number = ?
+          AND TIME(start_time) = TIME(?)
           AND LOWER(status) = 'active'
         LIMIT 1
         FOR UPDATE
@@ -497,9 +553,11 @@ exports.scanBook = async ({
           schedule.id,
           doctorId,
           appointmentDate,
-          tokenNumber
+          tokenNumber,
+          requestedStartTime
         ]
       );
+
 
     if (!slotRows.length) {
 
@@ -511,7 +569,7 @@ exports.scanBook = async ({
 
         body: {
           message:
-            `Token ${tokenNumber} is not available for this date.`,
+            `Token ${tokenNumber} with start time ${requestedStartTime} is not available for this date.`,
           data: null
         }
       };
@@ -520,6 +578,26 @@ exports.scanBook = async ({
 
     const slot =
       slotRows[0];
+
+
+    if (
+      String(slot.status).toLowerCase() !== "active"
+    ) {
+
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 409,
+
+        body: {
+          message:
+            "This slot is already booked. Please select another slot.",
+          data: null
+        }
+      };
+    }
+
 
     if (
       slot.token_number === null ||
@@ -566,14 +644,17 @@ exports.scanBook = async ({
       };
     }
 
+
     const formattedStartTime =
       formatTime(startTime);
+
 
     const formattedEndTime =
       formatTime(endTime);
 
     const estimatedTime =
       getEstimatedTime(startTime);
+
 
     const code =
       await generateUniqueCode(
@@ -663,7 +744,6 @@ exports.scanBook = async ({
       };
     }
 
-
     try {
 
       await notificationService.createNotification({
@@ -685,7 +765,6 @@ exports.scanBook = async ({
 
         createdBy:
           doctorId
-
       });
 
     } catch (notificationError) {
@@ -703,12 +782,24 @@ exports.scanBook = async ({
       if (patient.email) {
 
         await sendAppointmentEmails({
-          to: patient.email,
-          tokenNumber: tokenNumber,
-          code: code,
-          date: appointmentDate,
-          estimatedTime: estimatedTime,
-          hospitalName: schedule.hospital_name
+
+          to:
+            patient.email,
+
+          tokenNumber:
+            tokenNumber,
+
+          code:
+            code,
+
+          date:
+            appointmentDate,
+
+          estimatedTime:
+            estimatedTime,
+
+          hospitalName:
+            schedule.hospital_name
         });
       }
 
@@ -719,6 +810,7 @@ exports.scanBook = async ({
         emailError
       );
     }
+
 
     return {
 
@@ -814,6 +906,7 @@ exports.scanBook = async ({
       body: {
 
         message:
+          error.message ||
           "Internal Server Error.",
 
         data: null
@@ -826,5 +919,6 @@ exports.scanBook = async ({
     if (connection) {
       connection.release();
     }
+
   }
 };

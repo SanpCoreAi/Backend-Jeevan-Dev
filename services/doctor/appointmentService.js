@@ -8,35 +8,49 @@ const { sendAppointmentEmail, sendAppointmentEmails } = require("../../utils/sen
 const notificationService = require("../notification/notificationService");
 const dayjs = require("dayjs");
 
-function getEstimatedTime(endTime) {
-  if (!endTime) {
-    return "";
+const getEstimatedTime = (startTime) => {
+  if (!startTime) return null;
+
+  const match = String(startTime)
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+
+  if (!match) {
+    return null;
   }
 
-  let [hour, minute] = endTime
-    .split(":")
-    .map(Number);
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const period = match[3].toUpperCase();
 
-  minute += 5;
-
-  if (minute >= 60) {
-    minute -= 60;
-    hour += 1;
+  if (period === "AM" && hour === 12) {
+    hour = 0;
   }
 
-  const period = hour >= 12 ? "PM" : "AM";
-
-  let displayHour = hour % 12;
-
-  if (displayHour === 0) {
-    displayHour = 12;
+  if (period === "PM" && hour !== 12) {
+    hour += 12;
   }
 
-  const formattedMinute =
-    String(minute).padStart(2, "0");
+  let totalMinutes = hour * 60 + minute + 30;
 
-  return `Around ${displayHour}:${formattedMinute} ${period}`;
-}
+  totalMinutes = totalMinutes % (24 * 60);
+
+  let estimatedHour = Math.floor(totalMinutes / 60);
+  const estimatedMinute = totalMinutes % 60;
+
+  const estimatedPeriod =
+    estimatedHour >= 12 ? "PM" : "AM";
+
+  estimatedHour = estimatedHour % 12;
+
+  if (estimatedHour === 0) {
+    estimatedHour = 12;
+  }
+
+  return `${String(estimatedHour).padStart(2, "0")}:${String(
+    estimatedMinute
+  ).padStart(2, "0")} ${estimatedPeriod}`;
+};
 
 exports.bookAppointment = async (
   patientId,
@@ -334,7 +348,7 @@ exports.bookAppointment = async (
     connection.release();
 
     try {
-     const estimatedTime = getEstimatedTime(end24);
+      const estimatedTime = getEstimatedTime(start_time);
 
       await sendAppointmentEmail({
         to: patientEmail,
@@ -419,9 +433,11 @@ exports.bookAppointmentByAssistant = async ({
       return {
         success: false,
         statusCode: 401,
-        message: "Unauthorized user."
+        message: "Unauthorized user.",
+        data: null
       };
     }
+
 
     const assistant = await User.findById(user.id);
 
@@ -429,15 +445,18 @@ exports.bookAppointmentByAssistant = async ({
       return {
         success: false,
         statusCode: 404,
-        message: "Assistant not found."
+        message: "Assistant not found.",
+        data: null
       };
     }
+
 
     if (!assistant.doctor_id) {
       return {
         success: false,
         statusCode: 400,
-        message: "Doctor not mapped with assistant."
+        message: "Doctor not mapped with assistant.",
+        data: null
       };
     }
 
@@ -449,17 +468,17 @@ exports.bookAppointmentByAssistant = async ({
       hospital_name,
       mode,
       booking_type,
-      time,
+      start_time,
       reason_for_visit,
       patient
     } = body;
-
 
     if (!appointment_date) {
       return {
         success: false,
         statusCode: 400,
-        message: "Appointment date is required."
+        message: "Appointment date is required.",
+        data: null
       };
     }
 
@@ -468,16 +487,28 @@ exports.bookAppointmentByAssistant = async ({
       return {
         success: false,
         statusCode: 400,
-        message: "Hospital name is required."
+        message: "Hospital name is required.",
+        data: null
       };
     }
 
 
-    if (!time) {
+    if (!start_time) {
       return {
         success: false,
         statusCode: 400,
-        message: "Appointment time is required."
+        message: "Appointment start time is required.",
+        data: null
+      };
+    }
+
+
+    if (booking_type !== "someone_else") {
+      return {
+        success: false,
+        statusCode: 400,
+        message: 'booking_type must be "someone_else".',
+        data: null
       };
     }
 
@@ -490,27 +521,10 @@ exports.bookAppointmentByAssistant = async ({
       return {
         success: false,
         statusCode: 400,
-        message: "Patient details are required."
+        message: "Patient details are required.",
+        data: null
       };
     }
-
-    const timeParts = time
-      .split(/\s+to\s+/i)
-      .map(value => value.trim());
-
-
-    if (timeParts.length !== 2) {
-      return {
-        success: false,
-        statusCode: 400,
-        message:
-          'Time must be in format "10:00 to 10:05".'
-      };
-    }
-
-
-    const startTime = timeParts[0];
-    const endTime = timeParts[1];
 
     const appointmentDate =
       dayjs(appointment_date).format("YYYY-MM-DD");
@@ -561,15 +575,16 @@ exports.bookAppointmentByAssistant = async ({
         success: false,
         statusCode: 404,
         message:
-          "Doctor schedule not found for this hospital/date."
+          "Doctor schedule not found for this hospital/date.",
+        data: null
       };
     }
 
 
     const schedule = scheduleRows[0];
 
-    let activeDays = schedule.active_days;
 
+    let activeDays = schedule.active_days;
 
     if (typeof activeDays === "string") {
 
@@ -578,7 +593,6 @@ exports.bookAppointmentByAssistant = async ({
       } catch (error) {
         activeDays = [];
       }
-
     }
 
 
@@ -599,48 +613,84 @@ exports.bookAppointmentByAssistant = async ({
         success: false,
         statusCode: 400,
         message:
-          `Doctor is not available on ${appointmentDay}.`
+          `Doctor is not available on ${appointmentDay}.`,
+        data: null
       };
     }
 
-    const patientUserId =
-      booking_type === "other"
-        ? user.id
-        : user.id;
+    const convertTo24Hour = (value) => {
+
+      if (!value) return null;
+
+      value = String(value)
+        .trim()
+        .toUpperCase();
+
+      // Already HH:mm or HH:mm:ss
+      if (/^\d{2}:\d{2}(:\d{2})?$/.test(value)) {
+
+        if (value.length === 5) {
+          return `${value}:00`;
+        }
+
+        return value;
+      }
 
 
-    const [patientBookingRows] =
-      await connection.execute(
-        `
-        SELECT
-          COUNT(*) AS total
-        FROM appointments
-        WHERE doctor_id = ?
-          AND DATE(slot_date) = ?
-          AND status != 'CANCELLED'
-          AND (
-            patient_id = ?
-            OR id IN (
-              SELECT appointment_id
-              FROM appointment_patients
-              WHERE user_id = ?
-            )
-          )
-        `,
-        [
-          doctorId,
-          appointmentDate,
-          patientUserId,
-          patientUserId
-        ]
+      const match =
+        value.match(
+          /^(\d{1,2}):(\d{2})\s*(AM|PM)$/
+        );
+
+
+      if (!match) {
+        return null;
+      }
+
+
+      let hour =
+        Number(match[1]);
+
+      const minute =
+        match[2];
+
+      const period =
+        match[3];
+
+
+      if (hour < 1 || hour > 12) {
+        return null;
+      }
+
+
+      if (period === "AM") {
+
+        if (hour === 12) {
+          hour = 0;
+        }
+
+      } else {
+
+        if (hour !== 12) {
+          hour += 12;
+        }
+      }
+
+
+      return (
+        String(hour).padStart(2, "0") +
+        ":" +
+        minute +
+        ":00"
       );
+    };
 
 
-    const totalBookings =
-      Number(patientBookingRows[0]?.total || 0);
+    const startTime =
+      convertTo24Hour(start_time);
 
 
-    if (totalBookings >= 2) {
+    if (!startTime) {
 
       await connection.rollback();
 
@@ -648,7 +698,8 @@ exports.bookAppointmentByAssistant = async ({
         success: false,
         statusCode: 400,
         message:
-          "You can book maximum 2 appointments in a day."
+          'Invalid start_time. Use format "10:00 AM".',
+        data: null
       };
     }
 
@@ -669,7 +720,6 @@ exports.bookAppointmentByAssistant = async ({
           AND doctor_id = ?
           AND DATE(start_date) = ?
           AND start_time = ?
-          AND end_time = ?
         LIMIT 1
         FOR UPDATE
         `,
@@ -677,8 +727,7 @@ exports.bookAppointmentByAssistant = async ({
           schedule.id,
           doctorId,
           appointmentDate,
-          startTime,
-          endTime
+          startTime
         ]
       );
 
@@ -699,7 +748,8 @@ exports.bookAppointmentByAssistant = async ({
           success: false,
           statusCode: 409,
           message:
-            "This time slot is already booked. Please select another time."
+            "This time slot is already booked. Please select another time.",
+          data: null
         };
       }
 
@@ -707,18 +757,100 @@ exports.bookAppointmentByAssistant = async ({
 
     else {
 
+      const slotDuration =
+        Number(schedule.slot_duration);
+
+
+      if (
+        !Number.isInteger(slotDuration) ||
+        slotDuration <= 0
+      ) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "Invalid schedule slot duration.",
+          data: null
+        };
+      }
+
+      const [hours, minutes] =
+        startTime
+          .split(":")
+          .map(Number);
+
+
+      const startMinutes =
+        hours * 60 + minutes;
+
+
+      const endMinutes =
+        startMinutes + slotDuration;
+
+
+      const endHours =
+        Math.floor(endMinutes / 60);
+
+      const endMins =
+        endMinutes % 60;
+
+
+      const endTime =
+        `${String(endHours).padStart(2, "0")}:` +
+        `${String(endMins).padStart(2, "0")}:00`;
+
+
+      const scheduleStart =
+        convertTo24Hour(schedule.start_time);
+
+      const scheduleEnd =
+        convertTo24Hour(schedule.end_time);
+
+
+      if (!scheduleStart || !scheduleEnd) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "Invalid schedule start/end time.",
+          data: null
+        };
+      }
+
+
+      if (
+        startTime < scheduleStart ||
+        endTime > scheduleEnd
+      ) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "Selected time is outside doctor schedule.",
+          data: null
+        };
+      }
+
       const [tokenRows] =
         await connection.execute(
           `
           SELECT
-            COALESCE(
-              MAX(token_number),
-              0
-            ) + 1 AS next_token
+            COALESCE(MAX(token_number), 0) + 1
+              AS next_token
           FROM schedule_slots
           WHERE schedule_id = ?
             AND doctor_id = ?
             AND DATE(start_date) = ?
+          FOR UPDATE
           `,
           [
             schedule.id,
@@ -729,7 +861,9 @@ exports.bookAppointmentByAssistant = async ({
 
 
       const tokenNumber =
-        Number(tokenRows[0]?.next_token || 1);
+        Number(
+          tokenRows[0]?.next_token || 1
+        );
 
       const [slotResult] =
         await connection.execute(
@@ -767,12 +901,12 @@ exports.bookAppointmentByAssistant = async ({
         token_number: tokenNumber,
         status: "active"
       };
-
     }
 
+
     if (
-      !slot.token_number &&
-      slot.token_number !== 0
+      slot.token_number === null ||
+      slot.token_number === undefined
     ) {
 
       await connection.rollback();
@@ -780,7 +914,8 @@ exports.bookAppointmentByAssistant = async ({
       return {
         success: false,
         statusCode: 400,
-        message: "Token number not available."
+        message: "Token number not available.",
+        data: null
       };
     }
 
@@ -788,75 +923,116 @@ exports.bookAppointmentByAssistant = async ({
     const tokenNumber =
       Number(slot.token_number);
 
-    const code =
-      await Appointment.generateUniqueCode(
-        connection,
-        doctorId,
-        appointmentDate
+
+    const finalStartTime =
+      slot.start_time;
+
+
+    const finalEndTime =
+      slot.end_time;
+
+    const generateUniqueCode = async () => {
+
+      for (let i = 0; i < 20; i++) {
+
+        const code =
+          Math.floor(
+            1000 + Math.random() * 9000
+          ).toString();
+
+
+        const [rows] =
+          await connection.execute(
+            `
+            SELECT id
+            FROM appointments
+            WHERE code = ?
+            LIMIT 1
+            `,
+            [code]
+          );
+
+
+        if (!rows.length) {
+          return code;
+        }
+      }
+
+
+      throw new Error(
+        "Unable to generate unique booking code."
       );
+    };
 
 
-    let appointmentId;
+    const code =
+      await generateUniqueCode();
 
-
-    if (booking_type === "other") {
-
-      appointmentId =
-        await Appointment.create(
-          {
-            token_number: tokenNumber,
-            code,
-            appointment_date: appointmentDate,
-            start_time: startTime,
-            end_time: endTime,
-            patient_id: null,
-            doctor_id: doctorId,
-            schedule_id: schedule.id,
-            mode: mode || "offline",
-            booking_type: "other",
-            hospital_name: schedule.hospital_name,
-            reason_for_visit:
-              reason_for_visit || null
-          },
-          connection
-        );
-
-      await Appointment.insertOtherPatient(
+    const appointmentId =
+      await Appointment.create(
         {
-          appointment_id: appointmentId,
-          user_id: user.id,
-          name: patient.name,
-          age: patient.age || null,
-          gender: patient.gender || null,
-          phone: patient.phone || null,
-          email: patient.email || null
+          token_number: tokenNumber,
+
+          code,
+
+          appointment_date:
+            appointmentDate,
+
+          start_time:
+            finalStartTime,
+
+          end_time:
+            finalEndTime,
+
+          patient_id:
+            null,
+
+          doctor_id:
+            doctorId,
+
+          schedule_id:
+            schedule.id,
+
+          mode:
+            mode || "offline",
+
+          booking_type:
+            "someone_else",
+
+          hospital_name:
+            schedule.hospital_name,
+
+          reason_for_visit:
+            reason_for_visit || null
         },
         connection
       );
 
-    } else {
+    await Appointment.insertOtherPatient(
+      {
+        appointment_id:
+          appointmentId,
 
-      appointmentId =
-        await Appointment.create(
-          {
-            token_number: tokenNumber,
-            code,
-            appointment_date: appointmentDate,
-            start_time: startTime,
-            end_time: endTime,
-            patient_id: user.id,
-            doctor_id: doctorId,
-            schedule_id: schedule.id,
-            mode: mode || "offline",
-            booking_type: "myself",
-            hospital_name: schedule.hospital_name,
-            reason_for_visit:
-              reason_for_visit || null
-          },
-          connection
-        );
+        user_id:
+          user.id,
 
-    }
+        name:
+          patient.name,
+
+        age:
+          patient.age || null,
+
+        gender:
+          patient.gender || null,
+
+        phone:
+          patient.phone || null,
+
+        email:
+          patient.email || null
+      },
+      connection
+    );
 
     const [slotUpdate] =
       await connection.execute(
@@ -878,28 +1054,43 @@ exports.bookAppointmentByAssistant = async ({
         success: false,
         statusCode: 409,
         message:
-          "This slot was booked by another user. Please select another time."
+          "This slot was booked by another user. Please select another time.",
+        data: null
       };
     }
+
+    const endDateTime =
+      dayjs(
+        `${appointmentDate} ${finalEndTime}`
+      );
+
+
+    const estimatedTime =
+      endDateTime
+        .add(10, "minute")
+        .format("hh:mm A");
 
     try {
 
       await notificationService.createNotification({
 
-        userId: user.id,
+        userId:
+          user.id,
 
-        title: "Appointment Booked",
+        title:
+          "Appointment Booked",
 
         message:
           `Appointment booked successfully. ` +
           `Token No: ${tokenNumber}. ` +
-          `Time: ${startTime} - ${endTime}. ` +
+          `Time: ${finalStartTime} - ${finalEndTime}. ` +
           `Booking Code: ${code}`,
 
-        type: "SUCCESS",
+        type:
+          "SUCCESS",
 
-        createdBy: doctorId
-
+        createdBy:
+          doctorId
       });
 
     } catch (notificationError) {
@@ -908,32 +1099,30 @@ exports.bookAppointmentByAssistant = async ({
         "Notification Error:",
         notificationError
       );
-
     }
 
     await connection.commit();
 
-    const email =
-      patient.email;
-
-
-    if (email) {
+    if (patient.email) {
 
       try {
 
-        await sendAppointmentEmails({
+        await sendAppointmentEmail({
 
-          to: email,
+          to:
+            patient.email,
 
           code,
 
           tokenNumber,
 
-          date: appointmentDate,
+          date:
+            appointmentDate,
 
-          estimatedTime: endTime,
+          estimatedTime,
 
-          hospitalName: schedule.hospital_name
+          hospitalName:
+            schedule.hospital_name
 
         });
 
@@ -943,9 +1132,7 @@ exports.bookAppointmentByAssistant = async ({
           "Appointment Email Error:",
           emailError
         );
-
       }
-
     }
 
     return {
@@ -979,14 +1166,23 @@ exports.bookAppointmentByAssistant = async ({
         appointment_date:
           appointmentDate,
 
+        start_time:
+          finalStartTime,
+
+        end_time:
+          finalEndTime,
+
         time:
-          `${startTime} to ${endTime}`,
+          `${finalStartTime} to ${finalEndTime}`,
+
+        estimated_time:
+          estimatedTime,
 
         hospital_name:
           schedule.hospital_name,
 
         booking_type:
-          booking_type || "other",
+          "someone_else",
 
         mode:
           mode || "offline",
@@ -1007,11 +1203,8 @@ exports.bookAppointmentByAssistant = async ({
 
           email:
             patient.email || null
-
         }
-
       }
-
     };
 
 
@@ -1027,7 +1220,6 @@ exports.bookAppointmentByAssistant = async ({
           rollbackError
         );
       }
-
     }
 
 
@@ -1045,8 +1237,9 @@ exports.bookAppointmentByAssistant = async ({
 
       message:
         error.message ||
-        "Internal server error."
+        "Internal server error.",
 
+      data: null
     };
 
 
@@ -1055,9 +1248,7 @@ exports.bookAppointmentByAssistant = async ({
     if (connection) {
       connection.release();
     }
-
   }
-
 };
 
 exports.getDashboardStats =
