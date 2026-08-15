@@ -13,10 +13,9 @@ async function createSchedule(data) {
       active_days,
       start_date,
       end_date,
-      note,
-      offlinepatient_number
+      note
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const [res] = await db.query(sql, [
@@ -30,13 +29,11 @@ async function createSchedule(data) {
     JSON.stringify(data.active_days || []),
     data.start_date,
     data.end_date,
-    data.note ?? null,
-    data.offlinepatient_number ?? null
+    data.note ?? null
   ]);
 
   return res.insertId;
 }
-
 
 async function getAllByDoctor(
   doctorId,
@@ -133,30 +130,61 @@ async function getScheduleCountByDoctor(doctorId) {
 }
 
 async function getScheduleByDoctor(doctorId, limit = 0, offset = 0) {
-  let sql = `
-    SELECT
-      s.*,
-      (
-        SELECT COUNT(*)
-        FROM schedule_slots ss
-        WHERE ss.schedule_id = s.id
-          AND LOWER(ss.status) = 'inactive'
-      ) AS booking_length
-    FROM schedules s
-    WHERE s.doctor_id = ?
-      AND s.end_date >= CURDATE()
-    ORDER BY s.start_date ASC, s.id DESC
-  `;
-  const params = [doctorId];
+  try {
+    let sql = `
+      SELECT
+        s.*,
+        (
+          SELECT COUNT(*)
+          FROM schedule_slots ss
+          WHERE ss.schedule_id = s.id
+            AND LOWER(ss.status) = 'inactive'
+        ) AS booking_length
+      FROM schedules s
+      WHERE s.doctor_id = ?
+        AND s.end_date >= CURDATE()
+      ORDER BY s.start_date ASC, s.id DESC
+    `;
 
-  if (Number(limit) > 0) {
-    sql += ` LIMIT ? OFFSET ?`;
-    params.push(Number(limit), Number(offset));
+    const params = [doctorId];
+
+    if (Number(limit) > 0) {
+      sql += ` LIMIT ? OFFSET ?`;
+      params.push(Number(limit), Number(offset));
+    }
+
+    const [rows] = await db.query(sql, params);
+
+    for (const schedule of rows) {
+      const [slots] = await db.query(
+        `
+          SELECT
+            id,
+            schedule_id,
+            token_number,
+            start_time,
+            end_time,
+            status
+          FROM schedule_slots
+          WHERE schedule_id = ?
+          ORDER BY start_time ASC, id ASC
+        `,
+        [schedule.id]
+      );
+
+      schedule.slots = slots;
+    }
+
+    return rows.map(parseActiveDays);
+
+  } catch (error) {
+    console.error(
+      "Get Schedule By Doctor Model Error:",
+      error
+    );
+
+    throw error;
   }
-
-  const [rows] = await db.query(sql, params);
-
-  return rows.map(parseActiveDays);
 }
 
 async function findOverlappingScheduleForUpdate(data) {
@@ -303,7 +331,7 @@ function parseActiveDays(r) {
   };
 
 
-  const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   if (Array.isArray(active_days)) {
     active_days = active_days.map(d => {
@@ -311,7 +339,7 @@ function parseActiveDays(r) {
       if (/^\d+$/.test(String(d))) return dayNames[Number(d)] ?? String(d);
 
       const s = String(d).trim();
-      return s.slice(0,3).charAt(0).toUpperCase() + s.slice(1,3).toLowerCase();
+      return s.slice(0, 3).charAt(0).toUpperCase() + s.slice(1, 3).toLowerCase();
     });
   }
 

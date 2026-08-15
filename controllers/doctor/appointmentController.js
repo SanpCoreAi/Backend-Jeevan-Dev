@@ -25,73 +25,97 @@ const getDoctorIdFromUser = async (user) => {
 exports.create = async (req, res) => {
   try {
 
- const { error, value } = bookAppointmentValidation.validate(req.body);
+    const { error, value } = bookAppointmentValidation.validate(
+      req.body,
+      {
+        abortEarly: true,
+        stripUnknown: true
+      }
+    );
 
-if (error) {
-  return res.status(400).json({
-    success: false,
-    message: error.details[0].message
-  });
-}
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+    }
 
-    const patientId = req.user.id;
+    const patientId = req.user?.id;
+
+    if (!patientId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user"
+      });
+    }
+
     const doctorId = Number(req.params.doctorId);
 
-    if (!doctorId || doctorId <= 0) {
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
       return res.status(400).json({
         success: false,
         message: "Invalid doctor id"
       });
     }
 
-const patient = await appointmentService.getUserById(patientId);
+    const patient = await appointmentService.getUserById(patientId);
 
-if (!patient) {
-  return res.status(404).json({
-    success: false,
-    message: "Patient not found"
-  });
-}
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: "Patient not found"
+      });
+    }
 
-const result = await appointmentService.bookAppointment(
-  patientId,
-  patient.email,
-  doctorId,
-  value
-);
+    const result = await appointmentService.bookAppointment(
+      patientId,
+      patient.email,
+      doctorId,
+      value
+    );
 
-    return res
-      .status(result.success ? 201 : 400)
-      .json(result.success
-        ? {
-            success: true,
-            message: "Appointment booked successfully",
-            appointment_id: result.data.appointmentId,
-            appointment_token: result.data.appointmentToken
-          }
-        : result);
+    if (!result.success) {
+      return res.status(result.statusCode || 400).json({
+        success: false,
+        message: result.message
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Appointment booked successfully",
+      appointment_id: result.data.appointmentId,
+      code: result.data.code,
+      token_number: result.data.tokenNumber
+    });
 
   } catch (error) {
-
-    console.error("Book Appointment Error:", error);
+    console.error("BOOK APPOINTMENT CONTROLLER ERROR:", {
+      message: error.message,
+      stack: error.stack
+    });
 
     return res.status(500).json({
       success: false,
       message: "Internal server error"
     });
-
   }
 };
 
 exports.bookAppointmentByAssistant = async (req, res) => {
   try {
 
-    const { error, value } = bookAppointmentByAssistantValidation.validate(req.body);
+    const { error, value } =
+      bookAppointmentByAssistantValidation.validate(req.body, {
+        abortEarly: true,
+        stripUnknown: true
+      });
 
     if (error) {
       return res.status(400).json({
         success: false,
-        message: error.details[0].message
+        message: error.details[0].message,
+        data: null
       });
     }
 
@@ -101,22 +125,22 @@ exports.bookAppointmentByAssistant = async (req, res) => {
         body: value
       });
 
-    return res
-      .status(result.success ? 201 : 400)
-      .json(result);
+    return res.status(
+      result.statusCode || (result.success ? 201 : 400)
+    ).json(result);
 
   } catch (error) {
 
     console.error(
-      "Book Appointment By Assistant Error:",
+      "BOOK APPOINTMENT BY ASSISTANT ERROR:",
       error
     );
 
     return res.status(500).json({
       success: false,
-      message: "Internal server error"
+      message: "Internal server error.",
+      data: null
     });
-
   }
 };
 

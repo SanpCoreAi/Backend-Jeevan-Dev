@@ -982,11 +982,16 @@ exports.resetPasswordValidation = (data) => {
 
 };
 
-exports.sendAppointmentEmail = async ({ to, token, date, time }) => {
+exports.sendAppointmentEmail = async ({
+  to,
+  code,
+  tokenNumber,
+  date,
+  estimatedTime,
+  hospitalName
+}) => {
   try {
-
     await transporter.sendMail({
-
       from: `"Hospital Portal" <${process.env.EMAIL_USER}>`,
 
       to,
@@ -994,9 +999,14 @@ exports.sendAppointmentEmail = async ({ to, token, date, time }) => {
       subject: "✅ Appointment Confirmed - Hospital Portal",
 
       text: `Your appointment has been confirmed.
-Token: ${token}
+
+Appointment Token: ${tokenNumber}
+Booking Code: ${code}
+Hospital: ${hospitalName}
 Date: ${date}
-Time: ${time}`,
+Estimated Time: ${estimatedTime}
+
+Please arrive at least 15 minutes before your estimated appointment time.`,
 
       html: `
 <!DOCTYPE html>
@@ -1004,50 +1014,94 @@ Time: ${time}`,
 
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Appointment Confirmation</title>
 </head>
 
-<body style="margin:0;padding:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;">
+<body style="
+margin:0;
+padding:0;
+background:#f4f7fb;
+font-family:Arial,Helvetica,sans-serif;
+">
 
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f7fb;padding:40px 0;">
+<table
+width="100%"
+cellpadding="0"
+cellspacing="0"
+style="background:#f4f7fb;padding:40px 0;"
+>
+
 <tr>
 <td align="center">
 
-<table width="600" cellpadding="0" cellspacing="0"
-style="background:#ffffff;border-radius:12px;overflow:hidden;
-box-shadow:0 4px 20px rgba(0,0,0,0.08);">
+<table
+width="600"
+cellpadding="0"
+cellspacing="0"
+style="
+background:#ffffff;
+border-radius:12px;
+overflow:hidden;
+box-shadow:0 4px 20px rgba(0,0,0,0.08);
+"
+>
 
-<!-- Header -->
+<!-- HEADER -->
+
 <tr>
 <td
-style="background:linear-gradient(135deg,#0f766e,#0891b2);
+style="
+background:linear-gradient(135deg,#0f766e,#0891b2);
 padding:30px;
 text-align:center;
-color:#ffffff;">
+color:#ffffff;
+"
+>
 
-<h1 style="margin:0;font-size:28px;">
+<h1 style="
+margin:0;
+font-size:28px;
+">
 🏥 Hospital Portal
 </h1>
 
-<p style="margin-top:8px;font-size:15px;">
+<p style="
+margin-top:8px;
+font-size:15px;
+">
 Appointment Confirmation
 </p>
 
 </td>
 </tr>
 
-<!-- Body -->
+
+<!-- BODY -->
+
 <tr>
 <td style="padding:40px;">
 
-<h2 style="margin-top:0;color:#222;">
+<h2 style="
+margin-top:0;
+color:#222;
+">
 🎉 Appointment Confirmed
 </h2>
 
-<p style="font-size:16px;color:#555;line-height:28px;">
+<p style="
+font-size:16px;
+color:#555;
+line-height:28px;
+">
+
 Your appointment has been successfully booked.
 Please keep the following details safe.
+
 </p>
+
+
+<!-- APPOINTMENT DETAILS -->
 
 <table
 width="100%"
@@ -1058,14 +1112,20 @@ margin-top:25px;
 background:#f8fafc;
 border:1px solid #e5e7eb;
 border-radius:10px;
-">
+"
+>
+
+
+<!-- TOKEN -->
 
 <tr>
+
 <td width="35%">
 <strong>Appointment Token</strong>
 </td>
 
 <td>
+
 <span
 style="
 background:#0f766e;
@@ -1075,30 +1135,87 @@ border-radius:8px;
 font-size:18px;
 font-weight:bold;
 letter-spacing:2px;
-">
-${token}
+"
+>
+${tokenNumber}
 </span>
+
 </td>
 
 </tr>
 
+
+<!-- CODE -->
+
 <tr>
 
-<td><strong>📅 Date</strong></td>
+<td>
+<strong>🔐 Booking Code</strong>
+</td>
 
-<td>${date}</td>
+<td>
+<strong style="
+font-size:18px;
+letter-spacing:2px;
+color:#0f766e;
+">
+${code}
+</strong>
+</td>
 
 </tr>
 
+
+<!-- HOSPITAL -->
+
 <tr>
 
-<td><strong>🕒 Time</strong></td>
+<td>
+<strong>🏥 Hospital</strong>
+</td>
 
-<td>${time}</td>
+<td>
+${hospitalName}
+</td>
+
+</tr>
+
+
+<!-- DATE -->
+
+<tr>
+
+<td>
+<strong>📅 Date</strong>
+</td>
+
+<td>
+${date}
+</td>
+
+</tr>
+
+
+<!-- ESTIMATED TIME -->
+
+<tr>
+
+<td>
+<strong>🕒 Estimated Time</strong>
+</td>
+
+<td>
+<strong style="color:#0f766e;">
+${estimatedTime}
+</strong>
+</td>
 
 </tr>
 
 </table>
+
+
+<!-- IMPORTANT -->
 
 <div
 style="
@@ -1107,7 +1224,8 @@ padding:18px;
 background:#ecfeff;
 border-left:4px solid #0891b2;
 border-radius:8px;
-">
+"
+>
 
 <strong>Important Instructions</strong>
 
@@ -1117,15 +1235,28 @@ margin-top:10px;
 padding-left:20px;
 line-height:28px;
 color:#555;
-">
+"
+>
 
-<li>Please arrive at least <b>15 minutes</b> before your appointment.</li>
+<li>
+Please arrive at least <b>15 minutes</b> before your estimated appointment time.
+</li>
 
-<li>Carry your Appointment Token during check-in.</li>
+<li>
+Carry your <b>Appointment Token</b> during check-in.
+</li>
 
-<li>Bring any previous prescriptions or medical reports.</li>
+<li>
+Keep your <b>Booking Code</b> safe.
+</li>
 
-<li>If you are unable to attend, kindly cancel or reschedule in advance.</li>
+<li>
+Bring any previous prescriptions or medical reports.
+</li>
+
+<li>
+If you are unable to attend, kindly cancel or reschedule in advance.
+</li>
 
 </ul>
 
@@ -1134,7 +1265,8 @@ color:#555;
 </td>
 </tr>
 
-<!-- Footer -->
+
+<!-- FOOTER -->
 
 <tr>
 
@@ -1145,15 +1277,21 @@ padding:25px;
 text-align:center;
 font-size:13px;
 color:#777;
-">
+"
+>
 
 <p style="margin:0;">
+
 Thank you for choosing Hospital Portal.
 We wish you good health.
+
 </p>
 
 <p style="margin-top:10px;">
-© ${new Date().getFullYear()} Hospital Portal. All Rights Reserved.
+
+© ${new Date().getFullYear()}
+Hospital Portal. All Rights Reserved.
+
 </p>
 
 </td>
@@ -1164,6 +1302,7 @@ We wish you good health.
 
 </td>
 </tr>
+
 </table>
 
 </body>
@@ -1171,14 +1310,390 @@ We wish you good health.
 `
     });
 
-    console.log(`✅ Appointment email sent to: ${to}`);
+    console.log(
+      `✅ Appointment email sent to: ${to}`
+    );
 
   } catch (error) {
 
-    console.error(`❌ Appointment email failed for ${to}:`, error.message);
+    console.error(
+      `❌ Appointment email failed for ${to}:`,
+      error.message
+    );
 
     throw error;
+  }
+};
 
+exports.sendAppointmentEmails = async ({
+  to,
+  code,
+  tokenNumber,
+  date,
+  estimatedTime,
+  hospitalName
+}) => {
+  try {
+    await transporter.sendMail({
+      from: `"Hospital Portal" <${process.env.EMAIL_USER}>`,
+
+      to,
+
+      subject: "Appointment Confirmed | Hospital Portal",
+
+      text: `Appointment Confirmed
+
+Your appointment has been successfully booked.
+
+Appointment Token: ${tokenNumber}
+Booking Code: ${code}
+Hospital: ${hospitalName}
+Date: ${date}
+Estimated Time: ${estimatedTime}
+
+Please arrive 15 minutes before your estimated appointment time.
+
+Thank you for choosing Hospital Portal.`,
+
+html: `
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Appointment Confirmation</title>
+</head>
+
+<body style="
+margin:0;
+padding:0;
+background:#f4f7fb;
+font-family:Arial,Helvetica,sans-serif;
+">
+
+<table width="100%" cellpadding="0" cellspacing="0"
+style="background:#f4f7fb;padding:28px 0;">
+
+<tr>
+<td align="center">
+
+<table width="520" cellpadding="0" cellspacing="0"
+style="
+background:#ffffff;
+border-radius:10px;
+overflow:hidden;
+">
+
+<!-- HEADER -->
+
+<tr>
+<td style="
+background:#0f8b8d;
+padding:20px;
+text-align:center;
+color:#ffffff;
+">
+
+<div style="
+font-size:20px;
+font-weight:bold;
+">
+🏥 Hospital Portal
+</div>
+
+<div style="
+font-size:11px;
+margin-top:5px;
+">
+Appointment Confirmation
+</div>
+
+</td>
+</tr>
+
+
+<!-- BODY -->
+
+<tr>
+<td style="padding:25px 22px 20px;">
+
+<div style="
+font-size:16px;
+font-weight:bold;
+color:#222222;
+margin-bottom:15px;
+">
+🎉 Appointment Confirmed
+</div>
+
+<div style="
+font-size:12px;
+line-height:19px;
+color:#555555;
+margin-bottom:18px;
+">
+Your appointment has been successfully booked.
+Please keep the following details safe.
+</div>
+
+
+<!-- DETAILS BOX -->
+
+<table width="100%" cellpadding="0" cellspacing="0"
+style="
+background:#f8fafc;
+border:1px solid #dfe5eb;
+border-radius:7px;
+">
+
+<!-- TOKEN -->
+
+<tr>
+
+<td style="
+padding:10px 8px;
+font-size:10px;
+color:#222222;
+width:38%;
+">
+<strong>Appointment Token</strong>
+</td>
+
+<td style="
+padding:10px 8px;
+">
+
+<span style="
+display:inline-block;
+background:#0f766e;
+color:#ffffff;
+padding:6px 13px;
+border-radius:6px;
+font-size:13px;
+font-weight:bold;
+letter-spacing:1px;
+">
+${tokenNumber}
+</span>
+
+</td>
+
+</tr>
+
+
+<!-- CODE -->
+
+<tr>
+
+<td style="
+padding:7px 8px;
+font-size:10px;
+color:#222222;
+">
+<strong>🔐 Booking Code</strong>
+</td>
+
+<td style="
+padding:7px 8px;
+font-size:13px;
+font-weight:bold;
+letter-spacing:2px;
+color:#0f766e;
+">
+${code}
+</td>
+
+</tr>
+
+
+<!-- HOSPITAL -->
+
+<tr>
+
+<td style="
+padding:7px 8px;
+font-size:10px;
+color:#222222;
+">
+<strong>🏥 Hospital</strong>
+</td>
+
+<td style="
+padding:7px 8px;
+font-size:10px;
+color:#333333;
+">
+${hospitalName}
+</td>
+
+</tr>
+
+
+<!-- DATE -->
+
+<tr>
+
+<td style="
+padding:7px 8px;
+font-size:10px;
+color:#222222;
+">
+<strong>📅 Date</strong>
+</td>
+
+<td style="
+padding:7px 8px;
+font-size:10px;
+color:#333333;
+">
+${date}
+</td>
+
+</tr>
+
+
+<!-- ESTIMATED TIME -->
+
+<tr>
+
+<td style="
+padding:7px 8px 10px;
+font-size:10px;
+color:#222222;
+">
+<strong>🕒 Estimated Time</strong>
+</td>
+
+<td style="
+padding:7px 8px 10px;
+font-size:11px;
+font-weight:bold;
+color:#0f766e;
+">
+${estimatedTime}
+</td>
+
+</tr>
+
+</table>
+
+
+<!-- IMPORTANT INSTRUCTIONS -->
+
+<div style="
+margin-top:22px;
+padding:12px 14px;
+background:#ecfeff;
+border-left:3px solid #0891b2;
+border-radius:6px;
+">
+
+<div style="
+font-size:10px;
+font-weight:bold;
+color:#222222;
+margin-bottom:8px;
+">
+Important Instructions
+</div>
+
+<ul style="
+margin:0;
+padding-left:18px;
+font-size:9px;
+line-height:18px;
+color:#555555;
+">
+
+<li>
+Please arrive at least <b>15 minutes</b>
+before your estimated appointment time.
+</li>
+
+<li>
+Carry your <b>Appointment Token</b>
+during check-in.
+</li>
+
+<li>
+Keep your <b>Booking Code</b> safe.
+</li>
+
+<li>
+Bring any previous prescriptions or medical reports.
+</li>
+
+<li>
+If you are unable to attend, kindly cancel
+or reschedule in advance.
+</li>
+
+</ul>
+
+</div>
+
+</td>
+</tr>
+
+
+<!-- FOOTER -->
+
+<tr>
+
+<td style="
+background:#fafafa;
+padding:18px 20px;
+text-align:center;
+border-top:1px solid #eeeeee;
+">
+
+<div style="
+font-size:10px;
+color:#777777;
+line-height:17px;
+">
+Thank you for choosing Hospital Portal.
+We wish you good health.
+</div>
+
+<div style="
+font-size:9px;
+color:#999999;
+margin-top:7px;
+">
+© ${new Date().getFullYear()}
+Hospital Portal. All Rights Reserved.
+</div>
+
+</td>
+
+</tr>
+
+</table>
+
+</td>
+</tr>
+
+</table>
+
+</body>
+</html>
+`
+    });
+
+    console.log(
+      `✅ Appointment confirmation email sent to: ${to}`
+    );
+
+  } catch (error) {
+
+    console.error(
+      `❌ Appointment email failed for ${to}:`,
+      error.message
+    );
+
+    throw error;
   }
 };
 

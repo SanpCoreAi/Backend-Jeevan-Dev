@@ -39,11 +39,11 @@ exports.create = async (
   data,
   connection = db
 ) => {
-
   const sql = `
     INSERT INTO appointments
     (
       token_number,
+      code,
       slot_date,
       start_time,
       end_time,
@@ -55,22 +55,26 @@ exports.create = async (
       hospital_name,
       reason_for_visit
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
-  const [result] = await connection.query(sql, [
-    data.appointment_token,
-    normalizeDateOnly(data.appointment_date),
-    data.start_time,
-    data.end_time,
-    data.patient_id,
-    data.doctor_id,
-    data.schedule_id,
-    data.mode,
-    data.booking_type,
-    data.hospital_name,
-    data.reason_for_visit
-  ]);
+  const [result] = await connection.query(
+    sql,
+    [
+      data.token_number,
+      data.code,
+      normalizeDateOnly(data.appointment_date),
+      data.start_time,
+      data.end_time,
+      data.patient_id,
+      data.doctor_id,
+      data.schedule_id,
+      data.mode,
+      data.booking_type,
+      data.hospital_name,
+      data.reason_for_visit
+    ]
+  );
 
   return result.insertId;
 };
@@ -79,7 +83,6 @@ exports.insertOtherPatient = async (
   data,
   connection = db
 ) => {
-
   const sql = `
     INSERT INTO appointment_patients
     (
@@ -94,18 +97,22 @@ exports.insertOtherPatient = async (
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
 
-  const [result] = await connection.query(sql, [
-    data.appointment_id,
-    data.user_id,
-    data.name,
-    data.age,
-    data.gender,
-    data.phone,
-    data.email
-  ]);
+  const [result] = await connection.query(
+    sql,
+    [
+      data.appointment_id,
+      data.user_id,
+      data.name,
+      data.age,
+      data.gender,
+      data.phone,
+      data.email
+    ]
+  );
 
   return result.insertId;
 };
+
 
 exports.countTodayAppointments = async (
   patientId,
@@ -128,27 +135,26 @@ exports.countTodayAppointments = async (
 };
 
 
-exports.checkSlotBooked = async (
+exports.checkCodeExists = async (
   doctorId,
   appointmentDate,
-  startTime,
+  code,
   connection = db
 ) => {
-
   const [rows] = await connection.query(
     `
     SELECT id
     FROM appointments
     WHERE doctor_id = ?
-      AND slot_date = ?
-      AND start_time = ?
+      AND DATE(slot_date) = ?
+      AND code = ?
       AND status != 'CANCELLED'
     LIMIT 1
     `,
     [
       doctorId,
       appointmentDate,
-      startTime
+      code
     ]
   );
 
@@ -161,22 +167,55 @@ exports.getNextTokenNumber = async (
   hospitalName,
   connection = db
 ) => {
-
   const sql = `
-    SELECT COALESCE(MAX(token_number), 0) + 1 AS nextToken
+    SELECT
+      COALESCE(MAX(token_number), 0) + 1 AS nextToken
     FROM appointments
     WHERE doctor_id = ?
-      AND slot_date = ?
-      AND LOWER(TRIM(hospital_name)) = LOWER(TRIM(?))
+      AND DATE(slot_date) = ?
+      AND LOWER(TRIM(hospital_name)) =
+          LOWER(TRIM(?))
+      AND status != 'CANCELLED'
   `;
 
-  const [rows] = await connection.execute(sql, [
-    doctorId,
-    appointmentDate,
-    hospitalName
-  ]);
+  const [rows] = await connection.query(
+    sql,
+    [
+      doctorId,
+      appointmentDate,
+      hospitalName
+    ]
+  );
 
-  return Number(rows[0].nextToken);
+  return Number(
+    rows[0]?.nextToken || 1
+  );
+};
+
+exports.checkSlotBooked = async (
+  doctorId,
+  appointmentDate,
+  startTime,
+  connection = db
+) => {
+  const [rows] = await connection.query(
+    `
+    SELECT id
+    FROM appointments
+    WHERE doctor_id = ?
+      AND DATE(slot_date) = ?
+      AND start_time = ?
+      AND status != 'CANCELLED'
+    LIMIT 1
+    `,
+    [
+      doctorId,
+      appointmentDate,
+      startTime
+    ]
+  );
+
+  return rows.length > 0;
 };
 
 exports.getAppointmentPublicById = async (
@@ -712,6 +751,43 @@ exports.getAppointmentDetails = async (
   );
 
   return rows[0] || null;
+};
+
+exports.generateUniqueCode = async (
+  connection,
+  doctorId,
+  appointmentDate
+) => {
+
+  let code;
+  let exists = true;
+
+  while (exists) {
+
+    code = Math.floor(
+      1000 + Math.random() * 9000
+    ).toString();
+
+    const [rows] = await connection.execute(
+      `
+      SELECT id
+      FROM appointments
+      WHERE doctor_id = ?
+        AND slot_date = ?
+        AND code = ?
+      LIMIT 1
+      `,
+      [
+        doctorId,
+        appointmentDate,
+        code
+      ]
+    );
+
+    exists = rows.length > 0;
+  }
+
+  return code;
 };
 
 exports.getAllByPatient = async (

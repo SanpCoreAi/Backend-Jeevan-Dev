@@ -443,9 +443,6 @@ async function createSchedule(doctorId, body) {
 
           note:
             body.note ?? null,
-
-          offlinepatient_number:
-            body.offlinepatient_number ?? null
         },
         connection
       );
@@ -542,13 +539,26 @@ async function getAllSchedules(
       };
     }
 
-    page = Math.max(1, Number(page) || 1);
-    limit = Math.max(1, Math.min(100, Number(limit) || 10));
+    page = Math.max(
+      1,
+      Number(page) || 1
+    );
 
-    const offset = (page - 1) * limit;
+    limit = Math.max(
+      1,
+      Math.min(
+        100,
+        Number(limit) || 10
+      )
+    );
+
+    const offset =
+      (page - 1) * limit;
 
     const totalRecords =
-      await ScheduleModel.getAllCountByDoctor(doctorId);
+      await ScheduleModel.getAllCountByDoctor(
+        doctorId
+      );
 
     if (totalRecords === 0) {
       return {
@@ -580,56 +590,100 @@ async function getAllSchedules(
     for (const schedule of schedules) {
 
       const dbSlots =
-        await SlotModel.getSlotsBySchedule(schedule.id);
+        await SlotModel.getSlotsBySchedule(
+          schedule.id
+        );
 
-      const slots = dbSlots.map(slot => ({
-        date: formatDate(slot.start_date),
-        start: time24To12(slot.start_time),
-        end: time24To12(slot.end_time),
-        status: slot.status
+      const slots = dbSlots.map((slot) => ({
+        date: formatDate(
+          slot.start_date
+        ),
+
+        start: time24To12(
+          slot.start_time
+        ),
+
+        end: time24To12(
+          slot.end_time
+        ),
+
+        status: slot.status,
+
+        token_number:
+          slot.token_number ?? null
       }));
 
       data.push({
 
-        scheduleId: schedule.id,
+        scheduleId:
+          schedule.id,
 
-        doctorId: schedule.doctor_id,
+        doctorId:
+          schedule.doctor_id,
 
-        locationId: schedule.location_id,
+        locationId:
+          schedule.location_id,
 
-        hospitalName: schedule.hospital_name,
-
-        offlinepatient_number:
-          schedule.offlinepatient_number,
+        hospitalName:
+          schedule.hospital_name,
 
         booking_length:
-          Number(schedule.booking_length),
+          Number(
+            schedule.booking_length
+          ),
 
         timing: {
-          start: time24To12(schedule.start_time),
-          end: time24To12(schedule.end_time),
-          slotDuration: Number(schedule.slot_duration),
-          breakMinutes: Number(schedule.break_minutes)
+
+          start: time24To12(
+            schedule.start_time
+          ),
+
+          end: time24To12(
+            schedule.end_time
+          ),
+
+          slotDuration:
+            Number(
+              schedule.slot_duration
+            ),
+
+          breakMinutes:
+            Number(
+              schedule.break_minutes
+            )
         },
 
         availability: {
-          activeDays: Array.isArray(schedule.active_days)
-            ? schedule.active_days
-            : [],
-          startDate: formatDate(schedule.start_date),
-          endDate: formatDate(schedule.end_date)
+
+          activeDays:
+            Array.isArray(
+              schedule.active_days
+            )
+              ? schedule.active_days
+              : [],
+
+          startDate:
+            formatDate(
+              schedule.start_date
+            ),
+
+          endDate:
+            formatDate(
+              schedule.end_date
+            )
         },
 
-        note: schedule.note || null,
+        note:
+          schedule.note || null,
 
         slots,
 
-        createdAt: schedule.created_at || null,
+        createdAt:
+          schedule.created_at || null,
 
-        updatedAt: schedule.updated_at || null
-
+        updatedAt:
+          schedule.updated_at || null
       });
-
     }
 
     return {
@@ -638,23 +692,37 @@ async function getAllSchedules(
 
       statusCode: 200,
 
-      message: "Schedules fetched successfully.",
+      message:
+        "Schedules fetched successfully.",
 
       pagination: {
+
         totalRecords,
-        totalPages: Math.ceil(totalRecords / limit),
-        currentPage: page,
+
+        totalPages:
+          Math.ceil(
+            totalRecords / limit
+          ),
+
+        currentPage:
+          page,
+
         limit,
+
         hasNextPage:
-          page < Math.ceil(totalRecords / limit),
+          page <
+          Math.ceil(
+            totalRecords / limit
+          ),
+
         hasPreviousPage:
           page > 1
       },
 
-      count: data.length,
+      count:
+        data.length,
 
       data
-
     };
 
   } catch (error) {
@@ -667,9 +735,9 @@ async function getAllSchedules(
     return {
       success: false,
       statusCode: 500,
-      message: "Internal Server Error"
+      message:
+        "Internal Server Error"
     };
-
   }
 }
 
@@ -690,7 +758,6 @@ async function getScheduleByDoctorId(
   limit = 10
 ) {
   try {
-
     if (!doctorId) {
       return {
         success: false,
@@ -699,8 +766,18 @@ async function getScheduleByDoctorId(
       };
     }
 
-    page = Math.max(1, Number(page) || 1);
-    limit = Math.max(1, Math.min(100, Number(limit) || 10));
+    page = Math.max(
+      1,
+      Number(page) || 1
+    );
+
+    limit = Math.max(
+      1,
+      Math.min(
+        100,
+        Number(limit) || 10
+      )
+    );
 
     const offset = (page - 1) * limit;
 
@@ -734,88 +811,138 @@ async function getScheduleByDoctorId(
         offset
       );
 
-    const today = new Date().toLocaleDateString(
-      "en-CA",
-      {
-        timeZone: "Asia/Kolkata"
-      }
-    );
-
     const response = [];
 
     for (const schedule of schedules) {
 
       response.push({
+        scheduleId:
+          schedule.id,
 
-        scheduleId: schedule.id,
+        doctorId:
+          schedule.doctor_id,
 
-        doctorId: schedule.doctor_id,
+        locationId:
+          schedule.location_id,
 
-        locationId: schedule.location_id,
+        hospitalName:
+          schedule.hospital_name,
 
-        hospitalName: schedule.hospital_name,
+        offlinepatient_number:
+          schedule.offlinepatient_number,
 
-        offlinepatient_number: schedule.offlinepatient_number,
-
-        booking_length: Number(schedule.booking_length),
+        booking_length:
+          Number(schedule.booking_length),
 
         timing: {
-          start: time24To12(schedule.start_time),
-          end: time24To12(schedule.end_time),
-          slotDuration: Number(schedule.slot_duration),
-          breakMinutes: Number(schedule.break_minutes)
+          start:
+            time24To12(
+              schedule.start_time
+            ),
+
+          end:
+            time24To12(
+              schedule.end_time
+            ),
+
+          slotDuration:
+            Number(schedule.slot_duration),
+
+          breakMinutes:
+            Number(schedule.break_minutes)
         },
 
         availability: {
-          activeDays: Array.isArray(schedule.active_days)
-            ? schedule.active_days
-            : [],
-          startDate: formatDate(schedule.start_date),
-          endDate: formatDate(schedule.end_date),
-          status: schedule.status
+          activeDays:
+            Array.isArray(
+              schedule.active_days
+            )
+              ? schedule.active_days
+              : [],
+
+          startDate:
+            formatDate(
+              schedule.start_date
+            ),
+
+          endDate:
+            formatDate(
+              schedule.end_date
+            ),
+
+          status:
+            schedule.status
         },
 
-        note: schedule.note || null,
+        // Slots
+        slots:
+          (schedule.slots || []).map(
+            (slot) => ({
+              slotId:
+                slot.id,
 
-        createdAt: schedule.created_at || null,
+              scheduleId:
+                slot.schedule_id,
 
-        updatedAt: schedule.updated_at || null
+              tokenNumber:
+                slot.token_number,
 
+              startTime:
+                slot.start_time,
+
+              endTime:
+                slot.end_time,
+
+              status:
+                slot.status
+            })
+          ),
+
+        note:
+          schedule.note || null,
+
+        createdAt:
+          schedule.created_at || null,
+
+        updatedAt:
+          schedule.updated_at || null
       });
     }
 
-    return {
+    const totalPages =
+      Math.ceil(
+        totalRecords / limit
+      );
 
+    return {
       success: true,
 
       statusCode: 200,
 
-      message: "Schedules fetched successfully.",
+      message:
+        "Schedules fetched successfully.",
 
       pagination: {
-
         totalRecords,
 
-        totalPages: Math.ceil(
-          totalRecords / limit
-        ),
+        totalPages,
 
         currentPage: page,
 
         limit,
 
         hasNextPage:
-          page <
-          Math.ceil(totalRecords / limit),
+          page < totalPages,
 
         hasPreviousPage:
           page > 1
       },
 
-      count: response.length,
+      count:
+        response.length,
 
-      data: response
-
+      data:
+        response
     };
 
   } catch (error) {
@@ -828,9 +955,9 @@ async function getScheduleByDoctorId(
     return {
       success: false,
       statusCode: 500,
-      message: "Internal Server Error"
+      message:
+        "Internal Server Error"
     };
-
   }
 }
 
@@ -842,69 +969,139 @@ async function getSchedulePublicByDoctorId(
 ) {
   try {
 
-    if (!doctorId || isNaN(Number(doctorId))) {
+    if (
+      !doctorId ||
+      isNaN(Number(doctorId))
+    ) {
       return {
         success: false,
         statusCode: 400,
-        message: "Valid doctorId is required."
+        message:
+          "Valid doctorId is required."
       };
     }
 
-    page = Math.max(1, Number(page) || 1);
-    limit = Math.max(1, Math.min(100, Number(limit) || 10));
-
-    const result = await getScheduleByDoctorId(
-      Number(doctorId),
-      page,
-      limit
+    page = Math.max(
+      1,
+      Number(page) || 1
     );
+
+    limit = Math.max(
+      1,
+      Math.min(
+        100,
+        Number(limit) || 10
+      )
+    );
+
+    const result =
+      await getScheduleByDoctorId(
+        Number(doctorId),
+        page,
+        limit
+      );
 
     if (!result.success) {
       return result;
     }
 
-    const publicSchedules = result.data
-      .map((schedule) => {
+    const publicSchedules =
+      result.data
 
-        const activeSlots = (schedule.slots || []).filter(
-          (slot) =>
-            String(slot.status).toLowerCase() === "active"
-        );
+        // Only active schedules
+        .filter(
+          (schedule) =>
+            String(
+              schedule.availability.status
+            ).toLowerCase() === "active"
+        )
 
-        return {
-          scheduleId: schedule.scheduleId,
+        .map((schedule) => {
 
-          hospitalName: schedule.hospitalName,
+          // Only active slots
+          const activeSlots =
+            (schedule.slots || [])
+              .filter(
+                (slot) =>
+                  String(
+                    slot.status
+                  ).toLowerCase() === "active"
+              )
+              .map((slot) => ({
+                slotId:
+                  slot.slotId,
 
-          offlinepatient_number:
-            schedule.offlinepatient_number,
+                scheduleId:
+                  slot.scheduleId,
 
-          timing: schedule.timing,
+                tokenNumber:
+                  slot.tokenNumber,
 
-          availability: {
-            activeDays: schedule.availability.activeDays,
-            startDate: schedule.availability.startDate,
-            endDate: schedule.availability.endDate,
-            status: schedule.availability.status
-          },
+                startTime:
+                  slot.startTime,
 
-          totalSlots: activeSlots.length,
+                endTime:
+                  slot.endTime,
 
-          slots: activeSlots
-        };
-      })
-      .filter(
-        (schedule) =>
-          schedule.availability.status === "active"
-      );
+                status:
+                  slot.status
+              }));
+
+          return {
+            scheduleId:
+              schedule.scheduleId,
+
+            hospitalName:
+              schedule.hospitalName,
+
+            offlinepatient_number:
+              schedule.offlinepatient_number,
+
+            timing:
+              schedule.timing,
+
+            availability: {
+              activeDays:
+                schedule.availability
+                  .activeDays,
+
+              startDate:
+                schedule.availability
+                  .startDate,
+
+              endDate:
+                schedule.availability
+                  .endDate,
+
+              status:
+                schedule.availability
+                  .status
+            },
+
+            totalSlots:
+              activeSlots.length,
+
+            slots:
+              activeSlots
+          };
+        });
 
     return {
       success: true,
+
       statusCode: 200,
-      message: "Public schedules fetched successfully.",
-      pagination: result.pagination,
-      count: publicSchedules.length,
-      data: publicSchedules
+
+      message:
+        "Public schedules fetched successfully.",
+
+      pagination:
+        result.pagination,
+
+      count:
+        publicSchedules.length,
+
+      data:
+        publicSchedules
     };
 
   } catch (error) {
@@ -917,9 +1114,9 @@ async function getSchedulePublicByDoctorId(
     return {
       success: false,
       statusCode: 500,
-      message: "Internal Server Error"
+      message:
+        "Internal Server Error"
     };
-
   }
 }
 

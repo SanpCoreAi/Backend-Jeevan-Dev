@@ -192,26 +192,17 @@ async function getDoctorSlots(
 }
 
 
-async function getSlotsBySchedule(
-  scheduleId,
-  connection = db
-) {
-  if (!scheduleId) {
-    return [];
-  }
-
-  const [rows] = await connection.query(
+async function getSlotsBySchedule(scheduleId) {
+  const [rows] = await db.query(
     `
     SELECT
       id,
       schedule_id,
-      doctor_id,
       start_date,
-      end_date,
       start_time,
       end_time,
-      token_number,
-      status
+      status,
+      token_number
     FROM schedule_slots
     WHERE schedule_id = ?
     ORDER BY start_date ASC, start_time ASC

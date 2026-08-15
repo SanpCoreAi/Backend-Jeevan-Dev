@@ -78,28 +78,52 @@ exports.bookAppointmentValidation = Joi.object({
 
 });
 
-exports.bookAppointmentByAssistantValidation =
-Joi.object({
-
-  appointment_date: Joi.date().required(),
+exports.bookAppointmentByAssistantValidation = Joi.object({
+  appointment_date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .required(),
 
   hospital_name: Joi.string()
     .trim()
+    .required(),
+
+  mode: Joi.string()
+    .valid("offline")
     .required(),
 
   booking_type: Joi.string()
     .valid("someone_else")
     .required(),
 
-  mode: Joi.string()
-    .valid("online", "offline")
-    .required(),
+  time: Joi.string()
+    .pattern(
+      /^(?:[01]\d|2[0-3]):[0-5]\d\s+to\s+(?:[01]\d|2[0-3]):[0-5]\d$/
+    )
+    .required()
+    .messages({
+      "string.pattern.base":
+        'Time must be in format "10:00 to 10:05".',
+      "any.required":
+        "Appointment time is required."
+    }),
+
+  token: Joi.number()
+    .integer()
+    .positive()
+    .required()
+    .messages({
+      "number.base": "Token must be a number.",
+      "number.integer": "Token must be an integer.",
+      "number.positive": "Token must be greater than 0.",
+      "any.required": "Token is required."
+    }),
 
   reason_for_visit: Joi.string()
+    .trim()
+    .max(500)
     .allow("", null),
 
   patient: Joi.object({
-
     name: Joi.string()
       .trim()
       .required(),
@@ -107,15 +131,11 @@ Joi.object({
     age: Joi.number()
       .integer()
       .min(0)
-      .max(120)
+      .max(150)
       .required(),
 
     gender: Joi.string()
-      .valid(
-        "Male",
-        "Female",
-        "Other"
-      )
+      .valid("Male", "Female", "Other")
       .required(),
 
     phone: Joi.string()
@@ -125,10 +145,9 @@ Joi.object({
     email: Joi.string()
       .email()
       .required()
-
   }).required()
 
-});
+}).unknown(false);
 
 
 exports.cancelAppointmentValidation =

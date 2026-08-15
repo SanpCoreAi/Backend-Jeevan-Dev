@@ -109,36 +109,50 @@ exports.getByDoctorId = async (req, res) => {
 
 exports.getSchedulePublicByDoctorId = async (req, res) => {
   try {
-    const doctorId = Number(req.params.doctorId);
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 10;
+    const doctorId =
+      Number(req.params.doctorId);
+
+    const page =
+      Number(req.query.page) || 1;
+
+    const limit =
+      Number(req.query.limit) || 10;
 
     if (!doctorId) {
       return res.status(400).json({
         success: false,
         statusCode: 400,
-        message: "Valid doctorId is required"
+        message:
+          "Valid doctorId is required"
       });
     }
 
     const result =
-      await ScheduleService.getSchedulePublicByDoctorId(
-        doctorId,
-        page,
-        limit
-      );
+      await ScheduleService
+        .getSchedulePublicByDoctorId(
+          doctorId,
+          page,
+          limit
+        );
 
     return res
-      .status(result.statusCode || (result.success ? 200 : 404))
+      .status(
+        result.statusCode ||
+        (result.success ? 200 : 404)
+      )
       .json(result);
 
   } catch (error) {
-    console.error("PUBLIC SCHEDULE ERROR:", error);
+    console.error(
+      "PUBLIC SCHEDULE ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
       statusCode: 500,
-      message: "Internal Server Error"
+      message:
+        "Internal Server Error"
     });
   }
 };
