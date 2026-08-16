@@ -13,7 +13,6 @@ const {
 const uploadFile = (req, res) => {
   upload.single("file")(req, res, async (err) => {
     try {
-      // Multer error
       if (err) {
         return res.status(400).json({
           success: false,
@@ -21,17 +20,24 @@ const uploadFile = (req, res) => {
         });
       }
 
-      // Get doctor ID from JWT
-      const doctorId = req.user?.id;
+      const userId = req.user?.id;
+      const role = Number(req.user?.role);
 
-      if (!doctorId) {
+      if (!userId) {
         return res.status(401).json({
           success: false,
           message: "Unauthorized user.",
         });
       }
 
-      // Validate query
+      if (![2, 3].includes(role)) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Only doctor and assistant can upload files.",
+        });
+      }
+
       const { error, value } =
         uploadFileQuerySchema.validate(req.query, {
           abortEarly: false,
@@ -45,7 +51,6 @@ const uploadFile = (req, res) => {
         });
       }
 
-      // Validate file
       const fileError = validateFile(req.file);
 
       if (fileError) {
@@ -55,17 +60,15 @@ const uploadFile = (req, res) => {
         });
       }
 
-      // Only folder comes from query
       const { folder } = value;
 
-      // Upload file
       const result = await uploadDoctorFile({
-        doctorId,
+        userId,
+        role,
         file: req.file,
         folder,
       });
 
-      // Service error
       if (!result.success) {
         return res.status(result.statusCode || 500).json({
           success: false,
@@ -73,7 +76,6 @@ const uploadFile = (req, res) => {
         });
       }
 
-      // Success response
       return res.status(201).json({
         success: true,
         message: "File uploaded successfully.",
@@ -81,7 +83,10 @@ const uploadFile = (req, res) => {
       });
 
     } catch (error) {
-      console.error("Upload File Controller Error:", error);
+      console.error(
+        "Upload File Controller Error:",
+        error
+      );
 
       return res.status(500).json({
         success: false,

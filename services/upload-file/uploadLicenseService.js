@@ -37,16 +37,26 @@ const upload = multer({
 });
 
 const uploadDoctorFile = async ({
-  doctorId,
+  userId,
+  role,
   file,
   folder,
 }) => {
 
-  if (!doctorId) {
+  if (!userId) {
     return {
       success: false,
       statusCode: 401,
-      message: "Doctor id is required.",
+      message: "Unauthorized user.",
+    };
+  }
+
+  if (![2, 3].includes(Number(role))) {
+    return {
+      success: false,
+      statusCode: 403,
+      message:
+        "Only doctor and assistant can upload files.",
     };
   }
 
@@ -66,7 +76,6 @@ const uploadDoctorFile = async ({
     };
   }
 
-
   let fileKey = null;
 
   try {
@@ -76,29 +85,26 @@ const uploadDoctorFile = async ({
       ""
     );
 
-    const extension = path.extname(
-      file.originalname
-    ).toLowerCase();
+    const extension = path
+      .extname(file.originalname)
+      .toLowerCase();
 
-    fileKey = `${cleanFolder}/${uuidv4()}${extension}`;
+    fileKey =
+      `${cleanFolder}/${uuidv4()}${extension}`;
 
     await s3.send(
       new PutObjectCommand({
         Bucket: process.env.AWS_BUCKET_NAME,
-
         Key: fileKey,
-
         Body: file.buffer,
-
         ContentType: file.mimetype,
-
         ContentDisposition: "inline",
       })
     );
 
     const savedFile =
       await DoctorFileModel.create({
-        doctorId,
+        doctorId: userId,
         fileKey,
         folderName: cleanFolder,
       });
@@ -106,11 +112,9 @@ const uploadDoctorFile = async ({
     const fileUrl =
       `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
 
-
     return {
       success: true,
       statusCode: 201,
-
       data: {
         ...savedFile,
         fileUrl,
@@ -125,27 +129,21 @@ const uploadDoctorFile = async ({
     );
 
     if (fileKey) {
-
       try {
-
         await s3.send(
           new DeleteObjectCommand({
             Bucket:
               process.env.AWS_BUCKET_NAME,
-
             Key: fileKey,
           })
         );
-
       } catch (deleteError) {
-
         console.error(
           "S3 Rollback Error:",
           deleteError
         );
       }
     }
-
 
     return {
       success: false,
