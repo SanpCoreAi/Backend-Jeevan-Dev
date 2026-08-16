@@ -766,17 +766,11 @@ async function getScheduleByDoctorId(
       };
     }
 
-    page = Math.max(
-      1,
-      Number(page) || 1
-    );
+    page = Math.max(1, Number(page) || 1);
 
     limit = Math.max(
       1,
-      Math.min(
-        100,
-        Number(limit) || 10
-      )
+      Math.min(100, Number(limit) || 10)
     );
 
     const offset = (page - 1) * limit;
@@ -874,30 +868,6 @@ async function getScheduleByDoctorId(
             schedule.status
         },
 
-        // Slots
-        slots:
-          (schedule.slots || []).map(
-            (slot) => ({
-              slotId:
-                slot.id,
-
-              scheduleId:
-                slot.schedule_id,
-
-              tokenNumber:
-                slot.token_number,
-
-              startTime:
-                slot.start_time,
-
-              endTime:
-                slot.end_time,
-
-              status:
-                slot.status
-            })
-          ),
-
         note:
           schedule.note || null,
 
@@ -916,19 +886,14 @@ async function getScheduleByDoctorId(
 
     return {
       success: true,
-
       statusCode: 200,
-
       message:
         "Schedules fetched successfully.",
 
       pagination: {
         totalRecords,
-
         totalPages,
-
         currentPage: page,
-
         limit,
 
         hasNextPage:
@@ -961,147 +926,134 @@ async function getScheduleByDoctorId(
   }
 }
 
-
 async function getSchedulePublicByDoctorId(
   doctorId,
   page = 1,
   limit = 10
 ) {
   try {
-
-    if (
-      !doctorId ||
-      isNaN(Number(doctorId))
-    ) {
+    if (!doctorId || isNaN(Number(doctorId))) {
       return {
         success: false,
         statusCode: 400,
-        message:
-          "Valid doctorId is required."
+        message: "Valid doctorId is required."
       };
     }
 
-    page = Math.max(
-      1,
-      Number(page) || 1
-    );
+    page = Math.max(1, Number(page) || 1);
 
     limit = Math.max(
       1,
-      Math.min(
-        100,
-        Number(limit) || 10
-      )
+      Math.min(100, Number(limit) || 10)
     );
 
-    const result =
-      await getScheduleByDoctorId(
-        Number(doctorId),
-        page,
-        limit
+    const offset = (page - 1) * limit;
+
+    const totalRecords =
+      await ScheduleModel.getPublicScheduleCountByDoctor(
+        Number(doctorId)
       );
 
-    if (!result.success) {
-      return result;
+    if (totalRecords === 0) {
+      return {
+        success: true,
+        statusCode: 200,
+        message: "No public schedules found.",
+        pagination: {
+          totalRecords: 0,
+          totalPages: 0,
+          currentPage: page,
+          limit,
+          hasNextPage: false,
+          hasPreviousPage: false
+        },
+        count: 0,
+        data: []
+      };
     }
 
-    const publicSchedules =
-      result.data
+    const schedules =
+      await ScheduleModel.getPublicScheduleByDoctor(
+        Number(doctorId),
+        limit,
+        offset
+      );
 
-        // Only active schedules
-        .filter(
-          (schedule) =>
-            String(
-              schedule.availability.status
-            ).toLowerCase() === "active"
-        )
+    const response = schedules.map((schedule) => ({
+      scheduleId: schedule.id,
 
-        .map((schedule) => {
+      doctorId: schedule.doctor_id,
 
-          // Only active slots
-          const activeSlots =
-            (schedule.slots || [])
-              .filter(
-                (slot) =>
-                  String(
-                    slot.status
-                  ).toLowerCase() === "active"
-              )
-              .map((slot) => ({
-                slotId:
-                  slot.slotId,
+      hospitalName:
+        schedule.hospital_name,
 
-                scheduleId:
-                  slot.scheduleId,
+      locationId:
+        schedule.location_id,
 
-                tokenNumber:
-                  slot.tokenNumber,
+      offlinepatient_number:
+        schedule.offlinepatient_number,
 
-                startTime:
-                  slot.startTime,
+      booking_length:
+        Number(schedule.booking_length),
 
-                endTime:
-                  slot.endTime,
+      timing: {
+        start:
+          time24To12(schedule.start_time),
 
-                status:
-                  slot.status
-              }));
+        end:
+          time24To12(schedule.end_time),
 
-          return {
-            scheduleId:
-              schedule.scheduleId,
+        slotDuration:
+          Number(schedule.slot_duration),
 
-            hospitalName:
-              schedule.hospitalName,
+        breakMinutes:
+          Number(schedule.break_minutes)
+      },
 
-            offlinepatient_number:
-              schedule.offlinepatient_number,
+      availability: {
+        activeDays:
+          Array.isArray(schedule.active_days)
+            ? schedule.active_days
+            : [],
 
-            timing:
-              schedule.timing,
+        startDate:
+          formatDate(schedule.start_date),
 
-            availability: {
-              activeDays:
-                schedule.availability
-                  .activeDays,
+        endDate:
+          formatDate(schedule.end_date),
 
-              startDate:
-                schedule.availability
-                  .startDate,
+        status:
+          schedule.status
+      }
+    }));
 
-              endDate:
-                schedule.availability
-                  .endDate,
-
-              status:
-                schedule.availability
-                  .status
-            },
-
-            totalSlots:
-              activeSlots.length,
-
-            slots:
-              activeSlots
-          };
-        });
+    const totalPages =
+      Math.ceil(totalRecords / limit);
 
     return {
       success: true,
-
       statusCode: 200,
-
       message:
         "Public schedules fetched successfully.",
 
-      pagination:
-        result.pagination,
+      pagination: {
+        totalRecords,
+        totalPages,
+        currentPage: page,
+        limit,
+
+        hasNextPage:
+          page < totalPages,
+
+        hasPreviousPage:
+          page > 1
+      },
 
       count:
-        publicSchedules.length,
+        response.length,
 
       data:
-        publicSchedules
+        response
     };
 
   } catch (error) {

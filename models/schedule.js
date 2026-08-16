@@ -1,6 +1,7 @@
 const db = require("../config/db");
 
-async function createSchedule(data) {
+
+exports.createSchedule = async (data) => {
   const sql = `
     INSERT INTO schedules (
       doctor_id,
@@ -33,57 +34,75 @@ async function createSchedule(data) {
   ]);
 
   return res.insertId;
-}
+};
 
-async function getAllByDoctor(
+
+exports.getAllByDoctor = async (
   doctorId,
   limit,
   offset
-) {
+) => {
 
   const [rows] = await db.query(
     `
     SELECT
       s.*,
+
       (
         SELECT COUNT(*)
         FROM schedule_slots ss
         WHERE ss.schedule_id = s.id
           AND LOWER(ss.status) = 'inactive'
       ) AS booking_length
+
     FROM schedules s
+
     WHERE s.doctor_id = ?
+
     ORDER BY s.id DESC
+
     LIMIT ? OFFSET ?
     `,
-    [doctorId, limit, offset]
+    [
+      doctorId,
+      Number(limit),
+      Number(offset)
+    ]
   );
 
   return rows.map(parseActiveDays);
+};
 
-}
 
-
-async function getAllCountByDoctor(doctorId) {
+exports.getAllCountByDoctor = async (
+  doctorId
+) => {
 
   const [rows] = await db.query(
     `
     SELECT COUNT(*) AS total
+
     FROM schedules
+
     WHERE doctor_id = ?
     `,
     [doctorId]
   );
 
-  return rows[0].total;
+  return Number(rows[0]?.total || 0);
+};
 
-}
 
+exports.findOverlappingSchedule = async (
+  data
+) => {
 
-async function findOverlappingSchedule(data) {
   const [rows] = await db.query(
     `
-    SELECT id FROM schedules
+    SELECT id
+
+    FROM schedules
+
     WHERE doctor_id = ?
 
       AND (
@@ -92,11 +111,13 @@ async function findOverlappingSchedule(data) {
       )
 
       AND (
-        (start_time < ? AND end_time > ?)
+        start_time < ?
+        AND end_time > ?
       )
 
       AND (
-        (start_date <= ? AND end_date >= ?)
+        start_date <= ?
+        AND end_date >= ?
       )
 
     LIMIT 1
@@ -113,51 +134,157 @@ async function findOverlappingSchedule(data) {
   );
 
   return rows.length > 0;
-}
+};
 
-async function getScheduleCountByDoctor(doctorId) {
+
+exports.getPublicScheduleByDoctor = async (
+  doctorId,
+  limit,
+  offset
+) => {
+
+  const [rows] = await db.query(
+    `
+    SELECT
+      s.*,
+
+      (
+        SELECT COUNT(*)
+        FROM schedule_slots ss
+        WHERE ss.schedule_id = s.id
+          AND LOWER(ss.status) = 'inactive'
+      ) AS booking_length
+
+    FROM schedules s
+
+    WHERE s.doctor_id = ?
+
+      AND LOWER(s.status) = 'active'
+
+      AND s.end_date >= CURDATE()
+
+    ORDER BY
+      s.start_date ASC,
+      s.id DESC
+
+    LIMIT ? OFFSET ?
+    `,
+    [
+      doctorId,
+      Number(limit),
+      Number(offset)
+    ]
+  );
+
+  return rows.map(parseActiveDays);
+};
+
+
+exports.getPublicScheduleCountByDoctor = async (
+  doctorId
+) => {
+
   const [rows] = await db.query(
     `
     SELECT COUNT(*) AS total
+
     FROM schedules
+
     WHERE doctor_id = ?
+
+      AND LOWER(status) = 'active'
+
       AND end_date >= CURDATE()
     `,
     [doctorId]
   );
 
-  return rows[0].total;
-}
+  return Number(
+    rows[0]?.total || 0
+  );
+};
 
-async function getScheduleByDoctor(doctorId, limit = 0, offset = 0) {
+
+exports.getScheduleCountByDoctor = async (
+  doctorId
+) => {
+
+  const [rows] = await db.query(
+    `
+    SELECT COUNT(*) AS total
+
+    FROM schedules
+
+    WHERE doctor_id = ?
+
+      AND end_date >= CURDATE()
+    `,
+    [doctorId]
+  );
+
+  return Number(
+    rows[0]?.total || 0
+  );
+};
+
+
+exports.getScheduleByDoctor = async (
+  doctorId,
+  limit = 0,
+  offset = 0
+) => {
+
   try {
+
     let sql = `
       SELECT
         s.*,
+
         (
           SELECT COUNT(*)
           FROM schedule_slots ss
           WHERE ss.schedule_id = s.id
             AND LOWER(ss.status) = 'inactive'
         ) AS booking_length
+
       FROM schedules s
+
       WHERE s.doctor_id = ?
+
         AND s.end_date >= CURDATE()
-      ORDER BY s.start_date ASC, s.id DESC
+
+      ORDER BY
+        s.start_date ASC,
+        s.id DESC
     `;
 
-    const params = [doctorId];
+    const params = [
+      doctorId
+    ];
 
     if (Number(limit) > 0) {
-      sql += ` LIMIT ? OFFSET ?`;
-      params.push(Number(limit), Number(offset));
+
+      sql += `
+        LIMIT ? OFFSET ?
+      `;
+
+      params.push(
+        Number(limit),
+        Number(offset)
+      );
     }
 
-    const [rows] = await db.query(sql, params);
+    const [rows] =
+      await db.query(
+        sql,
+        params
+      );
 
     for (const schedule of rows) {
-      const [slots] = await db.query(
-        `
+
+      const [slots] =
+        await db.query(
+          `
           SELECT
             id,
             schedule_id,
@@ -165,19 +292,27 @@ async function getScheduleByDoctor(doctorId, limit = 0, offset = 0) {
             start_time,
             end_time,
             status
+
           FROM schedule_slots
+
           WHERE schedule_id = ?
-          ORDER BY start_time ASC, id ASC
-        `,
-        [schedule.id]
-      );
+
+          ORDER BY
+            start_time ASC,
+            id ASC
+          `,
+          [schedule.id]
+        );
 
       schedule.slots = slots;
     }
 
-    return rows.map(parseActiveDays);
+    return rows.map(
+      parseActiveDays
+    );
 
   } catch (error) {
+
     console.error(
       "Get Schedule By Doctor Model Error:",
       error
@@ -185,182 +320,293 @@ async function getScheduleByDoctor(doctorId, limit = 0, offset = 0) {
 
     throw error;
   }
-}
+};
 
-async function findOverlappingScheduleForUpdate(data) {
 
-  const [rows] = await db.query(
-    `
-    SELECT id
-    FROM schedules
-    WHERE doctor_id = ?
-      AND id <> ?
+exports.findOverlappingScheduleForUpdate =
+  async (data) => {
 
-      AND (
-            (? IS NULL AND hospital_name IS NULL)
-            OR hospital_name = ?
-      )
+    const [rows] = await db.query(
+      `
+      SELECT id
 
-      AND start_time < ?
-      AND end_time > ?
+      FROM schedules
 
-      AND start_date <= ?
-      AND end_date >= ?
+      WHERE doctor_id = ?
 
-    LIMIT 1
-    `,
-    [
-      data.doctor_id,
-      data.schedule_id,
-      data.hospital_name,
-      data.hospital_name,
-      data.end_time,
-      data.start_time,
-      data.end_date,
-      data.start_date
-    ]
-  );
+        AND id <> ?
 
-  return rows.length > 0;
-}
+        AND (
+          (? IS NULL AND hospital_name IS NULL)
+          OR hospital_name = ?
+        )
 
-async function getSchedulePublicByDoctorId(doctorId) {
-  return getScheduleByDoctor(doctorId);
-}
+        AND start_time < ?
 
-async function deleteActiveSlots(doctorId, scheduleId, connection = db) {
+        AND end_time > ?
 
-  const [result] = await connection.query(
-    `
-    DELETE FROM schedule_slots
-    WHERE doctor_id = ?
-      AND schedule_id = ?
-      AND LOWER(status) = 'active'
-    `,
-    [
+        AND start_date <= ?
+
+        AND end_date >= ?
+
+      LIMIT 1
+      `,
+      [
+        data.doctor_id,
+        data.schedule_id,
+        data.hospital_name,
+        data.hospital_name,
+        data.end_time,
+        data.start_time,
+        data.end_date,
+        data.start_date
+      ]
+    );
+
+    return rows.length > 0;
+  };
+
+
+exports.getSchedulePublicByDoctorId =
+  async (doctorId) => {
+
+    return exports.getPublicScheduleByDoctor(
       doctorId,
-      scheduleId
-    ]
-  );
+      0,
+      0
+    );
+  };
+
+
+exports.deleteActiveSlots = async (
+  doctorId,
+  scheduleId,
+  connection = db
+) => {
+
+  const [result] =
+    await connection.query(
+      `
+      DELETE FROM schedule_slots
+
+      WHERE doctor_id = ?
+
+        AND schedule_id = ?
+
+        AND LOWER(status) = 'active'
+      `,
+      [
+        doctorId,
+        scheduleId
+      ]
+    );
 
   return result;
-}
+};
 
-async function update(doctorId, scheduleId, body) {
 
-  // Ensure active_days is stored as a JSON string to avoid SQL syntax issues
-  let activeDaysValue = body.active_days;
 
-  if (Array.isArray(activeDaysValue) || typeof activeDaysValue === 'object') {
+exports.update = async (
+  doctorId,
+  scheduleId,
+  body
+) => {
+
+  let activeDaysValue =
+    body.active_days;
+
+  if (
+    Array.isArray(activeDaysValue) ||
+    typeof activeDaysValue === "object"
+  ) {
+
     try {
-      activeDaysValue = JSON.stringify(activeDaysValue || []);
+
+      activeDaysValue =
+        JSON.stringify(
+          activeDaysValue || []
+        );
+
     } catch (e) {
-      activeDaysValue = '' + (activeDaysValue || '');
+
+      activeDaysValue =
+        "" +
+        (activeDaysValue || "");
     }
   }
 
-  const [result] = await db.query(
-    `
-    UPDATE schedules
-    SET
-      location_id = ?,
-      hospital_name = ?,
-      start_time = ?,
-      end_time = ?,
-      slot_duration = ?,
-      break_minutes = ?,
-      active_days = ?,
-      start_date = ?,
-      end_date = ?,
-      note = ?
-    WHERE id = ?
-      AND doctor_id = ?
-    `,
-    [
-      body.location_id,
-      body.hospital_name,
-      body.start_time,
-      body.end_time,
-      body.slot_duration,
-      body.break_minutes,
-      activeDaysValue,
-      body.start_date,
-      body.end_date,
-      body.note,
-      scheduleId,
-      doctorId
-    ]
-  );
+  const [result] =
+    await db.query(
+      `
+      UPDATE schedules
+
+      SET
+        location_id = ?,
+        hospital_name = ?,
+        start_time = ?,
+        end_time = ?,
+        slot_duration = ?,
+        break_minutes = ?,
+        active_days = ?,
+        start_date = ?,
+        end_date = ?,
+        note = ?
+
+      WHERE id = ?
+
+        AND doctor_id = ?
+      `,
+      [
+        body.location_id,
+        body.hospital_name,
+        body.start_time,
+        body.end_time,
+        body.slot_duration,
+        body.break_minutes,
+        activeDaysValue,
+        body.start_date,
+        body.end_date,
+        body.note,
+        scheduleId,
+        doctorId
+      ]
+    );
 
   return result.affectedRows > 0;
-}
+};
 
 
-async function remove(id, doctorId) {
-  const [res] = await db.query(
-    `DELETE FROM schedules WHERE id=? AND doctor_id=?`,
-    [id, doctorId]
-  );
+// ======================================================
+// DELETE SCHEDULE
+// ======================================================
+
+exports.remove = async (
+  id,
+  doctorId
+) => {
+
+  const [res] =
+    await db.query(
+      `
+      DELETE FROM schedules
+
+      WHERE id = ?
+
+        AND doctor_id = ?
+      `,
+      [
+        id,
+        doctorId
+      ]
+    );
 
   return res.affectedRows > 0;
-}
+};
 
-async function deleteByScheduleId(scheduleId) {
-  const [res] = await db.query(
-    `DELETE FROM schedule_slots WHERE schedule_id = ?`,
-    [scheduleId]
-  );
 
-  return res.affectedRows;
-}
+exports.deleteByScheduleId =
+  async (scheduleId) => {
 
-function parseActiveDays(r) {
-  let active_days = r.active_days;
+    const [res] =
+      await db.query(
+        `
+        DELETE FROM schedule_slots
 
-  if (typeof active_days === "string") {
+        WHERE schedule_id = ?
+        `,
+        [scheduleId]
+      );
+
+    return res.affectedRows;
+  };
+
+
+function parseActiveDays(row) {
+
+  let active_days =
+    row.active_days;
+
+  if (
+    typeof active_days === "string"
+  ) {
+
     try {
-      active_days = JSON.parse(active_days);
+
+      active_days =
+        JSON.parse(active_days);
+
     } catch {
-      active_days = active_days.split(",").map(d => d.trim());
+
+      active_days =
+        active_days
+          .split(",")
+          .map(
+            (day) =>
+              day.trim()
+          );
     }
   }
 
-  return {
-    ...r,
-    active_days
-  };
+  const dayNames = [
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ];
 
+  if (
+    Array.isArray(active_days)
+  ) {
 
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    active_days =
+      active_days.map((day) => {
 
-  if (Array.isArray(active_days)) {
-    active_days = active_days.map(d => {
-      if (typeof d === "number") return dayNames[d] ?? String(d);
-      if (/^\d+$/.test(String(d))) return dayNames[Number(d)] ?? String(d);
+        if (
+          typeof day === "number"
+        ) {
+          return (
+            dayNames[day] ??
+            String(day)
+          );
+        }
 
-      const s = String(d).trim();
-      return s.slice(0, 3).charAt(0).toUpperCase() + s.slice(1, 3).toLowerCase();
-    });
+        if (
+          /^\d+$/.test(
+            String(day)
+          )
+        ) {
+
+          return (
+            dayNames[
+              Number(day)
+            ] ??
+            String(day)
+          );
+        }
+
+        const value =
+          String(day)
+            .trim();
+
+        return (
+          value
+            .slice(0, 3)
+            .charAt(0)
+            .toUpperCase() +
+          value
+            .slice(1, 3)
+            .toLowerCase()
+        );
+      });
   }
 
   return {
-    ...r,
-    active_days: active_days || []
+    ...row,
+
+    active_days:
+      active_days || []
   };
 }
-
-module.exports = {
-  createSchedule,
-  getAllByDoctor,
-  getScheduleByDoctor,
-  getSchedulePublicByDoctorId,
-  // getSlotsByScheduleId,
-  getAllCountByDoctor,
-  findOverlappingScheduleForUpdate,
-  deleteByScheduleId,
-  update,
-  deleteActiveSlots,
-  getScheduleCountByDoctor,
-  remove,
-  findOverlappingSchedule
-};
