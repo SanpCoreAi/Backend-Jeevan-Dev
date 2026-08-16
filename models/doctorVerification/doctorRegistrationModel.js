@@ -14,6 +14,36 @@ exports.findUserByEmail = async (email, conn = db) => {
   return rows[0] || null;
 };
 
+exports.findByEmail = async (email, conn = db) => {
+  const [rows] = await conn.execute(
+    `
+    SELECT *
+    FROM doctor_registrations
+    WHERE email = ?
+      AND status = 'ACTIVE'
+    LIMIT 1
+    `,
+    [email]
+  );
+
+  return rows[0] || null;
+};
+
+exports.findByMobile = async (mobile, conn = db) => {
+  const [rows] = await conn.execute(
+    `
+    SELECT *
+    FROM doctor_registrations
+    WHERE mobile = ?
+      AND status = 'ACTIVE'
+    LIMIT 1
+    `,
+    [mobile]
+  );
+
+  return rows[0] || null;
+};
+
 exports.findByEmailExceptId = async (
   email,
   id,
@@ -79,7 +109,7 @@ exports.findUserByPhone = async (phone, conn = db) => {
     `
     SELECT id
     FROM users
-    WHERE phone = ?
+    WHERE phone_number = ?
     LIMIT 1
     `,
     [phone]
