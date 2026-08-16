@@ -36,9 +36,7 @@ exports.createDoctorRegistration = async (body) => {
       registrationExpiryDate,
     } = body;
 
-
     if (!registrationId) {
-
 
       if (
         !fullName ||
@@ -57,6 +55,39 @@ exports.createDoctorRegistration = async (body) => {
         };
       }
 
+      const userEmailExists =
+        await doctorRegistrationModel.findUserByEmail(
+          email,
+          connection
+        );
+
+      if (userEmailExists) {
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 409,
+          message:
+            "Email already exists. Please use another email.",
+        };
+      }
+
+      const userMobileExists =
+        await doctorRegistrationModel.findUserByPhone(
+          mobile,
+          connection
+        );
+
+      if (userMobileExists) {
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 409,
+          message:
+            "Mobile number already exists. Please use another mobile number.",
+        };
+      }
 
       const emailExists =
         await doctorRegistrationModel.findByEmail(
@@ -73,7 +104,6 @@ exports.createDoctorRegistration = async (body) => {
           message: "Email already exists.",
         };
       }
-
 
       const mobileExists =
         await doctorRegistrationModel.findByMobile(
@@ -94,11 +124,10 @@ exports.createDoctorRegistration = async (body) => {
       if (medicalRegistrationNumber) {
 
         const registrationExists =
-          await doctorRegistrationModel
-            .findByRegistrationNumber(
-              medicalRegistrationNumber,
-              connection
-            );
+          await doctorRegistrationModel.findByRegistrationNumber(
+            medicalRegistrationNumber,
+            connection
+          );
 
         if (registrationExists) {
           await connection.rollback();
@@ -139,9 +168,7 @@ exports.createDoctorRegistration = async (body) => {
           connection
         );
 
-
       await connection.commit();
-
 
       return {
         success: true,
@@ -161,7 +188,6 @@ exports.createDoctorRegistration = async (body) => {
       );
 
     if (!existingRegistration) {
-
       await connection.rollback();
 
       return {
@@ -176,7 +202,6 @@ exports.createDoctorRegistration = async (body) => {
       existingRegistration.onboarding_status !==
       "DRAFT"
     ) {
-
       await connection.rollback();
 
       return {
@@ -192,16 +217,31 @@ exports.createDoctorRegistration = async (body) => {
       email !== existingRegistration.email
     ) {
 
+      const userEmailExists =
+        await doctorRegistrationModel.findUserByEmail(
+          email,
+          connection
+        );
+
+      if (userEmailExists) {
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 409,
+          message:
+            "Email already exists. Please use another email.",
+        };
+      }
+
       const emailExists =
-        await doctorRegistrationModel
-          .findByEmailExceptId(
-            email,
-            registrationId,
-            connection
-          );
+        await doctorRegistrationModel.findByEmailExceptId(
+          email,
+          registrationId,
+          connection
+        );
 
       if (emailExists) {
-
         await connection.rollback();
 
         return {
@@ -218,16 +258,31 @@ exports.createDoctorRegistration = async (body) => {
       mobile !== existingRegistration.mobile
     ) {
 
+      const userMobileExists =
+        await doctorRegistrationModel.findUserByPhone(
+          mobile,
+          connection
+        );
+
+      if (userMobileExists) {
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 409,
+          message:
+            "Mobile number already exists. Please use another mobile number.",
+        };
+      }
+
       const mobileExists =
-        await doctorRegistrationModel
-          .findByMobileExceptId(
-            mobile,
-            registrationId,
-            connection
-          );
+        await doctorRegistrationModel.findByMobileExceptId(
+          mobile,
+          registrationId,
+          connection
+        );
 
       if (mobileExists) {
-
         await connection.rollback();
 
         return {
@@ -254,7 +309,6 @@ exports.createDoctorRegistration = async (body) => {
           );
 
       if (registrationExists) {
-
         await connection.rollback();
 
         return {
@@ -275,17 +329,25 @@ exports.createDoctorRegistration = async (body) => {
         email,
         mobile,
 
-        medicalRegistrationNumber,
-        medicalCouncil,
-        qualification,
-        specialization,
-        registrationExpiryDate,
+        medicalRegistrationNumber:
+          medicalRegistrationNumber || null,
+
+        medicalCouncil:
+          medicalCouncil || null,
+
+        qualification:
+          qualification || null,
+
+        specialization:
+          specialization || null,
+
+        registrationExpiryDate:
+          registrationExpiryDate || null,
       },
       connection
     );
 
     await connection.commit();
-
 
     return {
       success: true,
@@ -296,7 +358,6 @@ exports.createDoctorRegistration = async (body) => {
         registrationId,
       },
     };
-
 
   } catch (error) {
 

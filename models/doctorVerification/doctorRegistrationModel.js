@@ -1,16 +1,11 @@
 const db = require("../../config/db");
 
-exports.findByEmail = async (
-  email,
-  conn = db
-) => {
-
+exports.findUserByEmail = async (email, conn = db) => {
   const [rows] = await conn.execute(
     `
-    SELECT *
-    FROM doctor_registrations
+    SELECT id
+    FROM users
     WHERE email = ?
-      AND status = 'ACTIVE'
     LIMIT 1
     `,
     [email]
@@ -79,18 +74,20 @@ exports.findByRegistrationNumberExceptId = async (
   return rows[0] || null;
 };
 
-exports.findByMobile = async (mobile, conn = db) => {
-    const [rows] = await conn.execute(
-        `SELECT *
-         FROM doctor_registrations
-         WHERE mobile = ?
-         AND status = 'ACTIVE'
-         LIMIT 1`,
-        [mobile]
-    );
+exports.findUserByPhone = async (phone, conn = db) => {
+  const [rows] = await conn.execute(
+    `
+    SELECT id
+    FROM users
+    WHERE phone = ?
+    LIMIT 1
+    `,
+    [phone]
+  );
 
-    return rows[0] || null;
+  return rows[0] || null;
 };
+
 
 exports.findByRegistrationNumber = async (
     registrationNumber,
