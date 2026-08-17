@@ -113,6 +113,7 @@ exports.getProfile = async (userId) => {
         bio: doctor.bio,
         age: doctor.age,
         gender: doctor.gender,
+        accept_emergency_patients: doctor.accept_emergency_patients,
 
         language: safeParse(doctor.language, []),
         availability: safeParse(doctor.availability, []),
@@ -130,7 +131,7 @@ exports.getProfile = async (userId) => {
         image: doctor.image_file_key
           ? {
             url: S3_BASE_URL
-              ? `${S3_BASE_URL}/${encodeURI(
+              ? `${encodeURI(
                 doctor.image_file_key
               )}`
               : null,
@@ -140,7 +141,7 @@ exports.getProfile = async (userId) => {
         licenseFiles: safeParse(doctor.files, []).map((file) => ({
           url: file.fileKey.startsWith("http")
             ? file.fileKey
-            : `${S3_BASE_URL}/${encodeURI(file.fileKey)}`
+            : `${encodeURI(file.fileKey)}`
         })),
 
         avgRating: Number(doctor.avg_rating || 0),
@@ -197,6 +198,7 @@ exports.getDoctorPublicProfileById = async (userId) => {
         experience: doctor.experience,
         consultationFee: doctor.consultation_fee,
         bio: doctor.bio,
+        accept_emergency_patients: doctor.accept_emergency_patients,
 
         language: safeParse(doctor.language, []),
         availability: safeParse(doctor.availability, []),
@@ -214,7 +216,7 @@ exports.getDoctorPublicProfileById = async (userId) => {
         image: doctor.image_file_key
           ? {
             url: S3_BASE_URL
-              ? `${S3_BASE_URL}/${encodeURI(
+              ? `${encodeURI(
                 doctor.image_file_key
               )}`
               : null,

@@ -135,6 +135,7 @@ exports.getBydoctorId = async (userId) => {
       d.availability,
       d.hospital_detail,
       d.qr_code,
+      d.accept_emergency_patients,
 
       u.full_name AS user_full_name,
       u.email AS user_email,
@@ -267,6 +268,7 @@ exports.getDoctorPublicProfileById = async (userId) => {
       d.language,
       d.availability,
       d.hospital_detail,
+      d.accept_emergency_patients,
 
       u.full_name AS user_full_name,
       u.email AS user_email,
