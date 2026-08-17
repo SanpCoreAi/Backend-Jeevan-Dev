@@ -10,7 +10,7 @@ const s3 = require("../../config/s3");
 const DoctorFileModel = require("../../models/upload-file/doctorFileModel");
 
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; 
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -51,12 +51,11 @@ const uploadDoctorFile = async ({
     };
   }
 
-  if (![2, 3].includes(Number(role))) {
+  if (![1, 2, 3].includes(Number(role))) {
     return {
       success: false,
       statusCode: 403,
-      message:
-        "Only doctor and assistant can upload files.",
+      message: "User, doctor and assistant can upload files.",
     };
   }
 
@@ -102,12 +101,11 @@ const uploadDoctorFile = async ({
       })
     );
 
-    const savedFile =
-      await DoctorFileModel.create({
-        doctorId: userId,
-        fileKey,
-        folderName: cleanFolder,
-      });
+    const savedFile = await DoctorFileModel.create({
+      doctorId: userId,
+      fileKey,
+      folderName: cleanFolder,
+    });
 
     const fileUrl =
       `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
@@ -116,8 +114,9 @@ const uploadDoctorFile = async ({
       success: true,
       statusCode: 201,
       data: {
-        ...savedFile,
-        fileUrl,
+        userId,
+        key: fileKey,
+        folderName: cleanFolder,
       },
     };
 

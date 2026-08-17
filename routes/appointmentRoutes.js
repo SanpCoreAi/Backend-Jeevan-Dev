@@ -39,7 +39,7 @@ router.get(
   ctrl.verifyToken
 );
 router.post("/:id/start", verifyToken, ctrl.start);
-0
+
 router.post("/:id/complete", verifyToken, ctrl.complete);
 router.get("/revisit/:patientId/:doctorId", verifyToken, ctrl.revisit);
 router.get( "/doctor/table", verifyToken, appointmentController.getDoctorAppointmentsForTable

@@ -1,13 +1,7 @@
-const {
-  upload,
-  uploadDoctorFile,
-  getDoctorFiles,
+const { upload, uploadDoctorFile, getDoctorFiles,
 } = require("../../services/upload-file/uploadLicenseService");
 
-const {
-  uploadFileQuerySchema,
-  validateFile,
-  getFilesSchema,
+const { uploadFileQuerySchema, validateFile, getFilesSchema,
 } = require("../../validation/upload/uploadFileValidation");
 
 const uploadFile = (req, res) => {
@@ -30,12 +24,12 @@ const uploadFile = (req, res) => {
         });
       }
 
-      if (![2, 3].includes(role)) {
-        return res.status(403).json({
+      if (![1, 2, 3].includes(Number(role))) {
+        return {
           success: false,
-          message:
-            "Only doctor and assistant can upload files.",
-        });
+          statusCode: 403,
+          message: "User, doctor and assistant can upload files.",
+        };
       }
 
       const { error, value } =

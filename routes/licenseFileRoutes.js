@@ -6,7 +6,7 @@ const { uploadFileAndImage, getFileImage } = require("../controllers/upload-file
 const { verifyToken } = require("../middlewares/authMiddleware");
 const {allowRoles}=require("../middlewares/role");
 
-router.post("/upload", verifyToken, allowRoles(2,3), uploadFile);
+router.post("/upload", verifyToken, allowRoles(1,2,3), uploadFile);
 router.get("/files", verifyToken, getFiles);
 
 router.post(

@@ -21,32 +21,6 @@ const create = async ({
     folderName,
   ]);
 
-  const [rows] = await db.execute(
-    `
-      SELECT
-        id,
-        doctor_id,
-        file_key,
-        folder_name,
-        created_at
-      FROM doctor_files
-      WHERE id = ?
-      LIMIT 1
-    `,
-    [result.insertId]
-  );
-
-  if (!rows.length) {
-    return null;
-  }
-
-  return {
-    id: rows[0].id,
-    doctorId: rows[0].doctor_id,
-    file_key: rows[0].file_key,
-    folder_name: rows[0].folder_name,
-    created_at: rows[0].created_at,
-  };
 };
 
 const findByDoctorId = async (
