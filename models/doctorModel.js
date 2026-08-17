@@ -16,7 +16,8 @@ exports.createDoctor = async (userId, data) => {
     language: "language",
     availability: "availability",
     hospital_detail: "hospital_detail",
-    hospitalDetail: "hospital_detail"
+    hospitalDetail: "hospital_detail",
+    acceptEmergencyPatients: "accept_emergency_patients",
   };
 
   const jsonFields = [
@@ -364,23 +365,24 @@ exports.getDoctorByUserId = async (userId) => {
 
 exports.updateDoctor = async (userId, data) => {
 
-  const fieldMap = {
-    username: "username",
-    specialization: "specialization",
-    qualification: "qualification",
-    experience: "experience",
-    consultationFee: "consultation_fee",
-    consultation_fee: "consultation_fee",
-    medicalLicenseNo: "medical_license_no",
-    medical_license_no: "medical_license_no",
-    bio: "bio",
-    age: "age",
-    gender: "gender",
-    language: "language",
-    availability: "availability",
-    hospitalDetail: "hospital_detail",
-    hospital_detail: "hospital_detail"
-  };
+const fieldMap = {
+  username: "username",
+  specialization: "specialization",
+  qualification: "qualification",
+  experience: "experience",
+  consultationFee: "consultation_fee",
+  consultation_fee: "consultation_fee",
+  medicalLicenseNo: "medical_license_no",
+  medical_license_no: "medical_license_no",
+  bio: "bio",
+  age: "age",
+  gender: "gender",
+  language: "language",
+  availability: "availability",
+  hospitalDetail: "hospital_detail",
+  hospital_detail: "hospital_detail",
+  acceptEmergencyPatients: "accept_emergency_patients"
+};
 
   const jsonFields = [
     "language",

@@ -153,7 +153,11 @@ const updateDoctorSchema = Joi.object({
       })
 
     )
-    .optional()
+    .optional(),
+
+  acceptEmergencyPatients: Joi.string()
+    .valid("YES", "NO")
+    .optional(),
 
 })
   .min(1)
