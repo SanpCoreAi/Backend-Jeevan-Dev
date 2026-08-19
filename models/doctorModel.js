@@ -352,16 +352,13 @@ exports.getDoctorPublicProfileById = async (userId) => {
 exports.getDoctorByUserId = async (userId) => {
 
   const sql = `
-SELECT
-    u.id AS doctor_id,
-    d.id AS doctor_table_id,
-    u.name,
-    u.email
-FROM doctors d
-INNER JOIN users u
+    SELECT
+    u.id AS doctor_id
+    FROM doctors d
+    INNER JOIN users u
     ON u.id = d.user_id
-WHERE d.id = ?;
-  `;
+    WHERE d.id = ?;
+   `;
 
   const [rows] = await db.execute(sql, [userId]);
 
@@ -370,24 +367,24 @@ WHERE d.id = ?;
 
 exports.updateDoctor = async (userId, data) => {
 
-const fieldMap = {
-  username: "username",
-  specialization: "specialization",
-  qualification: "qualification",
-  experience: "experience",
-  consultationFee: "consultation_fee",
-  consultation_fee: "consultation_fee",
-  medicalLicenseNo: "medical_license_no",
-  medical_license_no: "medical_license_no",
-  bio: "bio",
-  age: "age",
-  gender: "gender",
-  language: "language",
-  availability: "availability",
-  hospitalDetail: "hospital_detail",
-  hospital_detail: "hospital_detail",
-  acceptEmergencyPatients: "accept_emergency_patients"
-};
+  const fieldMap = {
+    username: "username",
+    specialization: "specialization",
+    qualification: "qualification",
+    experience: "experience",
+    consultationFee: "consultation_fee",
+    consultation_fee: "consultation_fee",
+    medicalLicenseNo: "medical_license_no",
+    medical_license_no: "medical_license_no",
+    bio: "bio",
+    age: "age",
+    gender: "gender",
+    language: "language",
+    availability: "availability",
+    hospitalDetail: "hospital_detail",
+    hospital_detail: "hospital_detail",
+    acceptEmergencyPatients: "accept_emergency_patients"
+  };
 
   const jsonFields = [
     "language",
