@@ -3,6 +3,10 @@ const Joi = require("joi");
 const ALLOWED_FOLDERS = [
   "doctor-licenses",
   "doctor-profile",
+  "user-profile",
+  "user-documents",
+  "assistant-profile",
+  "assistant-documents",
   "pan",
 ];
 
