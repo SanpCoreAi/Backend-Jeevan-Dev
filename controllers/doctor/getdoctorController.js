@@ -1,4 +1,4 @@
-const { getDoctorsService } = require("../../services/doctor/getdoctorService");
+const { searchDoctorService } = require("../../services/doctor/getdoctorService");
 const { getDoctorsSchema } = require("../../validation/doctor/getDoctorsValidation");
 
 exports.getDoctors = async (req, res) => {
@@ -17,7 +17,7 @@ exports.getDoctors = async (req, res) => {
       });
     }
 
-    const result = await getDoctorsService(value);
+    const result = await searchDoctorService(value);
 
     return res.status(result.statusCode).json(result);
 

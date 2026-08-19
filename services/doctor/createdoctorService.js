@@ -279,6 +279,19 @@ exports.updateProfile = async (userId, body) => {
     const doctor =
       await DoctorModel.getDoctorByUserId(userId);
 
+    const existingDoctor =
+      await DoctorModel.getDoctorByMedicalLicenseNo(
+        body.medicalLicenseNo
+      );
+
+    if (existingDoctor) {
+      return {
+        success: false,
+        statusCode: 409,
+        message: "Medical license number already exists.",
+      };
+    }
+
     if (!doctor) {
 
       await DoctorModel.createDoctor(

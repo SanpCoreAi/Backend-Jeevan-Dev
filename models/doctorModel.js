@@ -436,6 +436,19 @@ exports.updateDoctor = async (userId, data) => {
   };
 };
 
+exports.getDoctorByMedicalLicenseNo = async (medicalLicenseNo) => {
+  const sql = `
+    SELECT id, user_id
+    FROM doctors
+    WHERE medical_license_no = ?
+    LIMIT 1
+  `;
+
+  const [rows] = await db.execute(sql, [medicalLicenseNo]);
+
+  return rows.length ? rows[0] : null;
+};
+
 exports.getAllDoctors = async () => {
 
   const sql = `
@@ -517,6 +530,7 @@ exports.findAllWithUser = async () => {
   d.language,
   d.availability,
   d.hospital_detail,
+  d.accept_emergency_patients,
   d.qr_code,
 
   u.full_name AS user_full_name,
