@@ -352,12 +352,15 @@ exports.getDoctorPublicProfileById = async (userId) => {
 exports.getDoctorByUserId = async (userId) => {
 
   const sql = `
-    SELECT
-      id,
-      user_id
-    FROM doctors
-    WHERE user_id = ?
-    LIMIT 1
+SELECT
+    u.id AS doctor_id,
+    d.id AS doctor_table_id,
+    u.name,
+    u.email
+FROM doctors d
+INNER JOIN users u
+    ON u.id = d.user_id
+WHERE d.id = ?;
   `;
 
   const [rows] = await db.execute(sql, [userId]);
