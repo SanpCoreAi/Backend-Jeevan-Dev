@@ -332,7 +332,6 @@ exports.updateDoctorQrData = async (
         throw new Error("Doctor not found.");
     }
 
-    // 2. Parse existing QR codes
     let existingQrCodes = [];
     let existingQrUrls = [];
 
@@ -364,7 +363,6 @@ exports.updateDoctorQrData = async (
         }
     }
 
-    // 3. Merge old + new
     const mergedQrCodes = [
         ...new Set([
             ...existingQrCodes,
