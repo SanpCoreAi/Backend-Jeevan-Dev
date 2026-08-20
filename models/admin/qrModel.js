@@ -101,50 +101,77 @@ exports.findDoctorByUserId = async (
 
 };
 
-exports.findQrCode = async (connectionOrQrCode, qrCode) => {
+exports.findQrCode = async (
+  connectionOrQrCode,
+  qrCode
+) => {
 
-    let connection = db;
+  let connection = db;
 
-    if (typeof connectionOrQrCode === "string") {
-        qrCode = connectionOrQrCode;
-    } else {
-        connection = connectionOrQrCode;
-    }
+  if (typeof connectionOrQrCode === "string") {
+    qrCode = connectionOrQrCode;
+  } else {
+    connection = connectionOrQrCode;
+  }
 
-    const sql = `
-        SELECT
-            id,
-            qr_code,
-            qr_image,
-            status,
-            doctor_user_id,
-            assigned_at
-        FROM qr_codes
-        WHERE qr_code = ?
-        LIMIT 1
-    `;
+  const sql = `
+    SELECT
+      q.id AS qr_id,
+      q.qr_code,
+      q.qr_image,
+      q.status,
 
-    const [rows] = await connection.execute(sql, [qrCode]);
+      u.id AS user_id,
 
-    return rows.length ? rows[0] : null;
+      d.id AS doctor_id,
+
+      d.user_id AS doctor_user_id,
+      d.specialization,
+      d.qualification,
+
+      u.full_name,
+      u.email,
+      u.phone_number
+
+    FROM qr_codes q
+
+    LEFT JOIN doctors d
+      ON d.user_id = q.doctor_user_id
+
+    LEFT JOIN users u
+      ON u.id = q.doctor_user_id
+
+    WHERE q.qr_code = ?
+
+    LIMIT 1
+  `;
+
+  const [rows] = await connection.execute(
+    sql,
+    [qrCode]
+  );
+
+  return rows.length
+    ? rows[0]
+    : null;
 };
 
 exports.assignQrToDoctor = async (
     connection,
-    doctorId,
+    doctorUserId,
     qrCode
 ) => {
     const sql = `
-        UPDATE doctors
+        UPDATE qr_codes
         SET
-            qr_code = ?,
+            doctor_user_id = ?,
             updated_at = CURRENT_TIMESTAMP
-        WHERE user_id = ?
+        WHERE qr_code = ?
     `;
 
     return connection.execute(sql, [
-        qrCode,
-        doctorId
+        doctorUserId,
+        qrCode
     ]);
 };
 
@@ -217,255 +244,176 @@ exports.findByUserId = async (userId) => {
 };
 
 exports.getAllQrCodes = async ({
-
     limit,
-
     offset,
-
     status
-
 }) => {
 
     let where = "";
     const params = [];
 
-    if(status){
-
-        where = "WHERE status = ?";
-
+    if (status) {
+        where = "WHERE q.status = ?";
         params.push(status);
-
     }
 
     const countSql = `
-
         SELECT COUNT(*) AS total
-
-        FROM qr_codes
-
+        FROM qr_codes q
         ${where}
-
     `;
 
     const [countRows] = await db.execute(
-
         countSql,
-
         params
-
     );
+
+    const safeLimit = Math.max(Number(limit) || 10, 1);
+    const safeOffset = Math.max(Number(offset) || 0, 0);
 
     const sql = `
-
         SELECT
-
-            id,
-
-            qr_code,
-
-            qr_image,
-
-            status,
-
-            doctor_user_id,
-
-            assigned_at,
-
-            created_at
-
-
-        FROM qr_codes
-
-        ${where}
-
-
-        ORDER BY id DESC
-
-
-        LIMIT ?
-
-        OFFSET ?
-
-    `;
-
-
-
-
-    const [rows] = await db.execute(
-
-        sql,
-
-        [
-
-            ...params,
-
-            Number(limit),
-
-            Number(offset)
-
-        ]
-
-    );
-
-
-
-
-    return {
-
-        rows,
-
-        total:
-        countRows[0].total
-
-    };
-
-
-};
-
-
-exports.getDoctorQrCodes = async (
-
-    doctorId
-
-) => {
-
-
-
-    const sql = `
-
-        SELECT
-
-            id,
-
-            qr_code,
-
-            qr_image,
-
-            status,
-
-            assigned_at,
-
-            created_at
-
-
-        FROM qr_codes
-
-
-        WHERE doctor_user_id = ?
-
-
-        ORDER BY id DESC
-
-    `;
-
-
-
-
-    const [rows] = await db.execute(
-
-        sql,
-
-        [doctorId]
-
-    );
-
-
-
-
-    return rows;
-
-
-};
-
-
-exports.getAllQrDetails = async ({
-
-    limit,
-
-    offset,
-
-    status
-
-}) => {
-
-
-
-    let where = "";
-
-    const params = [];
-
-
-
-    if(status){
-
-        where = "WHERE q.status = ?";
-
-        params.push(status);
-
-    }
-
-
-
-
-
-    const countSql = `
-
-        SELECT COUNT(*) AS total
+            q.id,
+            q.qr_code,
+            q.qr_image,
+            q.status,
+            q.doctor_user_id AS user_id,
+            q.assigned_at,
+            q.created_at
 
         FROM qr_codes q
 
         ${where}
 
+        ORDER BY q.id DESC
+
+        LIMIT ${safeLimit}
+        OFFSET ${safeOffset}
     `;
 
-
-
-    const [countRows] = await db.execute(
-
-        countSql,
-
+    const [rows] = await db.execute(
+        sql,
         params
-
     );
 
-const sql = `
-SELECT
-    q.id,
-    q.qr_code,
-    q.qr_image,
-    q.status,
-    q.doctor_user_id,
-    q.assigned_at,
-    d.id AS doctor_id,
-    d.specialization,
-    d.qualification,
-    u.full_name,
-    u.email,
-    u.phone_number
-FROM qr_codes q
-LEFT JOIN doctors d
-    ON q.doctor_user_id = d.user_id
-LEFT JOIN users u
-    ON d.user_id = u.id
-${where}
-ORDER BY q.id DESC
-LIMIT ${Number(limit)}
-OFFSET ${Number(offset)}
-`;
-
-const [rows] = await db.execute(sql, params);
-
     return {
-
         rows,
-
-        total:
-
-        countRows[0].total
-
+        total: Number(countRows[0].total)
     };
+};
 
 
+exports.getDoctorQrCodes = async (
+    doctorId
+) => {
+
+    const sql = `
+        SELECT
+            id,
+            qr_code,
+            qr_image,
+            status,
+            doctor_user_id AS user_id,
+            assigned_at,
+            created_at
+
+        FROM qr_codes
+
+        WHERE doctor_user_id = ?
+
+        ORDER BY id DESC
+    `;
+
+    const [rows] = await db.execute(
+        sql,
+        [doctorId]
+    );
+
+    return rows;
+};
+
+
+exports.getAllQrDetails = async ({
+  limit,
+  offset,
+  status
+}) => {
+
+  const safeLimit = Number.parseInt(limit, 10);
+  const safeOffset = Number.parseInt(offset, 10);
+
+  if (
+    !Number.isInteger(safeLimit) ||
+    !Number.isInteger(safeOffset) ||
+    safeLimit < 1 ||
+    safeOffset < 0
+  ) {
+    throw new Error("Invalid pagination values.");
+  }
+
+  let where = "";
+  const params = [];
+
+  if (status) {
+    where = "WHERE q.status = ?";
+    params.push(status);
+  }
+
+  // =========================
+  // COUNT
+  // =========================
+
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM qr_codes q
+    ${where}
+  `;
+
+  const [countRows] = await db.query(
+    countSql,
+    params
+  );
+
+  const sql = `
+    SELECT
+      q.id,
+      q.qr_code,
+      q.qr_image,
+      q.status,
+      q.doctor_user_id,
+      q.assigned_at,
+      d.id AS doctor_id,
+      d.specialization,
+      d.qualification,
+      u.full_name,
+      u.email,
+      u.phone_number
+
+    FROM qr_codes q
+
+    LEFT JOIN doctors d
+      ON q.doctor_user_id = d.user_id
+
+    LEFT JOIN users u
+      ON d.user_id = u.id
+
+    ${where}
+
+    ORDER BY q.id DESC
+
+    LIMIT ${safeLimit}
+    OFFSET ${safeOffset}
+  `;
+
+  const [rows] = await db.query(
+    sql,
+    params
+  );
+
+  return {
+    rows,
+    total: Number(countRows[0].total)
+  };
 };
 
 exports.findDoctorByQr = async (qrCode) => {

@@ -801,11 +801,6 @@ exports.getAllByPatient = async (
     `
     SELECT
       a.*,
-      ap.patient_name,
-      ap.age,
-      ap.gender,
-      ap.patient_phone,
-      ap.patient_email,
       u.full_name AS doctor_name,
       d.specialization AS doctor_department
     FROM appointments a
@@ -843,26 +838,7 @@ exports.getAppointmentsByDateForPatient = async (
       a.end_time,
       a.status,
       a.appointment_type AS mode,
-
       a.patient_id,
-
-      COALESCE(
-        ap.patient_name,
-        p.full_name
-      ) AS patient_name,
-
-      COALESCE(
-        ap.patient_phone,
-        p.phone_number
-      ) AS patient_phone,
-
-      COALESCE(
-        ap.patient_email,
-        p.email
-      ) AS patient_email,
-
-      ap.age,
-      ap.gender,
 
       a.doctor_id,
       u.full_name AS doctor_name,
@@ -872,9 +848,6 @@ exports.getAppointmentsByDateForPatient = async (
 
     LEFT JOIN appointment_patients ap
       ON ap.appointment_id = a.id
-
-    LEFT JOIN users p
-      ON p.id = a.patient_id
 
     LEFT JOIN doctors d
       ON d.user_id = a.doctor_id
@@ -1356,7 +1329,6 @@ exports.getAppointmentsByDateForDoctor = async (
   date,
   connection = db
 ) => {
-
   const [rows] = await connection.query(
     `
     SELECT
@@ -1366,26 +1338,7 @@ exports.getAppointmentsByDateForDoctor = async (
       a.end_time,
       a.status,
       a.appointment_type AS mode,
-
       a.patient_id,
-
-      COALESCE(
-        p.full_name,
-        ap.patient_name
-      ) AS patient_name,
-
-      COALESCE(
-        p.phone_number,
-        ap.patient_phone
-      ) AS patient_phone,
-
-      COALESCE(
-        p.email,
-        ap.patient_email
-      ) AS patient_email,
-
-      ap.age,
-      ap.gender,
 
       u.full_name AS doctor_name,
       d.specialization AS doctor_department
@@ -1395,20 +1348,19 @@ exports.getAppointmentsByDateForDoctor = async (
     LEFT JOIN appointment_patients ap
       ON ap.appointment_id = a.id
 
-    LEFT JOIN users p
-      ON p.id = a.patient_id
-
     LEFT JOIN doctors d
       ON d.user_id = a.doctor_id
 
     LEFT JOIN users u
       ON u.id = a.doctor_id
 
-    WHERE a.doctor_id = ?
+    WHERE
+      a.doctor_id = ?
       AND a.slot_date >= ?
       AND a.slot_date < DATE_ADD(?, INTERVAL 1 DAY)
 
-    ORDER BY a.start_time ASC
+    ORDER BY
+      a.start_time ASC
     `,
     [
       doctorId,
