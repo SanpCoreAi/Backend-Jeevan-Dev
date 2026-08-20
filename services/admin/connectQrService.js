@@ -19,22 +19,19 @@ exports.connectDoctorQr = async ({
             doctorId
         );
 
-
         if (!doctor) {
 
             await connection.rollback();
 
             return {
-                statusCode:404,
-                success:false,
-                message:"Doctor not found."
+                statusCode: 404,
+                success: false,
+                message: "Doctor not found."
             };
-
         }
 
-
-
         const connectedQrCodes = [];
+        const alreadyConnectedQrCodes = [];
 
         for (const qrCode of qrCodes) {
 
@@ -43,123 +40,152 @@ exports.connectDoctorQr = async ({
                 qrCode
             );
 
-
             if (!qr) {
 
                 await connection.rollback();
 
                 return {
-                    statusCode:404,
-                    success:false,
-                    message:`QR Code ${qrCode} not found.`
+                    statusCode: 404,
+                    success: false,
+                    message: `QR Code ${qrCode} not found.`
                 };
-
             }
+
+            if (qr.status === "ASSIGNED") {
+
+                if (Number(qr.doctor_user_id) === Number(doctorId)) {
+
+                    alreadyConnectedQrCodes.push({
+                        qrCode: qr.qr_code,
+                        qrUrl:
+                            `${process.env.FRONTEND_URL}/scan/${qr.qr_code}`,
+                        qrImage: qr.qr_image
+                    });
+
+                    continue;
+                }
+
+                // Different doctor
+                await connection.rollback();
+
+                return {
+                    statusCode: 400,
+                    success: false,
+                    message:
+                        `QR Code ${qrCode} is already assigned to another doctor.`
+                };
+            }
+
 
             if (qr.status !== "AVAILABLE") {
 
+                await connection.rollback();
+
+                return {
+                    statusCode: 400,
+                    success: false,
+                    message:
+                        `QR Code ${qrCode} cannot be assigned. Current status: ${qr.status}`
+                };
+            }
+
+
+            const result = await QRModel.assignQrToDoctor(
+                connection,
+                doctorId,
+                qrCode
+            );
+
+            if (result.affectedRows === 0) {
 
                 await connection.rollback();
 
-
                 return {
-                    statusCode:400,
-                    success:false,
-                    message:`QR Code ${qrCode} already assigned.`
+                    statusCode: 400,
+                    success: false,
+                    message:
+                        `Unable to assign QR Code ${qrCode}.`
                 };
-
             }
 
-
-            await QRModel.updateQrStatus(
-
-                connection,
-
-                qrCode,
-
-                doctorId
-
-            );
-
-
-     await QRModel.assignQrToDoctor(
-        connection,
-         doctorId,
-        qrCode
-      );
-
-
+            const qrUrl =
+                `${process.env.FRONTEND_URL}/scan/${qr.qr_code}`;
 
             connectedQrCodes.push({
-
-                qrCode:qrCode,
-
-                qrImage:qr.qr_image
-
+                qrCode: qr.qr_code,
+                qrUrl: qrUrl,
+                qrImage: qr.qr_image
             });
-
-
         }
+
+        const allDoctorQrCodes = [
+            ...connectedQrCodes,
+            ...alreadyConnectedQrCodes
+        ];
+
+        const qrCodeList = allDoctorQrCodes.map(
+            item => item.qrCode
+        );
+
+        const qrUrlList = allDoctorQrCodes.map(
+            item => item.qrUrl
+        );
+
+        await QRModel.updateDoctorQrData(
+            connection,
+            doctorId,
+            qrCodeList,
+            qrUrlList
+        );
 
         await connection.commit();
 
-
-
         return {
 
-            statusCode:200,
+            statusCode: 200,
 
-            success:true,
+            success: true,
 
             message:
-            `${connectedQrCodes.length} QR Codes connected successfully.`,
+                connectedQrCodes.length > 0
+                    ? `${connectedQrCodes.length} new QR Codes connected successfully.`
+                    : "QR Codes are already connected with this doctor.",
 
-            data:{
+            data: {
 
                 doctorId,
 
-                connectedBy:adminId,
+                connectedBy: adminId,
 
-                qrCodes:connectedQrCodes
+                newlyConnected: connectedQrCodes,
+
+                alreadyConnected: alreadyConnectedQrCodes,
+
+                totalQrCodes:
+                    allDoctorQrCodes.length
 
             }
-
         };
 
-
-
-    } catch(error) {
-
+    } catch (error) {
 
         await connection.rollback();
-
 
         console.error(
             "Connect Doctor QR Service Error:",
             error
         );
 
-
-
         return {
-
-            statusCode:500,
-
-            success:false,
-
-            message:"Internal server error."
-
+            statusCode: 500,
+            success: false,
+            message: "Internal server error."
         };
-
 
     } finally {
 
-
         connection.release();
-
-
     }
-
 };
 
 exports.scanQr = async ({ user, qrCode }) => {

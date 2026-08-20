@@ -1,63 +1,37 @@
 const Joi = require("joi");
 
 exports.connectDoctorQrValidation = Joi.object({
-
-    doctorId: Joi.number()
-        .integer()
-        .positive()
-        .required()
-        .messages({
-
-            "number.base":
-            "Doctor ID must be a number.",
-
-            "number.integer":
-            "Doctor ID must be integer.",
-
-            "number.positive":
-            "Doctor ID must be positive.",
-
-            "any.required":
-            "Doctor ID is required."
-
-        }),
-
-
-
     qrCodes: Joi.array()
         .items(
-
             Joi.string()
                 .trim()
-                .pattern(/^(QR|DR)-[A-Z0-9]+$/)
+                .pattern(/^DR-[A-Z0-9]+$/)
                 .messages({
-
+                    "string.empty": "QR Code cannot be empty.",
                     "string.pattern.base":
-                    "Invalid QR Code format."
-
+                        "Invalid QR Code format."
                 })
-
         )
         .min(1)
         .max(50)
+        .unique()
         .required()
         .messages({
-
             "array.base":
-            "QR Codes must be an array.",
+                "QR Codes must be an array.",
 
             "array.min":
-            "At least one QR Code is required.",
+                "At least one QR Code is required.",
 
             "array.max":
-            "Maximum 50 QR Codes allowed.",
+                "Maximum 50 QR codes can be connected at once.",
+
+            "array.unique":
+                "Duplicate QR Codes are not allowed.",
 
             "any.required":
-            "QR Codes are required."
-
+                "QR Codes array is required."
         })
-
-
 });
 
 exports.scanQrValidation = Joi.object({

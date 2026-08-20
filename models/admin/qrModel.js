@@ -161,18 +161,24 @@ exports.assignQrToDoctor = async (
     doctorUserId,
     qrCode
 ) => {
+
     const sql = `
         UPDATE qr_codes
         SET
+            status = 'ASSIGNED',
             doctor_user_id = ?,
+            assigned_at = CURRENT_TIMESTAMP,
             updated_at = CURRENT_TIMESTAMP
         WHERE qr_code = ?
+        AND status = 'AVAILABLE'
     `;
 
-    return connection.execute(sql, [
+    const [result] = await connection.execute(sql, [
         doctorUserId,
         qrCode
     ]);
+
+    return result;
 };
 
 
@@ -300,6 +306,96 @@ exports.getAllQrCodes = async ({
         rows,
         total: Number(countRows[0].total)
     };
+};
+
+exports.updateDoctorQrData = async (
+    connection,
+    doctorUserId,
+    newQrCodes,
+    newQrUrls
+) => {
+
+    // 1. Get existing QR data
+    const [rows] = await connection.execute(
+        `
+        SELECT
+            qr_code,
+            qr_url
+        FROM doctors
+        WHERE user_id = ?
+        LIMIT 1
+        `,
+        [doctorUserId]
+    );
+
+    if (!rows.length) {
+        throw new Error("Doctor not found.");
+    }
+
+    // 2. Parse existing QR codes
+    let existingQrCodes = [];
+    let existingQrUrls = [];
+
+    if (rows[0].qr_code) {
+
+        try {
+            existingQrCodes = JSON.parse(rows[0].qr_code);
+
+            if (!Array.isArray(existingQrCodes)) {
+                existingQrCodes = [];
+            }
+
+        } catch (error) {
+            existingQrCodes = [];
+        }
+    }
+
+    if (rows[0].qr_url) {
+
+        try {
+            existingQrUrls = JSON.parse(rows[0].qr_url);
+
+            if (!Array.isArray(existingQrUrls)) {
+                existingQrUrls = [];
+            }
+
+        } catch (error) {
+            existingQrUrls = [];
+        }
+    }
+
+    // 3. Merge old + new
+    const mergedQrCodes = [
+        ...new Set([
+            ...existingQrCodes,
+            ...newQrCodes
+        ])
+    ];
+
+    const mergedQrUrls = [
+        ...new Set([
+            ...existingQrUrls,
+            ...newQrUrls
+        ])
+    ];
+
+    const [result] = await connection.execute(
+        `
+        UPDATE doctors
+        SET
+            qr_code = ?,
+            qr_url = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ?
+        `,
+        [
+            JSON.stringify(mergedQrCodes),
+            JSON.stringify(mergedQrUrls),
+            doctorUserId
+        ]
+    );
+
+    return result;
 };
 
 
