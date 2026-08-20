@@ -359,10 +359,6 @@ exports.getAllQrDetails = async ({
     params.push(status);
   }
 
-  // =========================
-  // COUNT
-  // =========================
-
   const countSql = `
     SELECT COUNT(*) AS total
     FROM qr_codes q
@@ -374,36 +370,31 @@ exports.getAllQrDetails = async ({
     params
   );
 
-  const sql = `
-    SELECT
-      q.id,
-      q.qr_code,
-      q.qr_image,
-      q.status,
-      q.doctor_user_id,
-      q.assigned_at,
-      d.id AS doctor_id,
-      d.specialization,
-      d.qualification,
-      u.full_name,
-      u.email,
-      u.phone_number
+const sql = `
+  SELECT
+    q.id,
+    q.qr_code,
+    q.qr_image,
+    q.status,
+    q.doctor_user_id,
+    q.assigned_at,
+    u.id AS users_id
 
-    FROM qr_codes q
+  FROM qr_codes q
 
-    LEFT JOIN doctors d
-      ON q.doctor_user_id = d.user_id
+  LEFT JOIN doctors d
+    ON q.doctor_user_id = d.user_id
 
-    LEFT JOIN users u
-      ON d.user_id = u.id
+  LEFT JOIN users u
+    ON q.doctor_user_id = u.id
 
-    ${where}
+  ${where}
 
-    ORDER BY q.id DESC
+  ORDER BY q.id DESC
 
-    LIMIT ${safeLimit}
-    OFFSET ${safeOffset}
-  `;
+  LIMIT ${safeLimit}
+  OFFSET ${safeOffset}
+`;
 
   const [rows] = await db.query(
     sql,
