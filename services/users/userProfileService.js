@@ -388,12 +388,21 @@ exports.getPatientDetails = async (
   }
 };
 
-exports.getAllUsers = async () => {
+exports.getAllUsers = async ({ page, limit }) => {
 
   try {
 
-    const users =
-      await userProfileModel.getAllUsers();
+    const offset = (page - 1) * limit;
+
+    const result = await userProfileModel.getAllUsers({
+      limit,
+      offset
+    });
+
+    const {
+      users,
+      total
+    } = result;
 
     if (!users || users.length === 0) {
 
@@ -403,6 +412,12 @@ exports.getAllUsers = async () => {
         body: {
           message: "No users found.",
           count: 0,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit)
+          },
           data: []
         }
       };
@@ -410,18 +425,11 @@ exports.getAllUsers = async () => {
     }
 
     const formattedUsers = users.map((user) => ({
-
       ...user,
 
-      language: safeParse(
-        user.language,
-        []
-      ),
+      language: safeParse(user.language, []),
 
-      address: safeParse(
-        user.address,
-        {}
-      ),
+      address: safeParse(user.address, {}),
 
       existing_conditions: safeParse(
         user.existing_conditions,
@@ -437,28 +445,24 @@ exports.getAllUsers = async () => {
         user.emergency_contact,
         {}
       )
-
     }));
 
     return {
-
       success: true,
-
       statusCode: 200,
-
       body: {
+        message: "Users fetched successfully.",
+        count: formattedUsers.length,
 
-        message:
-          "Users fetched successfully.",
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        },
 
-        count:
-          formattedUsers.length,
-
-        data:
-          formattedUsers
-
+        data: formattedUsers
       }
-
     };
 
   } catch (error) {
@@ -469,21 +473,11 @@ exports.getAllUsers = async () => {
     );
 
     return {
-
       success: false,
-
       statusCode: 500,
-
       body: {
-
-        message:
-          "Internal Server Error."
-
+        message: "Internal Server Error."
       }
-
     };
-
   }
-
 };
-

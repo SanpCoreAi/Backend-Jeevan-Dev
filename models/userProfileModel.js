@@ -371,45 +371,79 @@ exports.getPatientDetails = async (
   return rows[0] || null;
 };
 
-exports.getAllUsers =
-  async () => {
+exports.getAllUsers = async ({ limit, offset }) => {
 
-    const [rows] =
-      await db.execute(
+  limit = Number(limit);
+  offset = Number(offset);
 
-        `
-SELECT
+  if (!Number.isInteger(limit) || limit <= 0) {
+    limit = 10;
+  }
 
-u.id user_id,
-u.full_name,
-u.email,
-u.phone_number,
+  if (!Number.isInteger(offset) || offset < 0) {
+    offset = 0;
+  }
 
-p.username,
-p.age,
-p.gender,
-p.language,
-p.address,
-p.blood_group,
-p.weight,
-p.height,
-p.existing_conditions,
-p.allergies,
-p.bio,
-p.emergency_contact
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM users u
+    WHERE u.role_id = 1
+  `;
 
-FROM users u
+  const [countRows] = await db.execute(countSql);
 
-LEFT JOIN user_profiles p
-ON p.user_id=u.id
+  const total = countRows[0].total;
 
-WHERE u.role_id=1
+  const sql = `
+    SELECT
+      u.id AS user_id,
+      u.full_name,
+      u.email,
+      u.phone_number,
 
-ORDER BY u.id DESC
-`
+      u.role_id,
 
-      );
+      CASE
+        WHEN u.role_id = 1 THEN 'USER'
+        WHEN u.role_id = 2 THEN 'DOCTOR'
+        WHEN u.role_id = 3 THEN 'ASSISTANT'
+        WHEN u.role_id = 4 THEN 'ADMIN'
+        ELSE 'UNKNOWN'
+      END AS role,
 
-    return rows;
+      u.status,
 
+      DATE(u.created_at) AS registration_date,
+
+      p.username,
+      p.age,
+      p.gender,
+      p.language,
+      p.address,
+      p.blood_group,
+      p.weight,
+      p.height,
+      p.existing_conditions,
+      p.allergies,
+      p.bio,
+      p.emergency_contact
+
+    FROM users u
+
+    LEFT JOIN user_profiles p
+      ON p.user_id = u.id
+
+    WHERE u.role_id = 1
+
+    ORDER BY u.id DESC
+
+    LIMIT ${limit} OFFSET ${offset}
+  `;
+
+  const [users] = await db.execute(sql);
+
+  return {
+    users,
+    total
   };
+};

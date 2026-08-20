@@ -214,27 +214,34 @@ exports.getPatientDetails = async (req, res) => {
 exports.getAllUsers = async (req, res) => {
   try {
 
-    const result =
-      await userProfileService.getAllUsers();
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(
+      Math.max(parseInt(req.query.limit) || 10, 1),
+      100
+    );
+
+    const result = await userProfileService.getAllUsers({
+      page,
+      limit
+    });
 
     return res.status(result.statusCode).json({
       success: result.success,
       message: result.body.message,
       count: result.body.count,
+      pagination: result.body.pagination,
       data: result.body.data
     });
 
   } catch (error) {
 
-    console.error(
-      "GET ALL USERS ERROR:",
-      error
-    );
+    console.error("GET ALL USERS ERROR:", error);
 
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
       count: 0,
+      pagination: {},
       data: []
     });
 
