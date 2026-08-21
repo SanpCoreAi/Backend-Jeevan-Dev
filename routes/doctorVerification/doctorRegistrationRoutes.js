@@ -63,4 +63,10 @@ router.get(
   doctorRegistrationController.getRegistrationDocuments
 );
 
+router.get(
+  "/search",
+  verifyToken,
+  doctorRegistrationController.getDoctorRegistrations
+);
+
 module.exports = router;

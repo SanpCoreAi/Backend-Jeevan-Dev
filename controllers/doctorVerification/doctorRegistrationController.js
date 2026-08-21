@@ -1,7 +1,7 @@
 const doctorRegistrationService = require("../../services/doctorVerification/doctorRegistrationService");
 const { upload } = require("../../middlewares/multer");
 const {
-  createDoctorRegistrationValidation,
+  createDoctorRegistrationValidation, getDoctorRegistrationFilterSchema
 } = require("../../validation/doctorVerification/doctorRegistrationValidation");
 
 
@@ -345,6 +345,45 @@ exports.getRegistrationDocuments = async (req, res) => {
   } catch (error) {
     console.error(
       "Get Registration Documents Controller Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error.",
+    });
+  }
+};
+
+exports.getDoctorRegistrations = async (req, res) => {
+  try {
+    const { error, value } =
+      getDoctorRegistrationFilterSchema.validate(
+        req.query
+      );
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message,
+      });
+    }
+
+    const result =
+      await doctorRegistrationService.getDoctorRegistrations(
+        value
+      );
+
+    return res.status(result.statusCode).json({
+      success: result.success,
+      message: result.message,
+      data: result.data,
+      pagination: result.pagination,
+    });
+
+  } catch (error) {
+    console.error(
+      "GET DOCTOR REGISTRATIONS CONTROLLER ERROR:",
       error
     );
 

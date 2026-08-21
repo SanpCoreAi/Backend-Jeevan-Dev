@@ -1182,3 +1182,49 @@ exports.getRegistrationDocuments = async (registrationId) => {
     };
   }
 };
+
+exports.getDoctorRegistrations = async (query) => {
+  try {
+    const {
+      filter,
+      date,
+      onboarding_status,
+      page,
+      limit,
+    } = query;
+
+    const result =
+      await doctorRegistrationModel.getDoctorRegistrations({
+        filter,
+        date,
+        onboarding_status,
+        page,
+        limit,
+      });
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Doctor registrations fetched successfully.",
+      data: result.rows,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+      },
+    };
+
+  } catch (error) {
+    console.error(
+      "GET DOCTOR REGISTRATIONS SERVICE ERROR:",
+      error
+    );
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error.",
+    };
+  }
+};

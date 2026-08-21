@@ -745,3 +745,209 @@ exports.updateOnboardingStatus = async (registrationId, status, conn = db) => {
     changedRows: result.changedRows
   };
 };
+
+exports.getDoctorRegistrations = async ({
+  filter,
+  date,
+  onboarding_status,
+  page = 1,
+  limit = 10,
+}) => {
+  try {
+    const conditions = [];
+    const params = [];
+
+    // Date filter
+    if (filter && date) {
+      let startDate;
+      let endDate;
+
+      const inputDate = new Date(`${date}T00:00:00`);
+
+      if (Number.isNaN(inputDate.getTime())) {
+        throw new Error("Invalid date.");
+      }
+
+      switch (filter) {
+        case "day": {
+          startDate = date;
+
+          const nextDay = new Date(inputDate);
+          nextDay.setDate(nextDay.getDate() + 1);
+
+          endDate = nextDay
+            .toISOString()
+            .split("T")[0];
+
+          break;
+        }
+
+        case "week": {
+          const day = inputDate.getDay();
+
+          const diffToMonday =
+            day === 0 ? -6 : 1 - day;
+
+          const monday = new Date(inputDate);
+          monday.setDate(
+            monday.getDate() + diffToMonday
+          );
+
+          const nextMonday = new Date(monday);
+          nextMonday.setDate(
+            nextMonday.getDate() + 7
+          );
+
+          startDate = monday
+            .toISOString()
+            .split("T")[0];
+
+          endDate = nextMonday
+            .toISOString()
+            .split("T")[0];
+
+          break;
+        }
+
+        case "month": {
+          const year = inputDate.getFullYear();
+          const month = inputDate.getMonth();
+
+          const firstDay = new Date(
+            year,
+            month,
+            1
+          );
+
+          const firstDayNextMonth = new Date(
+            year,
+            month + 1,
+            1
+          );
+
+          startDate = firstDay
+            .toISOString()
+            .split("T")[0];
+
+          endDate = firstDayNextMonth
+            .toISOString()
+            .split("T")[0];
+
+          break;
+        }
+
+        case "year": {
+          const year = inputDate.getFullYear();
+
+          startDate = `${year}-01-01`;
+          endDate = `${year + 1}-01-01`;
+
+          break;
+        }
+      }
+
+      if (startDate && endDate) {
+        conditions.push(`
+          dr.created_at >= ?
+          AND dr.created_at < ?
+        `);
+
+        params.push(startDate, endDate);
+      }
+    }
+
+    // Onboarding status filter
+    if (onboarding_status) {
+      conditions.push(`
+        dr.onboarding_status = ?
+      `);
+
+      params.push(onboarding_status);
+    }
+
+    const whereClause =
+      conditions.length > 0
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
+
+    // Pagination
+    const safePage = Math.max(
+      1,
+      Number(page) || 1
+    );
+
+    const safeLimit = Math.min(
+      100,
+      Math.max(1, Number(limit) || 10)
+    );
+
+    const offset =
+      (safePage - 1) * safeLimit;
+
+    // Count query
+    const countSql = `
+      SELECT COUNT(*) AS total
+      FROM doctor_registrations dr
+      ${whereClause}
+    `;
+
+    const [countRows] = await db.execute(
+      countSql,
+      params
+    );
+
+    const total = Number(
+      countRows[0]?.total || 0
+    );
+
+    // Final data query
+    const dataSql = `
+      SELECT
+        dr.id,
+        dr.full_name,
+        dr.gender,
+        dr.age,
+        dr.email,
+        dr.mobile,
+        dr.medical_registration_number,
+        dr.medical_council,
+        dr.qualification,
+        dr.specialization,
+        dr.registration_expiry_date,
+        dr.onboarding_status,
+        dr.created_at AS registration__date,
+        dr.medical_registration_certificate,
+        dr.medical_degree_certificate,
+        dr.government_id_proof,
+        dr.selfie
+      FROM doctor_registrations dr
+      ${whereClause}
+      ORDER BY dr.created_at DESC
+      LIMIT ${safeLimit}
+      OFFSET ${offset}
+    `;
+
+    const [rows] = await db.execute(
+      dataSql,
+      params
+    );
+
+    return {
+      rows,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(
+        total / safeLimit
+      ),
+    };
+
+  } catch (error) {
+    console.error(
+      "Get Doctor Registrations Model Error:",
+      error
+    );
+
+    throw error;
+  }
+};
