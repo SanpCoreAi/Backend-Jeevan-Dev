@@ -762,3 +762,47 @@ exports.cancelAppointment = async (req, res) => {
 
   }
 };
+
+exports.trackAppointment = async (req, res) => {
+
+  try {
+
+    const userId = req.user.id;
+
+    const result =
+      await appointmentService.trackAppointment(
+        userId
+      );
+
+    return res.status(result.statusCode).json({
+
+      success:
+        result.success,
+
+      message:
+        result.body.message,
+
+      data:
+        result.body.data
+
+    });
+
+  } catch (error) {
+
+    console.error(
+      "TRACK APPOINTMENT ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+
+      success: false,
+
+      message:
+        "Internal Server Error",
+
+      data: null
+
+    });
+  }
+};

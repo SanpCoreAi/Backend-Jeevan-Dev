@@ -31,6 +31,12 @@ router.get(
 );
 router.get("/getAppointmentPublicById/:patient_id", verifyToken, appointmentController.getAppointmentPublicById);
 
+router.get(
+  "/track-appointment",
+  verifyToken,
+  appointmentController.trackAppointment
+);
+
 router.get("/doctor-slots",verifyToken, appointmentController.getDoctorSlots);
 
 router.get(

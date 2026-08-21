@@ -4,6 +4,7 @@ const {
   createDoctorRegistrationValidation,
 } = require("../../validation/doctorVerification/doctorRegistrationValidation");
 
+
 exports.createDoctorRegistration = async (req, res) => {
   try {
     const { error, value } =
@@ -35,6 +36,160 @@ exports.createDoctorRegistration = async (req, res) => {
   } catch (error) {
     console.error(
       "CREATE DOCTOR REGISTRATION ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal server error.",
+    });
+  }
+};
+
+
+exports.uploadRegistrationDocuments = (req, res) => {
+  upload.fields([
+    {
+      name: "medicalRegistrationCertificate",
+      maxCount: 1,
+    },
+    {
+      name: "medicalDegreeCertificate",
+      maxCount: 1,
+    },
+    {
+      name: "governmentIdProof",
+      maxCount: 1,
+    },
+    {
+      name: "selfie",
+      maxCount: 1,
+    },
+  ])(req, res, async (err) => {
+    try {
+
+      if (err) {
+        return res.status(400).json({
+          success: false,
+          statusCode: 400,
+          message: err.message,
+        });
+      }
+
+      const registrationId =
+        req.body.registrationId;
+
+      if (!registrationId) {
+        return res.status(400).json({
+          success: false,
+          statusCode: 400,
+          message: "Registration ID is required.",
+        });
+      }
+
+      const files = req.files || {};
+
+      const result =
+        await doctorRegistrationService.uploadRegistrationDocuments({
+          registrationId,
+          files,
+        });
+
+      return res
+        .status(result.statusCode)
+        .json({
+          success: result.success,
+          statusCode: result.statusCode,
+          message: result.message,
+          data: result.data || null,
+        });
+
+    } catch (error) {
+
+      console.error(
+        "UPLOAD REGISTRATION DOCUMENTS CONTROLLER ERROR:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        statusCode: 500,
+        message: "Internal Server Error.",
+      });
+    }
+  });
+};
+
+
+exports.sendEmailOtp = async (req, res) => {
+  try {
+
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Email is required.",
+      });
+    }
+
+    const result =
+      await doctorRegistrationService.sendEmailOtp({
+        email,
+      });
+
+    return res
+      .status(result.statusCode)
+      .json(result);
+
+  } catch (error) {
+
+    console.error(
+      "SEND EMAIL OTP CONTROLLER ERROR:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal server error.",
+    });
+  }
+};
+
+
+exports.verifyEmailOtp = async (req, res) => {
+  try {
+
+    const {
+      email,
+      otp,
+    } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Email and OTP are required.",
+      });
+    }
+
+    const result =
+      await doctorRegistrationService.verifyEmailOtp({
+        email,
+        otp,
+      });
+
+    return res
+      .status(result.statusCode)
+      .json(result);
+
+  } catch (error) {
+
+    console.error(
+      "VERIFY EMAIL OTP CONTROLLER ERROR:",
       error
     );
 
@@ -172,119 +327,6 @@ exports.deleteDoctorRegistration = async (req, res) => {
     }
 };
 
-exports.sendEmailOtp = async (req, res) => {
-    try {
-
-        const result = await doctorRegistrationService.sendEmailOtp(req.body);
-
-        return res.status(result.statusCode).json(result);
-
-    } catch (error) {
-
-        console.error("SEND EMAIL OTP ERROR:", error);
-
-        return res.status(500).json({
-            success: false,
-            statusCode: 500,
-            message: "Internal server error."
-        });
-
-    }
-};
-
-exports.verifyEmailOtp = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-
-    const result =
-      await doctorRegistrationService.verifyEmailOtp({
-        email,
-        otp
-      });
-
-    return res
-      .status(result.statusCode)
-      .json(result);
-
-  } catch (error) {
-    console.error("VERIFY EMAIL OTP ERROR:", error);
-
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: "Internal server error."
-    });
-  }
-};
-
-exports.uploadRegistrationDocuments = (req, res) => {
-  upload.fields([
-    {
-      name: "medicalRegistrationCertificate",
-      maxCount: 1,
-    },
-    {
-      name: "medicalDegreeCertificate",
-      maxCount: 1,
-    },
-    {
-      name: "governmentIdProof",
-      maxCount: 1,
-    },
-    {
-      name: "selfie",
-      maxCount: 1,
-    },
-  ])(req, res, async (err) => {
-    try {
-      // Multer error
-      if (err) {
-        return res.status(400).json({
-          success: false,
-          statusCode: 400,
-          message: err.message,
-        });
-      }
-
-      const registrationId = req.body.registrationId;
-
-      if (!registrationId) {
-        return res.status(400).json({
-          success: false,
-          statusCode: 400,
-          message: "Registration ID is required.",
-        });
-      }
-
-      const files = req.files || {};
-
-      const result =
-        await doctorRegistrationService.uploadRegistrationDocuments({
-          registrationId,
-          files,
-        });
-
-      return res.status(result.statusCode).json({
-        success: result.success,
-        statusCode: result.statusCode,
-        message: result.message,
-        data: result.data || null,
-      });
-
-    } catch (error) {
-      console.error(
-        "UPLOAD REGISTRATION DOCUMENTS CONTROLLER ERROR:",
-        error
-      );
-
-      return res.status(500).json({
-        success: false,
-        statusCode: 500,
-        message: "Internal Server Error.",
-      });
-    }
-  });
-};
 
 exports.getRegistrationDocuments = async (req, res) => {
   try {

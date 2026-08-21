@@ -20,7 +20,6 @@ exports.findByEmail = async (email, conn = db) => {
     SELECT *
     FROM doctor_registrations
     WHERE email = ?
-      AND status = 'ACTIVE'
     LIMIT 1
     `,
     [email]
@@ -35,7 +34,6 @@ exports.findByMobile = async (mobile, conn = db) => {
     SELECT *
     FROM doctor_registrations
     WHERE mobile = ?
-      AND status = 'ACTIVE'
     LIMIT 1
     `,
     [mobile]
@@ -55,7 +53,6 @@ exports.findByEmailExceptId = async (
     FROM doctor_registrations
     WHERE email = ?
       AND id != ?
-      AND status = 'ACTIVE'
     LIMIT 1
     `,
     [email, id]
@@ -75,7 +72,6 @@ exports.findByMobileExceptId = async (
     FROM doctor_registrations
     WHERE mobile = ?
       AND id != ?
-      AND status = 'ACTIVE'
     LIMIT 1
     `,
     [mobile, id]
@@ -95,7 +91,6 @@ exports.findByRegistrationNumberExceptId = async (
     FROM doctor_registrations
     WHERE medical_registration_number = ?
       AND id != ?
-      AND status = 'ACTIVE'
     LIMIT 1
     `,
     [registrationNumber, id]
@@ -128,7 +123,6 @@ exports.findByRegistrationNumber = async (
         `SELECT *
          FROM doctor_registrations
          WHERE medical_registration_number = ?
-         AND status = 'ACTIVE'
          LIMIT 1`,
         [registrationNumber]
     );
@@ -239,7 +233,6 @@ exports.updatePartial = async (
     UPDATE doctor_registrations
     SET ${fields.join(", ")}
     WHERE id = ?
-      AND status = 'ACTIVE'
   `;
 
   await conn.execute(sql, values);
@@ -250,7 +243,6 @@ exports.updateDocuments = async (
   data,
   conn = db
 ) => {
-
   const {
     medicalRegistrationCertificate,
     medicalDegreeCertificate,
@@ -258,10 +250,8 @@ exports.updateDocuments = async (
     selfie,
   } = data;
 
-
   const fields = [];
   const values = [];
-
 
   if (medicalRegistrationCertificate !== undefined) {
     fields.push(
@@ -273,7 +263,6 @@ exports.updateDocuments = async (
     );
   }
 
-
   if (medicalDegreeCertificate !== undefined) {
     fields.push(
       "medical_degree_certificate = ?"
@@ -283,7 +272,6 @@ exports.updateDocuments = async (
       medicalDegreeCertificate
     );
   }
-
 
   if (governmentIdProof !== undefined) {
     fields.push(
@@ -295,7 +283,6 @@ exports.updateDocuments = async (
     );
   }
 
-
   if (selfie !== undefined) {
     fields.push(
       "selfie = ?"
@@ -304,28 +291,23 @@ exports.updateDocuments = async (
     values.push(selfie);
   }
 
-
   if (fields.length === 0) {
     return;
   }
-
 
   fields.push(
     "updated_at = CURRENT_TIMESTAMP"
   );
 
-
   values.push(id);
-
 
   await conn.execute(
     `
-    UPDATE doctor_registrations
-    SET
-      ${fields.join(", ")}
-    WHERE id = ?
-      AND status = 'ACTIVE'
-      AND onboarding_status = 'DRAFT'
+      UPDATE doctor_registrations
+      SET
+        ${fields.join(", ")}
+      WHERE id = ?
+        AND onboarding_status = 'DRAFT'
     `,
     values
   );
@@ -334,37 +316,35 @@ exports.updateDocuments = async (
 exports.findById = async (id, conn = db) => {
   const [rows] = await conn.execute(
     `
-    SELECT
-      id,
-      full_name,
-      gender,
-      age,
-      email,
-      mobile,
-      medical_registration_number,
-      medical_council,
-      qualification,
-      specialization,
-      registration_expiry_date,
+      SELECT
+        id,
+        full_name,
+        gender,
+        age,
+        email,
+        mobile,
+        medical_registration_number,
+        medical_council,
+        qualification,
+        specialization,
+        registration_expiry_date,
 
-      medical_registration_certificate,
-      medical_degree_certificate,
-      government_id_proof,
-      selfie,
+        medical_registration_certificate,
+        medical_degree_certificate,
+        government_id_proof,
+        selfie,
 
-      email_verified,
-      onboarding_status,
-      status,
+        email_verified,
+        onboarding_status,
 
-      created_at,
-      updated_at
+        created_at,
+        updated_at
 
-    FROM doctor_registrations
+      FROM doctor_registrations
 
-    WHERE id = ?
-      AND status = 'ACTIVE'
+      WHERE id = ?
 
-    LIMIT 1
+      LIMIT 1
     `,
     [id]
   );
@@ -377,7 +357,7 @@ exports.findAll = async (filters, conn = db) => {
     limit = 10,
     offset = 0,
     search = "",
-    status,
+    onboardingStatus,
   } = filters;
 
   const safeLimit = Math.max(
@@ -411,18 +391,18 @@ exports.findAll = async (filters, conn = db) => {
 
       email_verified,
       onboarding_status,
-      status,
 
       created_at,
       updated_at
 
     FROM doctor_registrations
 
-    WHERE status = 'ACTIVE'
+    WHERE 1 = 1
   `;
 
   const params = [];
 
+  // Search
   if (search) {
     sql += `
       AND (
@@ -449,12 +429,13 @@ exports.findAll = async (filters, conn = db) => {
     );
   }
 
-  if (status) {
+  // Filter by onboarding status
+  if (onboardingStatus) {
     sql += `
       AND onboarding_status = ?
     `;
 
-    params.push(status);
+    params.push(onboardingStatus);
   }
 
   sql += `
@@ -472,17 +453,18 @@ exports.findAll = async (filters, conn = db) => {
 
 exports.countAll = async (
   search = "",
-  status,
+  onboardingStatus,
   conn = db
 ) => {
   let sql = `
     SELECT COUNT(*) AS total
     FROM doctor_registrations
-    WHERE status = 'ACTIVE'
+    WHERE 1 = 1
   `;
 
   const params = [];
 
+  // Search
   if (search) {
     sql += `
       AND (
@@ -509,12 +491,13 @@ exports.countAll = async (
     );
   }
 
-  if (status) {
+  // Filter by onboarding status
+  if (onboardingStatus) {
     sql += `
       AND onboarding_status = ?
     `;
 
-    params.push(status);
+    params.push(onboardingStatus);
   }
 
   const [rows] = await conn.execute(
@@ -525,24 +508,30 @@ exports.countAll = async (
   return Number(rows[0].total);
 };
 
-exports.update = async (id, data, conn = db) => {
+exports.update = async (
+  id,
+  data,
+  conn = db
+) => {
 
-    const {
-        fullName,
-        gender,
-        age,
-        email,
-        mobile,
-        medicalRegistrationNumber,
-        medicalCouncil,
-        qualification,
-        specialization,
-        registrationExpiryDate
-    } = data;
+  const {
+    fullName,
+    gender,
+    age,
+    email,
+    mobile,
+    medicalRegistrationNumber,
+    medicalCouncil,
+    qualification,
+    specialization,
+    registrationExpiryDate,
+  } = data;
 
-    await conn.execute(
-        `UPDATE doctor_registrations
-     SET
+
+  await conn.execute(
+    `
+      UPDATE doctor_registrations
+      SET
         full_name = ?,
         gender = ?,
         age = ?,
@@ -552,79 +541,114 @@ exports.update = async (id, data, conn = db) => {
         medical_council = ?,
         qualification = ?,
         specialization = ?,
-        registration_expiry_date = ?
-     WHERE id = ?`,
-        [
-            fullName,
-            gender,
-            age,
-            email,
-            mobile,
-            medicalRegistrationNumber,
-            medicalCouncil,
-            qualification,
-            specialization,
-            registrationExpiryDate,
-            id
-        ]
-    );
+        registration_expiry_date = ?,
+        updated_at = CURRENT_TIMESTAMP
+
+      WHERE id = ?
+        AND onboarding_status = 'DRAFT'
+    `,
+    [
+      fullName,
+      gender,
+      age,
+      email,
+      mobile,
+      medicalRegistrationNumber,
+      medicalCouncil,
+      qualification,
+      specialization,
+      registrationExpiryDate,
+      id,
+    ]
+  );
 };
 
 exports.submit = async (id, conn = db) => {
+  await conn.execute(
+    `
+      UPDATE doctor_registrations
+      SET
+        onboarding_status = 'SUBMITTED',
+        updated_at = CURRENT_TIMESTAMP
 
-    await conn.execute(
-        `UPDATE doctor_registrations
-         SET onboarding_status='SUBMITTED',
-             updated_at=CURRENT_TIMESTAMP
-         WHERE id=?`,
-        [id]
-    );
-
+      WHERE id = ?
+        AND onboarding_status = 'DRAFT'
+    `,
+    [id]
+  );
 };
 
 exports.delete = async (id, conn = db) => {
-
-    await conn.execute(
-        `UPDATE doctor_registrations
-         SET status='INACTIVE',
-             updated_at=CURRENT_TIMESTAMP
-         WHERE id=?`,
-        [id]
-    );
-
+  await conn.execute(
+    `
+      DELETE FROM doctor_registrations
+      WHERE id = ?
+        AND onboarding_status = 'DRAFT'
+    `,
+    [id]
+  );
 };
 
-exports.saveEmailOtp = async (email, otp, expiryOrConn = null, conn = db) => {
-  // expiryOrConn may be either a Date (expiry) or a DB connection.
+exports.saveEmailOtp = async (
+  email,
+  otp,
+  expiryOrConn = null,
+  conn = db
+) => {
+
+  // expiryOrConn can be:
+  // 1. Date object
+  // 2. Database connection
+
   let expiry = null;
 
-  if (expiryOrConn && typeof expiryOrConn.execute === "function") {
+  if (
+    expiryOrConn &&
+    typeof expiryOrConn.execute === "function"
+  ) {
     conn = expiryOrConn;
   } else {
     expiry = expiryOrConn;
   }
 
+
+  // If expiry is provided
   if (expiry) {
+
     await conn.execute(
       `
-      UPDATE doctor_registrations
-      SET
-        email_otp = ?,
-        email_otp_expiry = ?
-      WHERE email = ?
+        UPDATE doctor_registrations
+        SET
+          email_otp = ?,
+          email_otp_expiry = ?
+        WHERE email = ?
       `,
-      [otp, expiry, email]
+      [
+        otp,
+        expiry,
+        email,
+      ]
     );
+
   } else {
+
+    // Default expiry: 5 minutes
     await conn.execute(
       `
-      UPDATE doctor_registrations
-      SET
-        email_otp = ?,
-        email_otp_expiry = DATE_ADD(NOW(), INTERVAL 5 MINUTE)
-      WHERE email = ?
+        UPDATE doctor_registrations
+        SET
+          email_otp = ?,
+          email_otp_expiry =
+            DATE_ADD(
+              NOW(),
+              INTERVAL 5 MINUTE
+            )
+        WHERE email = ?
       `,
-      [otp, email]
+      [
+        otp,
+        email,
+      ]
     );
   }
 };
@@ -692,7 +716,6 @@ exports.findDocumentsById = async (id) => {
       medical_degree_certificate,
       government_id_proof,
       selfie,
-      status,
       created_at,
       updated_at
     FROM doctor_registrations

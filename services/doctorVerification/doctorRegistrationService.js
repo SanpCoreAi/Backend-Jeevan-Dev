@@ -12,10 +12,35 @@ const { validateFile } = require("../../validation/upload/uploadFileValidation")
 
 const s3 = require("../../config/s3");
 
+
+const isRegistrationComplete = (registration) => {
+
+  return Boolean(
+    registration.full_name &&
+    registration.gender &&
+    registration.age &&
+    registration.email &&
+    registration.mobile &&
+    registration.medical_registration_number &&
+    registration.medical_council &&
+    registration.qualification &&
+    registration.specialization &&
+    registration.registration_expiry_date &&
+    registration.medical_registration_certificate &&
+    registration.medical_degree_certificate &&
+    registration.government_id_proof &&
+    registration.selfie &&
+    Number(registration.email_verified) === 1
+  );
+};
+
+
 exports.createDoctorRegistration = async (body) => {
+
   let connection;
 
   try {
+
     connection = await db.getConnection();
 
     await connection.beginTransaction();
@@ -45,6 +70,7 @@ exports.createDoctorRegistration = async (body) => {
         !email ||
         !mobile
       ) {
+
         await connection.rollback();
 
         return {
@@ -62,6 +88,7 @@ exports.createDoctorRegistration = async (body) => {
         );
 
       if (userEmailExists) {
+
         await connection.rollback();
 
         return {
@@ -79,6 +106,7 @@ exports.createDoctorRegistration = async (body) => {
         );
 
       if (userMobileExists) {
+
         await connection.rollback();
 
         return {
@@ -96,12 +124,14 @@ exports.createDoctorRegistration = async (body) => {
         );
 
       if (emailExists) {
+
         await connection.rollback();
 
         return {
           success: false,
           statusCode: 409,
-          message: "Email already exists.",
+          message:
+            "Email already exists.",
         };
       }
 
@@ -112,24 +142,28 @@ exports.createDoctorRegistration = async (body) => {
         );
 
       if (mobileExists) {
+
         await connection.rollback();
 
         return {
           success: false,
           statusCode: 409,
-          message: "Mobile number already exists.",
+          message:
+            "Mobile number already exists.",
         };
       }
 
       if (medicalRegistrationNumber) {
 
         const registrationExists =
-          await doctorRegistrationModel.findByRegistrationNumber(
-            medicalRegistrationNumber,
-            connection
-          );
+          await doctorRegistrationModel
+            .findByRegistrationNumber(
+              medicalRegistrationNumber,
+              connection
+            );
 
         if (registrationExists) {
+
           await connection.rollback();
 
           return {
@@ -140,6 +174,7 @@ exports.createDoctorRegistration = async (body) => {
           };
         }
       }
+
 
       const newRegistrationId =
         await doctorRegistrationModel.create(
@@ -168,7 +203,9 @@ exports.createDoctorRegistration = async (body) => {
           connection
         );
 
+
       await connection.commit();
+
 
       return {
         success: true,
@@ -176,7 +213,11 @@ exports.createDoctorRegistration = async (body) => {
         message:
           "Doctor registration draft created successfully.",
         data: {
-          registrationId: newRegistrationId,
+          registrationId:
+            newRegistrationId,
+
+          onboarding_status:
+            "DRAFT",
         },
       };
     }
@@ -187,7 +228,9 @@ exports.createDoctorRegistration = async (body) => {
         connection
       );
 
+
     if (!existingRegistration) {
+
       await connection.rollback();
 
       return {
@@ -198,10 +241,12 @@ exports.createDoctorRegistration = async (body) => {
       };
     }
 
+
     if (
       existingRegistration.onboarding_status !==
       "DRAFT"
     ) {
+
       await connection.rollback();
 
       return {
@@ -211,6 +256,7 @@ exports.createDoctorRegistration = async (body) => {
           "Doctor registration cannot be updated after submission.",
       };
     }
+
 
     if (
       email &&
@@ -224,6 +270,7 @@ exports.createDoctorRegistration = async (body) => {
         );
 
       if (userEmailExists) {
+
         await connection.rollback();
 
         return {
@@ -234,14 +281,17 @@ exports.createDoctorRegistration = async (body) => {
         };
       }
 
+
       const emailExists =
-        await doctorRegistrationModel.findByEmailExceptId(
-          email,
-          registrationId,
-          connection
-        );
+        await doctorRegistrationModel
+          .findByEmailExceptId(
+            email,
+            registrationId,
+            connection
+          );
 
       if (emailExists) {
+
         await connection.rollback();
 
         return {
@@ -265,6 +315,7 @@ exports.createDoctorRegistration = async (body) => {
         );
 
       if (userMobileExists) {
+
         await connection.rollback();
 
         return {
@@ -275,14 +326,17 @@ exports.createDoctorRegistration = async (body) => {
         };
       }
 
+
       const mobileExists =
-        await doctorRegistrationModel.findByMobileExceptId(
-          mobile,
-          registrationId,
-          connection
-        );
+        await doctorRegistrationModel
+          .findByMobileExceptId(
+            mobile,
+            registrationId,
+            connection
+          );
 
       if (mobileExists) {
+
         await connection.rollback();
 
         return {
@@ -294,10 +348,12 @@ exports.createDoctorRegistration = async (body) => {
       }
     }
 
+
     if (
       medicalRegistrationNumber &&
       medicalRegistrationNumber !==
-        existingRegistration.medical_registration_number
+        existingRegistration
+          .medical_registration_number
     ) {
 
       const registrationExists =
@@ -309,6 +365,7 @@ exports.createDoctorRegistration = async (body) => {
           );
 
       if (registrationExists) {
+
         await connection.rollback();
 
         return {
@@ -320,6 +377,7 @@ exports.createDoctorRegistration = async (body) => {
       }
     }
 
+
     await doctorRegistrationModel.updatePartial(
       registrationId,
       {
@@ -330,24 +388,65 @@ exports.createDoctorRegistration = async (body) => {
         mobile,
 
         medicalRegistrationNumber:
-          medicalRegistrationNumber || null,
+          medicalRegistrationNumber ||
+          null,
 
         medicalCouncil:
-          medicalCouncil || null,
+          medicalCouncil ||
+          null,
 
         qualification:
-          qualification || null,
+          qualification ||
+          null,
 
         specialization:
-          specialization || null,
+          specialization ||
+          null,
 
         registrationExpiryDate:
-          registrationExpiryDate || null,
+          registrationExpiryDate ||
+          null,
       },
       connection
     );
 
+
+    const updatedRegistration =
+      await doctorRegistrationModel.findById(
+        registrationId,
+        connection
+      );
+
+
+    if (
+      isRegistrationComplete(
+        updatedRegistration
+      )
+    ) {
+
+      await doctorRegistrationModel.submit(
+        registrationId,
+        connection
+      );
+
+      await connection.commit();
+
+      return {
+        success: true,
+        statusCode: 200,
+        message:
+          "Doctor registration submitted successfully.",
+        data: {
+          registrationId,
+          onboarding_status:
+            "SUBMITTED",
+        },
+      };
+    }
+
+
     await connection.commit();
+
 
     return {
       success: true,
@@ -356,8 +455,11 @@ exports.createDoctorRegistration = async (body) => {
         "Doctor registration draft updated successfully.",
       data: {
         registrationId,
+        onboarding_status:
+          "DRAFT",
       },
     };
+
 
   } catch (error) {
 
@@ -379,6 +481,484 @@ exports.createDoctorRegistration = async (body) => {
     }
   }
 };
+
+exports.sendEmailOtp = async ({ email }) => {
+
+  const otp =
+    Math.floor(
+      100000 +
+      Math.random() * 900000
+    ).toString();
+
+  const expiry =
+    new Date(
+      Date.now() +
+      10 * 60 * 1000
+    );
+
+
+  const exists =
+    await doctorRegistrationModel.findByEmail(
+      email
+    );
+
+
+  if (!exists) {
+
+    return {
+      success: false,
+      statusCode: 404,
+      message:
+        "Email not found.",
+    };
+  }
+
+  if (
+    exists.onboarding_status ===
+    "SUBMITTED"
+  ) {
+
+    return {
+      success: false,
+      statusCode: 400,
+      message:
+        "Doctor registration has already been submitted.",
+    };
+  }
+
+
+  await doctorRegistrationModel.saveEmailOtp(
+    email,
+    otp,
+    expiry
+  );
+
+
+  await sendOtpEmail(
+    email,
+    otp
+  );
+
+
+  return {
+    success: true,
+    statusCode: 200,
+    message:
+      "OTP sent successfully.",
+  };
+};
+
+
+exports.verifyEmailOtp = async ({
+  email,
+  otp,
+}) => {
+
+  const user =
+    await doctorRegistrationModel.verifyEmailOtp(
+      email,
+      otp
+    );
+
+
+  if (!user) {
+
+    return {
+      success: false,
+      statusCode: 400,
+      message:
+        "Invalid or expired OTP.",
+    };
+  }
+
+
+  await doctorRegistrationModel.markEmailVerified(
+    email
+  );
+
+
+  await doctorRegistrationModel.clearEmailOtp(
+    email
+  );
+
+  const registration =
+    await doctorRegistrationModel.findByEmail(
+      email
+    );
+
+
+  if (!registration) {
+
+    return {
+      success: false,
+      statusCode: 404,
+      message:
+        "Doctor registration not found.",
+    };
+  }
+
+  if (
+    isRegistrationComplete(
+      registration
+    )
+  ) {
+
+    await doctorRegistrationModel.submit(
+      registration.id
+    );
+
+
+    return {
+      success: true,
+      statusCode: 200,
+      message:
+        "Email verified and doctor registration submitted successfully.",
+      data: {
+        registrationId:
+          registration.id,
+
+        onboarding_status:
+          "SUBMITTED",
+      },
+    };
+  }
+
+
+  return {
+    success: true,
+    statusCode: 200,
+    message:
+      "Email verified successfully. Please complete the remaining registration details.",
+    data: {
+      registrationId:
+        registration.id,
+
+      onboarding_status:
+        "DRAFT",
+    },
+  };
+};
+
+
+exports.uploadRegistrationDocuments = async ({
+  registrationId,
+  files,
+}) => {
+
+  const uploadedKeys = [];
+
+
+  try {
+
+    if (!registrationId) {
+
+      return {
+        success: false,
+        statusCode: 400,
+        message:
+          "Registration ID is required.",
+      };
+    }
+
+
+    const allFiles = [
+      ...(files?.medicalRegistrationCertificate || []),
+      ...(files?.medicalDegreeCertificate || []),
+      ...(files?.governmentIdProof || []),
+      ...(files?.selfie || []),
+    ];
+
+
+    if (allFiles.length === 0) {
+
+      return {
+        success: false,
+        statusCode: 400,
+        message:
+          "At least one document is required.",
+      };
+    }
+
+    for (const file of allFiles) {
+
+      const error =
+        validateFile(file);
+
+      if (error) {
+
+        return {
+          success: false,
+          statusCode: 400,
+          message: error,
+        };
+      }
+    }
+
+
+    const registration =
+      await doctorRegistrationModel.findById(
+        registrationId
+      );
+
+
+    if (!registration) {
+
+      return {
+        success: false,
+        statusCode: 404,
+        message:
+          "Doctor registration not found.",
+      };
+    }
+
+
+    if (
+      registration.onboarding_status !==
+      "DRAFT"
+    ) {
+
+      return {
+        success: false,
+        statusCode: 400,
+        message:
+          "Documents cannot be uploaded after registration submission.",
+      };
+    }
+
+    const uploadToS3 = async (
+      file,
+      folder
+    ) => {
+
+      const extension =
+        path.extname(
+          file.originalname
+        );
+
+      const fileKey =
+        `${folder}/${uuidv4()}${extension}`;
+
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket:
+            process.env.AWS_BUCKET_NAME,
+
+          Key:
+            fileKey,
+
+          Body:
+            file.buffer,
+
+          ContentType:
+            file.mimetype,
+
+          ContentDisposition:
+            "inline",
+        })
+      );
+
+
+      uploadedKeys.push(
+        fileKey
+      );
+
+
+      return fileKey;
+    };
+
+
+    const baseUrl =
+      `https://${process.env.AWS_BUCKET_NAME}.s3.` +
+      `${process.env.AWS_REGION}.amazonaws.com`;
+
+
+    const data = {};
+
+    if (
+      files?.medicalRegistrationCertificate
+        ?.length
+    ) {
+
+      const key =
+        await uploadToS3(
+          files.medicalRegistrationCertificate[0],
+          "doctor-registration"
+        );
+
+
+      data.medicalRegistrationCertificate = {
+        key,
+        value:
+          `${baseUrl}/${key}`,
+      };
+    }
+
+    if (
+      files?.medicalDegreeCertificate
+        ?.length
+    ) {
+
+      const key =
+        await uploadToS3(
+          files.medicalDegreeCertificate[0],
+          "doctor-degree"
+        );
+
+
+      data.medicalDegreeCertificate = {
+        key,
+        value:
+          `${baseUrl}/${key}`,
+      };
+    }
+
+    if (
+      files?.governmentIdProof?.length
+    ) {
+
+      const key =
+        await uploadToS3(
+          files.governmentIdProof[0],
+          "government-id"
+        );
+
+
+      data.governmentIdProof = {
+        key,
+        value:
+          `${baseUrl}/${key}`,
+      };
+    }
+
+    if (
+      files?.selfie?.length
+    ) {
+
+      const key =
+        await uploadToS3(
+          files.selfie[0],
+          "doctor-selfie"
+        );
+
+
+      data.selfie = {
+        key,
+        value:
+          `${baseUrl}/${key}`,
+      };
+    }
+
+
+    await doctorRegistrationModel.updateDocuments(
+      registrationId,
+      {
+        medicalRegistrationCertificate:
+          data.medicalRegistrationCertificate
+            ?.key,
+
+        medicalDegreeCertificate:
+          data.medicalDegreeCertificate
+            ?.key,
+
+        governmentIdProof:
+          data.governmentIdProof
+            ?.key,
+
+        selfie:
+          data.selfie
+            ?.key,
+      }
+    );
+
+    const updatedRegistration =
+      await doctorRegistrationModel.findById(
+        registrationId
+      );
+
+
+    if (
+      isRegistrationComplete(
+        updatedRegistration
+      )
+    ) {
+
+      await doctorRegistrationModel.submit(
+        registrationId
+      );
+
+
+      return {
+        success: true,
+        statusCode: 200,
+        message:
+          "Registration documents uploaded and doctor registration submitted successfully.",
+        data: {
+          ...data,
+          registrationId,
+          onboarding_status:
+            "SUBMITTED",
+        },
+      };
+    }
+
+
+    return {
+      success: true,
+      statusCode: 200,
+      message:
+        "Registration documents uploaded successfully.",
+      data: {
+        ...data,
+        registrationId,
+        onboarding_status:
+          "DRAFT",
+      },
+    };
+
+
+  } catch (error) {
+
+    console.error(
+      "UPLOAD REGISTRATION DOCUMENTS SERVICE ERROR:",
+      error
+    );
+
+    for (
+      const key of uploadedKeys
+    ) {
+
+      try {
+
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket:
+              process.env.AWS_BUCKET_NAME,
+
+            Key:
+              key,
+          })
+        );
+
+      } catch (rollbackError) {
+
+        console.error(
+          "S3 ROLLBACK ERROR:",
+          rollbackError
+        );
+      }
+    }
+
+
+    return {
+      success: false,
+      statusCode: 500,
+      message:
+        "Failed to upload registration documents.",
+    };
+  }
+};
+
 
 exports.getDoctorRegistrationById = async (id) => {
   try {
@@ -531,305 +1111,6 @@ exports.deleteDoctorRegistration = async (id) => {
     statusCode: 200,
     message: "Doctor registration deleted successfully."
   };
-};
-
-exports.sendEmailOtp = async ({ email }) => {
-
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-  const expiry = new Date(Date.now() + 10 * 60 * 1000);
-
-  const exists = await doctorRegistrationModel.findByEmail(email);
-
-  if (!exists) {
-
-    return {
-      success: false,
-      statusCode: 404,
-      message: "Email not found."
-    };
-
-  }
-
-  await doctorRegistrationModel.saveEmailOtp(
-    email,
-    otp,
-    expiry
-  );
-
-  await sendOtpEmail(email, otp);
-
-  return {
-    success: true,
-    statusCode: 200,
-    message: "OTP sent successfully."
-  };
-
-};
-
-exports.verifyEmailOtp = async ({ email, otp }) => {
-
-  const user =
-    await doctorRegistrationModel.verifyEmailOtp(
-      email,
-      otp
-    );
-
-  if (!user) {
-    return {
-      success: false,
-      statusCode: 400,
-      message: "Invalid or expired OTP."
-    };
-  }
-
-  await doctorRegistrationModel.markEmailVerified(
-    email
-  );
-
-  await doctorRegistrationModel.clearEmailOtp(
-    email
-  );
-
-  return {
-    success: true,
-    statusCode: 200,
-    message: "Email verified successfully."
-  };
-};
-
-exports.uploadRegistrationDocuments = async ({
-  registrationId,
-  files,
-}) => {
-
-  const uploadedKeys = [];
-
-  try {
-
-    if (!registrationId) {
-      return {
-        success: false,
-        statusCode: 400,
-        message: "Registration ID is required.",
-      };
-    }
-
-
-    const allFiles = [
-      ...(files?.medicalRegistrationCertificate || []),
-      ...(files?.medicalDegreeCertificate || []),
-      ...(files?.governmentIdProof || []),
-      ...(files?.selfie || []),
-    ];
-
-
-    if (allFiles.length === 0) {
-      return {
-        success: false,
-        statusCode: 400,
-        message: "At least one document is required.",
-      };
-    }
-
-
-    for (const file of allFiles) {
-
-      const error = validateFile(file);
-
-      if (error) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: error,
-        };
-      }
-    }
-
-    const registration =
-      await doctorRegistrationModel.findById(
-        registrationId
-      );
-
-
-    if (!registration) {
-      return {
-        success: false,
-        statusCode: 404,
-        message: "Doctor registration not found.",
-      };
-    }
-
-    if (
-      registration.onboarding_status !== "DRAFT"
-    ) {
-      return {
-        success: false,
-        statusCode: 400,
-        message:
-          "Documents cannot be uploaded after registration submission.",
-      };
-    }
-
-    const uploadToS3 = async (file, folder) => {
-
-      const extension =
-        path.extname(file.originalname);
-
-      const fileKey =
-        `${folder}/${uuidv4()}${extension}`;
-
-      await s3.send(
-        new PutObjectCommand({
-          Bucket:
-            process.env.AWS_BUCKET_NAME,
-
-          Key: fileKey,
-
-          Body: file.buffer,
-
-          ContentType: file.mimetype,
-
-          ContentDisposition: "inline",
-        })
-      );
-
-      uploadedKeys.push(fileKey);
-
-      return fileKey;
-    };
-
-    const baseUrl =
-      `https://${process.env.AWS_BUCKET_NAME}.s3.` +
-      `${process.env.AWS_REGION}.amazonaws.com`;
-
-    const data = {};
-
-    if (
-      files?.medicalRegistrationCertificate?.length
-    ) {
-
-      const key = await uploadToS3(
-        files.medicalRegistrationCertificate[0],
-        "doctor-registration"
-      );
-
-      data.medicalRegistrationCertificate = {
-        key,
-        value: `${baseUrl}/${key}`,
-      };
-    }
-
-    if (
-      files?.medicalDegreeCertificate?.length
-    ) {
-
-      const key = await uploadToS3(
-        files.medicalDegreeCertificate[0],
-        "doctor-degree"
-      );
-
-      data.medicalDegreeCertificate = {
-        key,
-        value: `${baseUrl}/${key}`,
-      };
-    }
-
-    if (
-      files?.governmentIdProof?.length
-    ) {
-
-      const key = await uploadToS3(
-        files.governmentIdProof[0],
-        "government-id"
-      );
-
-      data.governmentIdProof = {
-        key,
-        value: `${baseUrl}/${key}`,
-      };
-    }
-
-
-    if (
-      files?.selfie?.length
-    ) {
-
-      const key = await uploadToS3(
-        files.selfie[0],
-        "doctor-selfie"
-      );
-
-      data.selfie = {
-        key,
-        value: `${baseUrl}/${key}`,
-      };
-    }
-
-    await doctorRegistrationModel.updateDocuments(
-      registrationId,
-      {
-        medicalRegistrationCertificate:
-          data.medicalRegistrationCertificate?.key,
-
-        medicalDegreeCertificate:
-          data.medicalDegreeCertificate?.key,
-
-        governmentIdProof:
-          data.governmentIdProof?.key,
-
-        selfie:
-          data.selfie?.key,
-      }
-    );
-
-    return {
-      success: true,
-      statusCode: 200,
-      message:
-        "Registration documents uploaded successfully.",
-      data,
-    };
-
-
-  } catch (error) {
-
-    console.error(
-      "UPLOAD REGISTRATION DOCUMENTS SERVICE ERROR:",
-      error
-    );
-
-
-    for (const key of uploadedKeys) {
-
-      try {
-
-        await s3.send(
-          new DeleteObjectCommand({
-            Bucket:
-              process.env.AWS_BUCKET_NAME,
-
-            Key: key,
-          })
-        );
-
-      } catch (rollbackError) {
-
-        console.error(
-          "S3 ROLLBACK ERROR:",
-          rollbackError
-        );
-      }
-    }
-
-
-    return {
-      success: false,
-      statusCode: 500,
-      message:
-        "Failed to upload registration documents.",
-    };
-  }
 };
 
 exports.getRegistrationDocuments = async (registrationId) => {

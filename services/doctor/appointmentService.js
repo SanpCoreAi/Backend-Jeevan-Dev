@@ -2271,3 +2271,124 @@ exports.cancelAppointment = async (
   }
 
 };
+
+exports.trackAppointment = async (userId) => {
+
+  try {
+
+    const result =
+      await Appointment.trackAppointment(userId);
+
+    if (!result.appointment) {
+
+      return {
+        success: true,
+        statusCode: 200,
+        body: {
+          message:
+            "No active appointment found for today.",
+
+          data: null
+        }
+      };
+    }
+
+    const {
+      appointment,
+      currentServing,
+      waitingTokens,
+      waitingMinutes
+    } = result;
+
+    let waitingTime = "0 min";
+
+    if (waitingMinutes >= 60) {
+
+      const hours =
+        Math.floor(waitingMinutes / 60);
+
+      const minutes =
+        waitingMinutes % 60;
+
+      if (minutes > 0) {
+        waitingTime =
+          `${hours}h ${minutes}min`;
+      } else {
+        waitingTime =
+          `${hours}h`;
+      }
+
+    } else {
+
+      waitingTime =
+        `${waitingMinutes} min`;
+    }
+
+    return {
+
+      success: true,
+
+      statusCode: 200,
+
+      body: {
+
+        message:
+          "Appointment tracking fetched successfully.",
+
+        data: {
+
+          appointment_id:
+            appointment.appointment_id,
+
+          doctor_id:
+            appointment.doctor_id,
+
+          hospital_name:
+            appointment.hospital_name,
+
+          slot_date:
+            appointment.slot_date,
+
+          my_token:
+            appointment.token_number,
+
+          currently_serving:
+            currentServing,
+
+          waiting_tokens:
+            waitingTokens,
+
+          approx_waiting_minutes:
+            waitingMinutes,
+
+          approx_waiting_time:
+            waitingTime,
+
+          status:
+            appointment.status
+        }
+      }
+    };
+
+  } catch (error) {
+
+    console.error(
+      "Track Appointment Service Error:",
+      error
+    );
+
+    return {
+
+      success: false,
+
+      statusCode: 500,
+
+      body: {
+
+        message:
+          "Internal Server Error."
+
+      }
+    };
+  }
+};

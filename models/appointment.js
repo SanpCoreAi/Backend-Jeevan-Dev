@@ -1862,3 +1862,80 @@ exports.checkTokenExists = async (
 
   return rows.length > 0;
 };
+
+exports.trackAppointment = async (userId) => {
+
+  const userAppointmentSql = `
+    SELECT
+      a.id AS appointment_id,
+      a.doctor_id,
+      a.patient_id,
+      a.token_number,
+      a.slot_date,
+      a.start_time,
+      a.end_time,
+      a.status,
+      a.hospital_name
+    FROM appointments a
+    WHERE a.patient_id = ?
+      AND a.slot_date = CURDATE()
+      AND a.is_deleted = 0
+      AND a.status IN (
+        'PENDING',
+        'IN_PROGRESS'
+      )
+    ORDER BY a.id DESC
+    LIMIT 1
+  `;
+
+  const [userAppointments] = await db.execute(
+    userAppointmentSql,
+    [userId]
+  );
+
+  if (userAppointments.length === 0) {
+    return {
+      appointment: null,
+      currentServing: null,
+      waitingTokens: 0,
+      waitingMinutes: 0
+    };
+  }
+
+  const appointment = userAppointments[0];
+
+  const currentServingSql = `
+    SELECT
+      MAX(token_number) AS current_serving
+    FROM appointments
+    WHERE doctor_id = ?
+      AND slot_date = CURDATE()
+      AND is_deleted = 0
+      AND status = 'IN_PROGRESS'
+  `;
+
+  const [currentRows] = await db.execute(
+    currentServingSql,
+    [appointment.doctor_id]
+  );
+
+  const currentServing =
+    currentRows[0]?.current_serving || 0;
+
+  const waitingTokens = Math.max(
+    appointment.token_number - currentServing,
+    0
+  );
+
+  const AVERAGE_TOKEN_MINUTES = 60;
+
+  const waitingMinutes =
+    waitingTokens * AVERAGE_TOKEN_MINUTES;
+
+  return {
+    appointment,
+    currentServing,
+    waitingTokens,
+    waitingMinutes
+  };
+};
