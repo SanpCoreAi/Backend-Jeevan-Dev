@@ -1,4 +1,5 @@
 const DoctorModel = require("../../models/doctorModel");
+const DoctorRegistrationModel = require("../../models/doctorVerification/doctorRegistrationModel");
 const safeParse = require("../../utils/safeJson");
 const QRCode = require("qrcode");
 const path = require("path");
@@ -255,7 +256,6 @@ exports.getDoctorPublicProfileById = async (userId) => {
 
 exports.updateProfile = async (userId, body) => {
   try {
-
     if (!Number.isInteger(userId) || userId <= 0) {
       return {
         success: false,
@@ -276,28 +276,38 @@ exports.updateProfile = async (userId, body) => {
       };
     }
 
-    const doctor =
-      await DoctorModel.getDoctorByUserId(userId);
+    const doctor = await DoctorModel.getDoctorByUserId(userId);
 
-    const existingDoctor =
-      await DoctorModel.getDoctorByMedicalLicenseNo(
-        body.medicalLicenseNo
-      );
+    if (body.medicalLicenseNo) {
+      const existingDoctor =
+        await DoctorModel.getDoctorByMedicalLicenseNo(
+          body.medicalLicenseNo
+        );
 
-    if (existingDoctor) {
-      return {
-        success: false,
-        statusCode: 409,
-        message: "Medical license number already exists.",
-      };
+      if (
+        existingDoctor &&
+        Number(existingDoctor.user_id) !== Number(userId)
+      ) {
+        return {
+          success: false,
+          statusCode: 409,
+          message: "Medical license number already exists.",
+        };
+      }
     }
 
     if (!doctor) {
-
-      await DoctorModel.createDoctor(
+      const result = await DoctorModel.createDoctor(
         userId,
         body
       );
+
+      if (body.registrationId) {
+        await DoctorRegistrationModel.updateOnboardingStatus(
+          body.registrationId,
+          "VERIFIED"
+        );
+      }
 
       return {
         success: true,
@@ -306,21 +316,24 @@ exports.updateProfile = async (userId, body) => {
       };
     }
 
-    const result =
-      await DoctorModel.updateDoctor(
-        userId,
-        body
-      );
+    const result = await DoctorModel.updateDoctor(
+      userId,
+      body
+    );
 
-    if (
-      !result ||
-      result.affectedRows === 0
-    ) {
+    if (!result || result.affectedRows === 0) {
       return {
         success: false,
         statusCode: 400,
         message: "Doctor profile update failed.",
       };
+    }
+
+    if (body.registrationId) {
+      await DoctorRegistrationModel.updateOnboardingStatus(
+        body.registrationId,
+        "VERIFIED"
+      );
     }
 
     return {
@@ -330,7 +343,6 @@ exports.updateProfile = async (userId, body) => {
     };
 
   } catch (error) {
-
     console.error(
       "UPDATE DOCTOR PROFILE SERVICE ERROR:",
       error

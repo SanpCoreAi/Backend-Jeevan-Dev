@@ -186,6 +186,11 @@ const updateDoctorSchema = Joi.object({
     .max(100)
     .optional(),
 
+  registrationId: Joi.number()
+    .integer()
+    .positive()
+    .optional(),
+
   bio: Joi.string()
     .trim()
     .max(500)
@@ -222,6 +227,7 @@ const updateDoctorSchema = Joi.object({
   .messages({
     "object.min":
       "At least one field is required to update.",
+
     "object.unknown":
       "Unknown field is not allowed.",
   });

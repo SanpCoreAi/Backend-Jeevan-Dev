@@ -727,3 +727,21 @@ exports.findDocumentsById = async (id) => {
 
   return rows.length ? rows[0] : null;
 };
+
+exports.updateOnboardingStatus = async (registrationId, status, conn = db) => {
+  const [result] = await conn.execute(
+    `
+    UPDATE doctor_registrations
+    SET onboarding_status = ?,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+    LIMIT 1
+    `,
+    [status, registrationId]
+  );
+
+  return {
+    affectedRows: result.affectedRows,
+    changedRows: result.changedRows
+  };
+};

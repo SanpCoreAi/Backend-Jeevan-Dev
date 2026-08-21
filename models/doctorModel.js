@@ -6,17 +6,26 @@ exports.createDoctor = async (userId, data) => {
     specialization: "specialization",
     qualification: "qualification",
     experience: "experience",
+
     consultation_fee: "consultation_fee",
     consultationFee: "consultation_fee",
+
     medical_license_no: "medical_license_no",
     medicalLicenseNo: "medical_license_no",
+
     bio: "bio",
     age: "age",
+
     gender: "gender",
+
+    registrationId: "registration_id",
+
     language: "language",
     availability: "availability",
+
     hospital_detail: "hospital_detail",
     hospitalDetail: "hospital_detail",
+
     acceptEmergencyPatients: "accept_emergency_patients",
   };
 
@@ -24,7 +33,7 @@ exports.createDoctor = async (userId, data) => {
     "language",
     "availability",
     "hospitalDetail",
-    "hospital_detail"
+    "hospital_detail",
   ];
 
   const columns = ["user_id"];
@@ -32,8 +41,9 @@ exports.createDoctor = async (userId, data) => {
   const values = [userId];
 
   for (const key of Object.keys(data)) {
-
-    if (!fieldMap[key]) continue;
+    if (!fieldMap[key]) {
+      continue;
+    }
 
     columns.push(fieldMap[key]);
     placeholders.push("?");
@@ -51,11 +61,14 @@ exports.createDoctor = async (userId, data) => {
     VALUES (${placeholders.join(", ")})
   `;
 
+  console.log("CREATE DOCTOR SQL:", sql);
+  console.log("CREATE DOCTOR VALUES:", values);
+
   const [result] = await db.execute(sql, values);
 
   return {
     insertId: result.insertId,
-    affectedRows: result.affectedRows
+    affectedRows: result.affectedRows,
   };
 };
 
@@ -350,55 +363,72 @@ exports.getDoctorPublicProfileById = async (userId) => {
 };
 
 exports.getDoctorByUserId = async (userId) => {
-
   const sql = `
     SELECT
-    u.id AS doctor_id
+      d.id AS doctor_id,
+      d.user_id,
+      u.id AS users_id,
+      d.registration_id,
+      d.medical_license_no
     FROM doctors d
     INNER JOIN users u
-    ON u.id = d.user_id
-    WHERE d.id = ?;
-   `;
+      ON u.id = d.user_id
+    WHERE d.user_id = ?
+      AND u.id = ?
+    LIMIT 1
+  `;
 
-  const [rows] = await db.execute(sql, [userId]);
+  const [rows] = await db.execute(sql, [
+    userId,
+    userId
+  ]);
 
   return rows.length ? rows[0] : null;
 };
 
 exports.updateDoctor = async (userId, data) => {
-
   const fieldMap = {
     username: "username",
     specialization: "specialization",
     qualification: "qualification",
     experience: "experience",
+
     consultationFee: "consultation_fee",
     consultation_fee: "consultation_fee",
+
     medicalLicenseNo: "medical_license_no",
     medical_license_no: "medical_license_no",
+
     bio: "bio",
     age: "age",
+
+    registrationId: "registration_id",
+
     gender: "gender",
+
     language: "language",
     availability: "availability",
+
     hospitalDetail: "hospital_detail",
     hospital_detail: "hospital_detail",
-    acceptEmergencyPatients: "accept_emergency_patients"
+
+    acceptEmergencyPatients: "accept_emergency_patients",
   };
 
   const jsonFields = [
     "language",
     "availability",
     "hospitalDetail",
-    "hospital_detail"
+    "hospital_detail",
   ];
 
   const fields = [];
   const values = [];
 
   for (const key of Object.keys(data)) {
-
-    if (!fieldMap[key]) continue;
+    if (!fieldMap[key]) {
+      continue;
+    }
 
     fields.push(`${fieldMap[key]} = ?`);
 
@@ -412,7 +442,7 @@ exports.updateDoctor = async (userId, data) => {
   if (fields.length === 0) {
     return {
       affectedRows: 0,
-      changedRows: 0
+      changedRows: 0,
     };
   }
 
@@ -422,8 +452,7 @@ exports.updateDoctor = async (userId, data) => {
 
   const sql = `
     UPDATE doctors
-    SET
-      ${fields.join(", ")}
+    SET ${fields.join(", ")}
     WHERE user_id = ?
     LIMIT 1
   `;
@@ -432,7 +461,7 @@ exports.updateDoctor = async (userId, data) => {
 
   return {
     affectedRows: result.affectedRows,
-    changedRows: result.changedRows
+    changedRows: result.changedRows,
   };
 };
 
