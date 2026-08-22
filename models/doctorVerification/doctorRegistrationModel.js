@@ -352,23 +352,24 @@ exports.findById = async (id, conn = db) => {
   return rows[0] || null;
 };
 
-exports.findAll = async (filters, conn = db) => {
+exports.findAll = async (filters = {}, conn = db) => {
   const {
     limit = 10,
     offset = 0,
     search = "",
-    onboardingStatus,
+    onboardingStatus = "",
   } = filters;
 
-  const safeLimit = Math.max(
-    1,
-    Math.min(100, Number(limit) || 10)
-  );
+  const parsedLimit = Number.parseInt(limit, 10);
+  const parsedOffset = Number.parseInt(offset, 10);
 
-  const safeOffset = Math.max(
-    0,
-    Number(offset) || 0
-  );
+  const safeLimit = Number.isInteger(parsedLimit)
+    ? Math.min(100, Math.max(1, parsedLimit))
+    : 10;
+
+  const safeOffset = Number.isInteger(parsedOffset)
+    ? Math.max(0, parsedOffset)
+    : 0;
 
   let sql = `
     SELECT
@@ -389,11 +390,8 @@ exports.findAll = async (filters, conn = db) => {
       government_id_proof,
       selfie,
 
-      email_verified,
       onboarding_status,
-
-      created_at,
-      updated_at
+      created_at
 
     FROM doctor_registrations
 
@@ -402,8 +400,9 @@ exports.findAll = async (filters, conn = db) => {
 
   const params = [];
 
-  // Search
-  if (search) {
+  const trimmedSearch = String(search || "").trim();
+
+  if (trimmedSearch) {
     sql += `
       AND (
         full_name LIKE ?
@@ -416,7 +415,7 @@ exports.findAll = async (filters, conn = db) => {
       )
     `;
 
-    const searchValue = `%${search}%`;
+    const searchValue = `%${trimmedSearch}%`;
 
     params.push(
       searchValue,
@@ -429,18 +428,37 @@ exports.findAll = async (filters, conn = db) => {
     );
   }
 
-  // Filter by onboarding status
-  if (onboardingStatus) {
+  const validStatuses = [
+    "DRAFT",
+    "SUBMITTED",
+    "VERIFIED",
+    "REJECTED",
+  ];
+
+  const normalizedStatus = String(
+    onboardingStatus || ""
+  )
+    .trim()
+    .toUpperCase();
+
+  if (normalizedStatus) {
+    if (!validStatuses.includes(normalizedStatus)) {
+      throw new Error(
+        "Invalid onboarding status."
+      );
+    }
+
     sql += `
       AND onboarding_status = ?
     `;
 
-    params.push(onboardingStatus);
+    params.push(normalizedStatus);
   }
 
   sql += `
     ORDER BY id DESC
-    LIMIT ${safeLimit} OFFSET ${safeOffset}
+    LIMIT ${safeLimit}
+    OFFSET ${safeOffset}
   `;
 
   const [rows] = await conn.execute(
@@ -950,4 +968,43 @@ exports.getDoctorRegistrations = async ({
 
     throw error;
   }
+};
+
+exports.getRegistrationStats = async (conn = db) => {
+  const sql = `
+    SELECT
+      COUNT(*) AS total_registered,
+
+      COALESCE(
+        SUM(onboarding_status = 'SUBMITTED'),
+        0
+      ) AS total_submitted,
+
+      COALESCE(
+        SUM(onboarding_status = 'DRAFT'),
+        0
+      ) AS total_draft,
+
+      COALESCE(
+        SUM(onboarding_status = 'VERIFIED'),
+        0
+      ) AS total_verified,
+
+      COALESCE(
+        SUM(onboarding_status = 'REJECTED'),
+        0
+      ) AS total_rejected
+
+    FROM doctor_registrations
+  `;
+
+  const [rows] = await conn.execute(sql);
+
+  return {
+    total_registered: Number(rows[0]?.total_registered || 0),
+    total_submitted: Number(rows[0]?.total_submitted || 0),
+    total_draft: Number(rows[0]?.total_draft || 0),
+    total_verified: Number(rows[0]?.total_verified || 0),
+    total_rejected: Number(rows[0]?.total_rejected || 0),
+  };
 };

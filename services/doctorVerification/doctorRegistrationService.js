@@ -1228,3 +1228,19 @@ exports.getDoctorRegistrations = async (query) => {
     };
   }
 };
+
+exports.getRegistrationStats = async () => {
+  try {
+    const stats =
+      await doctorRegistrationModel.getRegistrationStats();
+
+    return stats;
+  } catch (error) {
+    console.error(
+      "Get Doctor Registration Stats Service Error:",
+      error
+    );
+
+    throw error;
+  }
+};

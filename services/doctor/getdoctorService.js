@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-const { findAllWithUser } = require("../../models/doctorModel");
+const { findAllWithUsers } = require("../../models/doctorModel");
 const safeParse = require("../../utils/safeJson");
 
 const S3_BASE_URL =
@@ -46,7 +46,7 @@ exports.searchDoctorService = async (filters = {}) => {
         ? "asc"
         : "desc";
 
-    let doctors = await findAllWithUser();
+    let doctors = await findAllWithUsers();
 
     doctors = doctors.map((doctor) => {
 

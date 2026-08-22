@@ -107,23 +107,50 @@ exports.updateDoctorProfile = async (req, res) => {
 
 exports.getAllDoctors = async (req, res) => {
   try {
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+    } = req.query;
 
-    const doctors = await DoctorService.getAllDoctors();
+    const result =
+      await DoctorService.getAllDoctors({
+        page,
+        limit,
+        search,
+      });
 
     return res.status(200).json({
       success: true,
       message: "Doctors fetched successfully.",
-      count: doctors.length,
-      data: doctors,
-    });
 
+      count: result.data.length,
+
+      total: result.pagination.total,
+
+      page: result.pagination.page,
+
+      limit: result.pagination.limit,
+
+      totalPages:
+        result.pagination.totalPages,
+
+      data: result.data,
+    });
   } catch (error) {
-    console.error("GET ALL DOCTORS ERROR:", error);
+    console.error(
+      "GET ALL DOCTORS ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
       count: 0,
+      total: 0,
+      page: 1,
+      limit: 10,
+      totalPages: 0,
       data: [],
     });
   }

@@ -393,3 +393,28 @@ exports.getDoctorRegistrations = async (req, res) => {
     });
   }
 };
+
+exports.getRegistrationStats = async (req, res) => {
+  try {
+    const stats =
+      await doctorRegistrationService.getRegistrationStats();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        "Doctor registration statistics fetched successfully.",
+      data: stats,
+    });
+  } catch (error) {
+    console.error(
+      "Get Doctor Registration Stats Controller Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Unable to fetch doctor registration statistics.",
+    });
+  }
+};

@@ -69,4 +69,11 @@ router.get(
   doctorRegistrationController.getDoctorRegistrations
 );
 
+router.get(
+  "/stats",
+  verifyToken,
+  allowRoles(4),
+  doctorRegistrationController.getRegistrationStats
+);
+
 module.exports = router;

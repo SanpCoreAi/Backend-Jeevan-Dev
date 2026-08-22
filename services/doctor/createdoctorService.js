@@ -356,14 +356,36 @@ exports.updateProfile = async (userId, body) => {
   }
 };
 
-exports.getAllDoctors = async () => {
+exports.getAllDoctors = async ({
+  page = 1,
+  limit = 10,
+  search = "",
+} = {}) => {
   try {
+    const safePage = Math.max(
+      1,
+      Number.parseInt(page, 10) || 1
+    );
 
-    const doctors =
-      await DoctorModel.findAllWithUser() || [];
+    const safeLimit = Math.min(
+      100,
+      Math.max(
+        1,
+        Number.parseInt(limit, 10) || 10
+      )
+    );
 
-    const data = doctors.map((doctor) => {
+    const offset =
+      (safePage - 1) * safeLimit;
 
+    const result =
+      await DoctorModel.findAllWithUser({
+        limit: safeLimit,
+        offset,
+        search,
+      });
+
+    const data = result.rows.map((doctor) => {
       let qrUrl = null;
 
       if (doctor.qr_code) {
@@ -376,27 +398,33 @@ exports.getAllDoctors = async () => {
       ).map((image) => ({
         ...image,
         url: S3_BASE_URL
-          ? `${S3_BASE_URL}/${encodeURI(image.fileKey)}`
+          ? `${S3_BASE_URL}/${encodeURI(
+              image.fileKey
+            )}`
           : null,
       }));
 
       return {
-
         doctorId: doctor.doctor_id,
 
         userId: doctor.user_id,
 
         username: doctor.username,
 
-        specialization: doctor.specialization,
+        specialization:
+          doctor.specialization,
 
-        qualification: doctor.qualification,
+        qualification:
+          doctor.qualification,
 
-        medicalLicenseNo: doctor.medical_license_no,
+        medicalLicenseNo:
+          doctor.medical_license_no,
 
-        experience: doctor.experience,
+        experience:
+          doctor.experience,
 
-        consultationFee: doctor.consultation_fee,
+        consultationFee:
+          doctor.consultation_fee,
 
         bio: doctor.bio,
 
@@ -420,9 +448,14 @@ exports.getAllDoctors = async () => {
         ),
 
         user: {
-          fullName: doctor.user_full_name,
-          email: doctor.user_email,
-          phoneNumber: doctor.user_phone_number,
+          fullName:
+            doctor.user_full_name,
+
+          email:
+            doctor.user_email,
+
+          phoneNumber:
+            doctor.user_phone_number,
         },
 
         images,
@@ -443,10 +476,21 @@ exports.getAllDoctors = async () => {
       };
     });
 
-    return data;
+    const totalPages = Math.ceil(
+      result.total / safeLimit
+    );
 
+    return {
+      data,
+
+      pagination: {
+        total: result.total,
+        page: safePage,
+        limit: safeLimit,
+        totalPages,
+      },
+    };
   } catch (error) {
-
     console.error(
       "GET ALL DOCTORS SERVICE ERROR:",
       error

@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { findAllWithUser } = require("../../models/doctorModel");
+const { findAllWithUsers } = require("../../models/doctorModel");
 
 const BASE_FILE_URL =
   process.env.AWS_S3_BUCKET_URL || process.env.APP_BASE_URL;
@@ -35,7 +35,7 @@ async function searchDoctorService(filters) {
   limit = Math.min(50, Math.max(1, Number(limit)));
   const offset = (page - 1) * limit;
 
-  let doctors = await findAllWithUser();
+  let doctors = await findAllWithUsers();
 
   doctors = doctors.map((d) => ({
     user_id: d.user_id,

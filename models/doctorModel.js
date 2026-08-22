@@ -540,104 +540,275 @@ exports.getAllDoctors = async () => {
   return rows;
 };
 
-exports.findAllWithUser = async () => {
+exports.findAllWithUser = async ({
+  limit = 10,
+  offset = 0,
+  search = "",
+} = {}) => {
+  const safeLimit = Math.min(
+    100,
+    Math.max(1, Number.parseInt(limit, 10) || 10)
+  );
+
+  const safeOffset = Math.max(
+    0,
+    Number.parseInt(offset, 10) || 0
+  );
+
+  let where = "";
+  const params = [];
+
+  const trimmedSearch = String(search || "").trim();
+
+  if (trimmedSearch) {
+    where = `
+      WHERE
+        d.username LIKE ?
+        OR d.specialization LIKE ?
+        OR d.qualification LIKE ?
+        OR u.full_name LIKE ?
+        OR u.email LIKE ?
+        OR u.phone_number LIKE ?
+    `;
+
+    const searchValue = `%${trimmedSearch}%`;
+
+    params.push(
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue
+    );
+  }
+
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM doctors d
+    INNER JOIN users u
+      ON u.id = d.user_id
+    ${where}
+  `;
+
+  const [countRows] = await db.execute(
+    countSql,
+    params
+  );
+
+  const total = Number(
+    countRows[0]?.total || 0
+  );
 
   const sql = `
-   SELECT
+    SELECT
+      d.id AS doctor_id,
+      d.user_id,
+      d.username,
+      d.specialization,
+      d.qualification,
+      d.experience,
+      d.consultation_fee,
+      d.medical_license_no,
+      d.bio,
+      d.age,
+      d.gender,
+      d.language,
+      d.availability,
+      d.hospital_detail,
+      d.accept_emergency_patients,
+      d.qr_code,
 
-  d.id AS doctor_id,
-  d.user_id,
-  d.username,
-  d.specialization,
-  d.qualification,
-  d.experience,
-  d.consultation_fee,
-  d.medical_license_no,
-  d.bio,
-  d.age,
-  d.gender,
-  d.language,
-  d.availability,
-  d.hospital_detail,
-  d.accept_emergency_patients,
-  d.qr_code,
+      u.full_name AS user_full_name,
+      u.email AS user_email,
+      u.phone_number AS user_phone_number,
+      u.status,
 
-  u.full_name AS user_full_name,
-  u.email AS user_email,
-  u.phone_number AS user_phone_number,
-  u.status,
+      COALESCE(
+        (
+          SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'id', ui.id,
+              'fileKey', ui.file_key,
+              'folder', ui.folder_name,
+              'createdAt', ui.created_at
+            )
+          )
+          FROM user_images ui
+          WHERE ui.user_id = d.user_id
+        ),
+        JSON_ARRAY()
+      ) AS images,
 
-  COALESCE(
-    (
-      SELECT JSON_ARRAYAGG(
-        JSON_OBJECT(
-          'id', ui.id,
-          'fileKey', ui.file_key,
-          'folder', ui.folder_name,
-          'createdAt', ui.created_at
-        )
-      )
-      FROM user_images ui
-      WHERE ui.user_id = d.user_id
-    ),
-    JSON_ARRAY()
-  ) AS images,
+      COALESCE(
+        (
+          SELECT ROUND(AVG(f.rating), 1)
+          FROM feedbacks f
+          WHERE f.doctor_id = d.user_id
+        ),
+        0
+      ) AS avg_rating,
 
-  COALESCE(
-    (
-      SELECT ROUND(AVG(f.rating),1)
-      FROM feedbacks f
-      WHERE f.doctor_id = d.user_id
-    ),
-    0
-  ) AS avg_rating,
+      (
+        SELECT COUNT(*)
+        FROM feedbacks f
+        WHERE f.doctor_id = d.user_id
+      ) AS total_feedbacks,
 
-  (
-    SELECT COUNT(*)
-    FROM feedbacks f
-    WHERE f.doctor_id = d.user_id
-  ) AS total_feedbacks,
+      (
+        SELECT COUNT(f.rating)
+        FROM feedbacks f
+        WHERE f.doctor_id = d.user_id
+      ) AS total_ratings,
 
-  (
-    SELECT COUNT(f.rating)
-    FROM feedbacks f
-    WHERE f.doctor_id = d.user_id
-  ) AS total_ratings,
+      COALESCE(
+        (
+          SELECT SUM(
+            CASE
+              WHEN f.rating > 3 THEN 1
+              ELSE 0
+            END
+          )
+          FROM feedbacks f
+          WHERE f.doctor_id = d.user_id
+        ),
+        0
+      ) AS positive_feedbacks,
 
-  COALESCE(
-    (
-      SELECT SUM(
-        CASE
-          WHEN f.rating > 3 THEN 1
-          ELSE 0
-        END
-      )
-      FROM feedbacks f
-      WHERE f.doctor_id = d.user_id
-    ),
-    0
-  ) AS positive_feedbacks,
+      COALESCE(
+        (
+          SELECT SUM(
+            CASE
+              WHEN f.rating <= 3 THEN 1
+              ELSE 0
+            END
+          )
+          FROM feedbacks f
+          WHERE f.doctor_id = d.user_id
+        ),
+        0
+      ) AS negative_feedbacks
 
-  COALESCE(
-    (
-      SELECT SUM(
-        CASE
-          WHEN f.rating <= 3 THEN 1
-          ELSE 0
-        END
-      )
-      FROM feedbacks f
-      WHERE f.doctor_id = d.user_id
-    ),
-    0
-  ) AS negative_feedbacks
+    FROM doctors d
 
-FROM doctors d
+    INNER JOIN users u
+      ON u.id = d.user_id
 
-INNER JOIN users u
-  ON u.id = d.user_id
+    ${where}
 
-ORDER BY d.id DESC;
+    ORDER BY d.id DESC
+
+    LIMIT ${safeLimit}
+    OFFSET ${safeOffset}
+  `;
+
+  const [rows] = await db.execute(
+    sql,
+    params
+  );
+
+  return {
+    rows,
+    total,
+  };
+};
+
+exports.findAllWithUsers = async () => {
+  const sql = `
+    SELECT
+      d.id AS doctor_id,
+      d.user_id,
+      d.username,
+      d.specialization,
+      d.qualification,
+      d.experience,
+      d.consultation_fee,
+      d.medical_license_no,
+      d.bio,
+      d.age,
+      d.gender,
+      d.language,
+      d.availability,
+      d.hospital_detail,
+      d.accept_emergency_patients,
+      d.qr_code,
+
+      u.full_name AS user_full_name,
+      u.email AS user_email,
+      u.phone_number AS user_phone_number,
+      u.status,
+
+      COALESCE(
+        (
+          SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+              'id', ui.id,
+              'fileKey', ui.file_key,
+              'folder', ui.folder_name,
+              'createdAt', ui.created_at
+            )
+          )
+          FROM user_images ui
+          WHERE ui.user_id = d.user_id
+        ),
+        JSON_ARRAY()
+      ) AS images,
+
+      COALESCE(
+        (
+          SELECT ROUND(AVG(f.rating), 1)
+          FROM feedbacks f
+          WHERE f.doctor_id = d.user_id
+        ),
+        0
+      ) AS avg_rating,
+
+      (
+        SELECT COUNT(*)
+        FROM feedbacks f
+        WHERE f.doctor_id = d.user_id
+      ) AS total_feedbacks,
+
+      (
+        SELECT COUNT(f.rating)
+        FROM feedbacks f
+        WHERE f.doctor_id = d.user_id
+      ) AS total_ratings,
+
+      COALESCE(
+        (
+          SELECT SUM(
+            CASE
+              WHEN f.rating > 3 THEN 1
+              ELSE 0
+            END
+          )
+          FROM feedbacks f
+          WHERE f.doctor_id = d.user_id
+        ),
+        0
+      ) AS positive_feedbacks,
+
+      COALESCE(
+        (
+          SELECT SUM(
+            CASE
+              WHEN f.rating <= 3 THEN 1
+              ELSE 0
+            END
+          )
+          FROM feedbacks f
+          WHERE f.doctor_id = d.user_id
+        ),
+        0
+      ) AS negative_feedbacks
+
+    FROM doctors d
+
+    INNER JOIN users u
+      ON u.id = d.user_id
+
+    ORDER BY d.id DESC
   `;
 
   const [rows] = await db.execute(sql);
