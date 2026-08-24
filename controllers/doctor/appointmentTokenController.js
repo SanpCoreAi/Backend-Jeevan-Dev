@@ -11,7 +11,6 @@ const {
 
 exports.verifyToken = async (req, res) => {
   try {
-
     const { error, value } =
       verifyTokenValidation.validate(req.params);
 
@@ -22,33 +21,41 @@ exports.verifyToken = async (req, res) => {
       });
     }
 
-    const doctorId = req.user.id;
+    const doctorId = Number(req.user?.id);
 
-    const data =
+    if (!Number.isInteger(doctorId) || doctorId <= 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized doctor."
+      });
+    }
+
+    const result =
       await appointmentTokenService.verifyToken({
         doctorId,
-        appointmentId: value.appointmentId,
-        token: value.token
+        appointmentId: value.appointmentId
       });
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.message
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      message: "Appointment started successfully.",
-      data
+      message: result.message,
+      data: result.data
     });
 
   } catch (error) {
+    console.error("VERIFY APPOINTMENT ERROR:", error);
 
-    console.error(
-      "VERIFY TOKEN ERROR:",
-      error
-    );
-
-    return res.status(400).json({
+    return res.status(500).json({
       success: false,
-      message: error.message
+      message: "Internal server error."
     });
-
   }
 };
 

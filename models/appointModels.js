@@ -1,9 +1,8 @@
 const db = require("../config/db");
 
-exports.getByToken = async ({
+exports.getByAppointmentId = async ({
   doctorId,
-  appointmentId,
-  token,
+  appointmentId
 }) => {
 
   const [rows] = await db.execute(
@@ -18,12 +17,10 @@ exports.getByToken = async ({
       a.booking_type
     FROM appointments a
     WHERE a.id = ?
-      AND a.token_number = ?
       AND a.doctor_id = ?
     `,
     [
       appointmentId,
-      token,
       doctorId
     ]
   );
@@ -81,13 +78,11 @@ exports.getById = async (id) => {
 };
 
 exports.start = async (id) => {
-
   const [result] = await db.execute(
     `
     UPDATE appointments
-    SET 
-      status = 'IN_PROGRESS',
-      started_at = NOW()
+    SET
+      status = 'IN_PROGRESS'
     WHERE id = ?
       AND status = 'PENDING'
     `,

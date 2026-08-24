@@ -40,10 +40,11 @@ router.get(
 router.get("/doctor-slots",verifyToken, appointmentController.getDoctorSlots);
 
 router.get(
-  "/:appointmentId/token/:token",
+  "/verifyToken/:appointmentId",
   verifyToken,
   ctrl.verifyToken
 );
+
 router.post("/:id/start", verifyToken, ctrl.start);
 
 router.post("/:id/complete", verifyToken, ctrl.complete);

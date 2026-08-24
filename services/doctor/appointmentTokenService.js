@@ -2,28 +2,23 @@ const model = require("../../models/appointModels");
 const prescriptionModel = require("../../models/prescriptionModel");
 const db = require("../../config/db");
 
-// =============================================
-// Verify Appointment Token
-// =============================================
+
 exports.verifyToken = async ({
   doctorId,
-  appointmentId,
-  token
+  appointmentId
 }) => {
-
   try {
 
     const appointment =
-      await model.getByToken({
+      await model.getByAppointmentId({
         doctorId,
-        appointmentId,
-        token
+        appointmentId
       });
 
     if (!appointment) {
       return {
         success: false,
-        message: "Invalid appointment or token."
+        message: "Invalid appointment."
       };
     }
 
@@ -42,10 +37,15 @@ exports.verifyToken = async ({
       };
     }
 
+    if (appointment.status !== "PENDING") {
+      return {
+        success: false,
+        message: `Appointment cannot be started because its status is ${appointment.status}.`
+      };
+    }
+
     const result =
-      await model.start(
-        appointment.appointment_id
-      );
+      await model.start(appointment.appointment_id);
 
     if (result.affectedRows === 0) {
       return {
@@ -63,24 +63,16 @@ exports.verifyToken = async ({
     };
 
   } catch (error) {
-
     console.error(
       "VERIFY TOKEN SERVICE ERROR:",
       error
     );
 
-    return {
-      success: false,
-      message: "Internal server error."
-    };
-
+    throw error;
   }
-
 };
 
-// =============================================
-// Start Appointment
-// =============================================
+
 exports.start = async (appointmentId) => {
 
   try {

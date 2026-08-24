@@ -5,11 +5,6 @@ exports.verifyTokenValidation = Joi.object({
   appointmentId: Joi.number()
     .integer()
     .positive()
-    .required(),
-
-  token: Joi.number()
-    .integer()
-    .positive()
     .required()
 });
 
