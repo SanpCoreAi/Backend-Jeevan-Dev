@@ -5,20 +5,23 @@ const db = require("../../config/db");
 
 exports.verifyToken = async ({
   doctorId,
-  appointmentId
+  appointmentId,
+  code
 }) => {
+
   try {
 
     const appointment =
-      await model.getByAppointmentId({
+      await model.getByAppointmentIdAndCode({
         doctorId,
-        appointmentId
+        appointmentId,
+        code
       });
 
     if (!appointment) {
       return {
         success: false,
-        message: "Invalid appointment."
+        message: "Invalid appointment ID or code."
       };
     }
 
@@ -31,9 +34,8 @@ exports.verifyToken = async ({
 
     if (appointment.status === "IN_PROGRESS") {
       return {
-        success: true,
-        message: "Appointment already in progress.",
-        data: appointment
+        success: false,
+        message: "Appointment already in progress."
       };
     }
 
@@ -45,7 +47,9 @@ exports.verifyToken = async ({
     }
 
     const result =
-      await model.start(appointment.appointment_id);
+      await model.start(
+        appointment.appointment_id
+      );
 
     if (result.affectedRows === 0) {
       return {
@@ -63,6 +67,7 @@ exports.verifyToken = async ({
     };
 
   } catch (error) {
+
     console.error(
       "VERIFY TOKEN SERVICE ERROR:",
       error
@@ -71,7 +76,6 @@ exports.verifyToken = async ({
     throw error;
   }
 };
-
 
 exports.start = async (appointmentId) => {
 

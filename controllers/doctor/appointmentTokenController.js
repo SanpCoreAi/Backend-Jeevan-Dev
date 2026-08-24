@@ -11,6 +11,7 @@ const {
 
 exports.verifyToken = async (req, res) => {
   try {
+
     const { error, value } =
       verifyTokenValidation.validate(req.params);
 
@@ -33,7 +34,8 @@ exports.verifyToken = async (req, res) => {
     const result =
       await appointmentTokenService.verifyToken({
         doctorId,
-        appointmentId: value.appointmentId
+        appointmentId: value.appointmentId,
+        code: value.token
       });
 
     if (!result.success) {
@@ -50,7 +52,11 @@ exports.verifyToken = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("VERIFY APPOINTMENT ERROR:", error);
+
+    console.error(
+      "VERIFY APPOINTMENT ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,

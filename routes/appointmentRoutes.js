@@ -40,7 +40,7 @@ router.get(
 router.get("/doctor-slots",verifyToken, appointmentController.getDoctorSlots);
 
 router.get(
-  "/verifyToken/:appointmentId",
+  "/:appointmentId/token/:token",
   verifyToken,
   ctrl.verifyToken
 );

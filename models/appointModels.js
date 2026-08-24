@@ -1,8 +1,9 @@
 const db = require("../config/db");
 
-exports.getByAppointmentId = async ({
+exports.getByAppointmentIdAndCode = async ({
   doctorId,
-  appointmentId
+  appointmentId,
+  code
 }) => {
 
   const [rows] = await db.execute(
@@ -11,16 +12,20 @@ exports.getByAppointmentId = async ({
       a.id AS appointment_id,
       a.doctor_id,
       a.patient_id,
+      a.code,
       a.token_number,
       a.status,
       a.appointment_type,
       a.booking_type
     FROM appointments a
     WHERE a.id = ?
+      AND a.code = ?
       AND a.doctor_id = ?
+      AND a.is_deleted = 0
     `,
     [
       appointmentId,
+      code,
       doctorId
     ]
   );
