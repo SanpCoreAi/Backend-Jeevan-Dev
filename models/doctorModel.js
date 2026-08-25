@@ -61,9 +61,6 @@ exports.createDoctor = async (userId, data) => {
     VALUES (${placeholders.join(", ")})
   `;
 
-  console.log("CREATE DOCTOR SQL:", sql);
-  console.log("CREATE DOCTOR VALUES:", values);
-
   const [result] = await db.execute(sql, values);
 
   return {

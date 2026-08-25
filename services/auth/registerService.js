@@ -109,7 +109,7 @@ exports.registerUserOrAssistant = async (data) => {
         statusCode: 201,
         body: {
           message:
-            "Doctor created successfully. Credentials sent to email. Waiting for admin approval.",
+            "Doctor created successfully. Credentials sent to email.",
           user_id: userId,
           status: "INACTIVE",
         },
