@@ -13,7 +13,8 @@ exports.getDoctorProfile = async (req, res) => {
       });
     }
 
-    const result = await DoctorService.getProfile(userId);
+    const result =
+      await DoctorService.getProfile(userId);
 
     return res.status(result.statusCode).json({
       success: result.success,
@@ -22,7 +23,11 @@ exports.getDoctorProfile = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("GET DOCTOR PROFILE ERROR:", error);
+
+    console.error(
+      "GET DOCTOR PROFILE ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -55,7 +60,10 @@ exports.getDoctorPublicProfileById = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("GET PUBLIC DOCTOR PROFILE ERROR:", error);
+    console.error(
+      "GET PUBLIC DOCTOR PROFILE ERROR:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
@@ -137,7 +145,9 @@ exports.getAllDoctors = async (req, res) => {
 
       data: result.data,
     });
+
   } catch (error) {
+
     console.error(
       "GET ALL DOCTORS ERROR:",
       error

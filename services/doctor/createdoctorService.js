@@ -52,118 +52,115 @@ exports.getProfile = async (userId) => {
         success: false,
         statusCode: 400,
         message: "Valid user id is required.",
+        data: null,
       };
     }
 
-    const doctor = await DoctorModel.getBydoctorId(userId);
+    const doctor =
+      await DoctorModel.getBydoctorId(userId);
 
     if (!doctor) {
       return {
         success: false,
         statusCode: 404,
         message: "Doctor profile not found.",
+        data: null,
       };
-    }
-
-    let qrCode = doctor.qr_code || null;
-
-    if (doctor.id && !qrCode) {
-      try {
-        const hospitalDetail = safeParse(doctor.hospital_detail, []);
-
-        const hospitals = hospitalDetail.map((hospital) => ({
-          hospitalName: hospital.hospitalName,
-          address: buildAddress(hospital),
-        }));
-
-        const qrData = JSON.stringify({
-          doctorId: doctor.user_id,
-          hospitals,
-        });
-
-        const fileName = `qr_${doctor.id}.png`;
-        const filePath = path.join(qrFolder, fileName);
-
-        await QRCode.toFile(filePath, qrData);
-
-        await DoctorModel.updateDoctorQr(
-          doctor.id,
-          fileName
-        );
-
-        qrCode = fileName;
-
-      } catch (qrError) {
-        console.error("QR GENERATION ERROR:", qrError);
-      }
     }
 
     return {
       success: true,
       statusCode: 200,
       message: "Doctor profile fetched successfully.",
+
       data: {
         id: doctor.user_id,
 
-        username: doctor.username,
-        specialization: doctor.specialization,
-        medicalLicenseNo: doctor.medical_license_no,
-        qualification: doctor.qualification,
-        experience: doctor.experience,
-        consultationFee: doctor.consultation_fee,
-        bio: doctor.bio,
-        age: doctor.age,
+        registration_id: doctor.registration_id,
+
+        full_name: doctor.full_name,
         gender: doctor.gender,
-        accept_emergency_patients: doctor.accept_emergency_patients,
+        age: doctor.age,
+        email: doctor.email,
+        mobile: doctor.mobile,
 
-        language: safeParse(doctor.language, []),
-        availability: safeParse(doctor.availability, []),
-        hospitalDetail: safeParse(
-          doctor.hospital_detail,
-          []
-        ),
+        medical_registration_number:
+          doctor.medical_registration_number,
 
-        user: {
-          fullName: doctor.user_full_name,
-          email: doctor.user_email,
-          phoneNumber: doctor.user_phone_number,
-        },
+        medical_council:
+          doctor.medical_council,
 
-        image: doctor.image_file_key
-          ? {
-            url: S3_BASE_URL
-              ? `${encodeURI(
-                doctor.image_file_key
-              )}`
-              : null,
-          }
-          : null,
+        qualification:
+          doctor.qualification,
 
-        licenseFiles: safeParse(doctor.files, []).map((file) => ({
-          url: file.fileKey.startsWith("http")
-            ? file.fileKey
-            : `${encodeURI(file.fileKey)}`
-        })),
+        specialization:
+          doctor.specialization,
 
-        avgRating: Number(doctor.avg_rating || 0),
+        registration_expiry_date:
+          doctor.registration_expiry_date,
 
-        qr_code: buildQrUrl(qrCode),
+        onboarding_status:
+          doctor.onboarding_status,
+
+        medical_registration_certificate:
+          doctor.medical_registration_certificate,
+
+        medical_degree_certificate:
+          doctor.medical_degree_certificate,
+
+        government_id_proof:
+          doctor.government_id_proof,
+
+        selfie:
+          doctor.selfie,
+
+        experience:
+          doctor.experience,
+
+        language:
+          safeParse(doctor.language, []),
+
+        consultation_fee:
+          doctor.consultation_fee,
+
+        bio:
+          doctor.bio,
+
+        availability:
+          safeParse(doctor.availability, []),
+
+        hospital_detail:
+          safeParse(
+            doctor.hospital_detail,
+            []
+          ),
+
+        qr_url:
+          doctor.qr_url || null,
+
+        accept_emergency_patients:
+          doctor.accept_emergency_patients,
       },
     };
+
   } catch (error) {
-    console.error("GET DOCTOR PROFILE SERVICE ERROR:", error);
+
+    console.error(
+      "GET DOCTOR PROFILE SERVICE ERROR:",
+      error
+    );
 
     return {
       success: false,
       statusCode: 500,
       message: "Internal Server Error",
+      data: null,
     };
   }
 };
 
 exports.getDoctorPublicProfileById = async (userId) => {
   try {
-
     if (!Number.isInteger(userId) || userId <= 0) {
       return {
         success: false,
@@ -187,62 +184,61 @@ exports.getDoctorPublicProfileById = async (userId) => {
       success: true,
       statusCode: 200,
       message: "Doctor profile fetched successfully.",
+
       data: {
-        id: doctor.id,
-        userId: doctor.user_id,
-
-        username: doctor.username,
-        specialization: doctor.specialization,
-        age: doctor.age,
+        // doctor_registrations
+        full_name: doctor.full_name,
         gender: doctor.gender,
-        qualification: doctor.qualification,
-        experience: doctor.experience,
-        consultationFee: doctor.consultation_fee,
-        bio: doctor.bio,
-        accept_emergency_patients: doctor.accept_emergency_patients,
+        age: doctor.age,
+        email: doctor.email,
+        mobile: doctor.mobile,
+        medical_registration_number:
+          doctor.medical_registration_number,
+        medical_council:
+          doctor.medical_council,
+        qualification:
+          doctor.qualification,
+        specialization:
+          doctor.specialization,
+        selfie:
+          doctor.selfie || null,
 
-        language: safeParse(doctor.language, []),
-        availability: safeParse(doctor.availability, []),
-        hospitalDetail: safeParse(
-          doctor.hospital_detail,
-          []
-        ),
+        // doctors
+        experience:
+          doctor.experience,
+        language:
+          safeParse(doctor.language, []),
+        consultation_fee:
+          doctor.consultation_fee,
+        bio:
+          doctor.bio,
+        availability:
+          safeParse(doctor.availability, []),
+        hospital_detail:
+          safeParse(doctor.hospital_detail, []),
+        qr_url:
+          doctor.qr_url || null,
+        accept_emergency_patients:
+          doctor.accept_emergency_patients,
 
-        user: {
-          fullName: doctor.user_full_name,
-          email: doctor.user_email,
-          phoneNumber: doctor.user_phone_number,
-        },
-
-        image: doctor.image_file_key
-          ? {
-            url: S3_BASE_URL
-              ? `${encodeURI(
-                doctor.image_file_key
-              )}`
-              : null,
-          }
-          : null,
-
+        // ratings
         avgRating:
           doctor.avg_rating == null
             ? "0.0"
             : Number(doctor.avg_rating).toFixed(1),
 
-        totalFeedbacks: Number(
-          doctor.total_feedbacks ?? 0
-        ),
+        totalFeedbacks:
+          Number(doctor.total_feedbacks ?? 0),
 
-        totalRatings: Number(
-          doctor.total_ratings ?? 0
-        ),
+        totalRatings:
+          Number(doctor.total_ratings ?? 0),
       },
     };
 
   } catch (error) {
 
     console.error(
-      "GET PUBLIC DOCTOR PROFILE SERVICE ERROR:",
+      "GET DOCTOR PUBLIC PROFILE SERVICE ERROR:",
       error
     );
 
@@ -362,6 +358,7 @@ exports.getAllDoctors = async ({
   search = "",
 } = {}) => {
   try {
+
     const safePage = Math.max(
       1,
       Number.parseInt(page, 10) || 1
@@ -379,106 +376,103 @@ exports.getAllDoctors = async ({
       (safePage - 1) * safeLimit;
 
     const result =
-      await DoctorModel.findAllWithUser({
+      await DoctorModel.findAllWithRegistration({
         limit: safeLimit,
         offset,
         search,
       });
 
     const data = result.rows.map((doctor) => {
-      let qrUrl = null;
-
-      if (doctor.qr_code) {
-        qrUrl = buildQrUrl(doctor.qr_code);
-      }
-
-      const images = safeParse(
-        doctor.images,
-        []
-      ).map((image) => ({
-        ...image,
-        url: S3_BASE_URL
-          ? `${S3_BASE_URL}/${encodeURI(
-              image.fileKey
-            )}`
-          : null,
-      }));
 
       return {
-        doctorId: doctor.doctor_id,
 
-        userId: doctor.user_id,
+        full_name:
+          doctor.full_name,
 
-        username: doctor.username,
+        gender:
+          doctor.gender,
 
-        specialization:
-          doctor.specialization,
+        age:
+          doctor.age,
+
+        email:
+          doctor.email,
+
+        mobile:
+          doctor.mobile,
+
+        medical_registration_number:
+          doctor.medical_registration_number,
+
+        medical_council:
+          doctor.medical_council,
 
         qualification:
           doctor.qualification,
 
-        medicalLicenseNo:
-          doctor.medical_license_no,
+        specialization:
+          doctor.specialization,
+
+        onboarding_status:
+          doctor.onboarding_status,
+
+        selfie:
+          doctor.selfie || null,
 
         experience:
           doctor.experience,
 
-        consultationFee:
+        language:
+          safeParse(
+            doctor.language,
+            []
+          ),
+
+        consultation_fee:
           doctor.consultation_fee,
 
-        bio: doctor.bio,
+        bio:
+          doctor.bio,
 
-        age: doctor.age,
+        availability:
+          safeParse(
+            doctor.availability,
+            []
+          ),
 
-        gender: doctor.gender,
+        hospital_detail:
+          safeParse(
+            doctor.hospital_detail,
+            []
+          ),
 
-        language: safeParse(
-          doctor.language,
-          []
-        ),
+        qr_url:
+          doctor.qr_url || null,
 
-        availability: safeParse(
-          doctor.availability,
-          []
-        ),
+        accept_emergency_patients:
+          doctor.accept_emergency_patients,
 
-        hospitalDetail: safeParse(
-          doctor.hospital_detail,
-          []
-        ),
+        avgRating:
+          Number(
+            doctor.avg_rating || 0
+          ),
 
-        user: {
-          fullName:
-            doctor.user_full_name,
+        totalFeedbacks:
+          Number(
+            doctor.total_feedbacks || 0
+          ),
 
-          email:
-            doctor.user_email,
-
-          phoneNumber:
-            doctor.user_phone_number,
-        },
-
-        images,
-
-        avgRating: Number(
-          doctor.avg_rating || 0
-        ),
-
-        totalFeedbacks: Number(
-          doctor.total_feedbacks || 0
-        ),
-
-        totalRatings: Number(
-          doctor.total_ratings || 0
-        ),
-
-        qr_code: qrUrl,
+        totalRatings:
+          Number(
+            doctor.total_ratings || 0
+          ),
       };
     });
 
-    const totalPages = Math.ceil(
-      result.total / safeLimit
-    );
+    const totalPages =
+      Math.ceil(
+        result.total / safeLimit
+      );
 
     return {
       data,
@@ -490,7 +484,9 @@ exports.getAllDoctors = async ({
         totalPages,
       },
     };
+
   } catch (error) {
+
     console.error(
       "GET ALL DOCTORS SERVICE ERROR:",
       error

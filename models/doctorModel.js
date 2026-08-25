@@ -126,117 +126,60 @@ exports.getByUserId = async (userId) => {
 };
 
 exports.getBydoctorId = async (userId) => {
+  try {
+    const sql = `
+      SELECT
+        d.id AS doctor_id,
+        d.user_id,
+        d.registration_id,
 
-  const sql = `
-    SELECT
+        d.experience,
+        d.language,
+        d.consultation_fee,
+        d.bio,
+        d.availability,
+        d.hospital_detail,
+        d.qr_url,
+        d.accept_emergency_patients,
 
-      d.id,
-      d.user_id,
-      d.username,
-      d.specialization,
-      d.qualification,
-      d.experience,
-      d.consultation_fee,
-      d.medical_license_no,
-      d.age,
-      d.gender,
-      d.bio,
-      d.language,
-      d.availability,
-      d.hospital_detail,
-      d.qr_code,
-      d.accept_emergency_patients,
+        dr.id AS registration_id,
+        dr.full_name,
+        dr.gender,
+        dr.age,
+        dr.email,
+        dr.mobile,
+        dr.medical_registration_number,
+        dr.medical_council,
+        dr.qualification,
+        dr.specialization,
+        dr.registration_expiry_date,
+        dr.onboarding_status,
+        dr.medical_registration_certificate,
+        dr.medical_degree_certificate,
+        dr.government_id_proof,
+        dr.selfie
 
-      u.full_name AS user_full_name,
-      u.email AS user_email,
-      u.phone_number AS user_phone_number,
+      FROM doctors d
 
-      (
-        SELECT ui.file_key
-        FROM user_images ui
-        WHERE ui.user_id = d.user_id
-          AND ui.file_key IS NOT NULL
-        ORDER BY ui.id DESC
-        LIMIT 1
-      ) AS image_file_key,
+      LEFT JOIN doctor_registrations dr
+        ON dr.id = d.registration_id
 
-      (
-        SELECT ui.folder_name
-        FROM user_images ui
-        WHERE ui.user_id = d.user_id
-          AND ui.file_key IS NOT NULL
-        ORDER BY ui.id DESC
-        LIMIT 1
-      ) AS image_folder_name,
+      WHERE d.user_id = ?
+      LIMIT 1
+    `;
 
-      COALESCE(
-        (
-          SELECT JSON_ARRAYAGG(
-            JSON_OBJECT(
-              'id', df.id,
-              'fileKey', df.file_key,
-              'folder', df.folder_name,
-              'createdAt', df.created_at
-            )
-          )
-          FROM doctor_files df
-          WHERE df.doctor_id = d.user_id
-        ),
-        JSON_ARRAY()
-      ) AS files,
+    const [rows] = await db.execute(sql, [userId]);
 
-      COALESCE(
-        (
-          SELECT ROUND(AVG(f.rating), 1)
-          FROM feedbacks f
-          WHERE f.doctor_id = d.user_id
-        ),
-        0
-      ) AS avg_rating,
+    return rows.length > 0 ? rows[0] : null;
 
-      (
-        SELECT COUNT(*)
-        FROM feedbacks f
-        WHERE f.doctor_id = d.user_id
-      ) AS total_feedbacks,
+  } catch (error) {
+    console.error(
+      "GET DOCTOR PROFILE MODEL ERROR:",
+      error
+    );
 
-      (
-        SELECT COUNT(f.rating)
-        FROM feedbacks f
-        WHERE f.doctor_id = d.user_id
-      ) AS total_ratings,
-
-      COALESCE(
-        (
-          SELECT SUM(CASE WHEN f.rating > 3 THEN 1 ELSE 0 END)
-          FROM feedbacks f
-          WHERE f.doctor_id = d.user_id
-        ),
-        0
-      ) AS positive_feedbacks,
-
-      COALESCE(
-        (
-          SELECT SUM(CASE WHEN f.rating <= 3 THEN 1 ELSE 0 END)
-          FROM feedbacks f
-          WHERE f.doctor_id = d.user_id
-        ),
-        0
-      ) AS negative_feedbacks
-
-    FROM doctors d
-
-    INNER JOIN users u
-      ON u.id = d.user_id
-
-    WHERE d.user_id = ?
-
-    LIMIT 1
-  `;
-
-  const [rows] = await db.execute(sql, [userId]);
-
-  return rows.length ? rows[0] : null;
+    throw error;
+  }
 };
 
 exports.updateDoctorQr = async (doctorId, qrCode) => {
@@ -260,38 +203,31 @@ exports.updateDoctorQr = async (doctorId, qrCode) => {
 };
 
 exports.getDoctorPublicProfileById = async (userId) => {
-
   const sql = `
     SELECT
 
+      dr.id AS registration_id,
+      dr.full_name,
+      dr.gender,
+      dr.age,
+      dr.email,
+      dr.mobile,
+      dr.medical_registration_number,
+      dr.medical_council,
+      dr.qualification,
+      dr.specialization,
+      dr.selfie,
+
       d.id,
       d.user_id,
-      d.username,
-      d.specialization,
-      d.qualification,
       d.experience,
-      d.consultation_fee,
-      d.medical_license_no,
-      d.age,
-      d.gender,
-      d.bio,
       d.language,
+      d.consultation_fee,
+      d.bio,
       d.availability,
       d.hospital_detail,
+      d.qr_url,
       d.accept_emergency_patients,
-
-      u.full_name AS user_full_name,
-      u.email AS user_email,
-      u.phone_number AS user_phone_number,
-
-      (
-        SELECT ui.file_key
-        FROM user_images ui
-        WHERE ui.user_id = d.user_id
-          AND ui.file_key IS NOT NULL
-        ORDER BY ui.id DESC
-        LIMIT 1
-      ) AS image_file_key,
 
       COALESCE(
         (
@@ -344,12 +280,10 @@ exports.getDoctorPublicProfileById = async (userId) => {
 
     FROM doctors d
 
-    INNER JOIN users u
-      ON u.id = d.user_id
+    LEFT JOIN doctor_registrations dr
+      ON dr.id = d.registration_id
 
-    WHERE
-      d.user_id = ?
-      AND u.status = 'ACTIVE'
+    WHERE d.user_id = ?
 
     LIMIT 1
   `;
@@ -537,14 +471,18 @@ exports.getAllDoctors = async () => {
   return rows;
 };
 
-exports.findAllWithUser = async ({
+exports.findAllWithRegistration = async ({
   limit = 10,
   offset = 0,
   search = "",
 } = {}) => {
+
   const safeLimit = Math.min(
     100,
-    Math.max(1, Number.parseInt(limit, 10) || 10)
+    Math.max(
+      1,
+      Number.parseInt(limit, 10) || 10
+    )
   );
 
   const safeOffset = Math.max(
@@ -555,22 +493,27 @@ exports.findAllWithUser = async ({
   let where = "";
   const params = [];
 
-  const trimmedSearch = String(search || "").trim();
+  const trimmedSearch =
+    String(search || "").trim();
 
   if (trimmedSearch) {
+
     where = `
       WHERE
-        d.username LIKE ?
-        OR d.specialization LIKE ?
-        OR d.qualification LIKE ?
-        OR u.full_name LIKE ?
-        OR u.email LIKE ?
-        OR u.phone_number LIKE ?
+        dr.full_name LIKE ?
+        OR dr.email LIKE ?
+        OR dr.mobile LIKE ?
+        OR dr.medical_registration_number LIKE ?
+        OR dr.medical_council LIKE ?
+        OR dr.qualification LIKE ?
+        OR dr.specialization LIKE ?
     `;
 
-    const searchValue = `%${trimmedSearch}%`;
+    const searchValue =
+      `%${trimmedSearch}%`;
 
     params.push(
+      searchValue,
       searchValue,
       searchValue,
       searchValue,
@@ -580,129 +523,151 @@ exports.findAllWithUser = async ({
     );
   }
 
+
   const countSql = `
     SELECT COUNT(*) AS total
+
     FROM doctors d
-    INNER JOIN users u
-      ON u.id = d.user_id
+
+    LEFT JOIN doctor_registrations dr
+      ON dr.id = d.registration_id
+
     ${where}
   `;
 
-  const [countRows] = await db.execute(
-    countSql,
-    params
-  );
+  const [countRows] =
+    await db.execute(
+      countSql,
+      params
+    );
 
-  const total = Number(
-    countRows[0]?.total || 0
-  );
+  const total =
+    Number(
+      countRows[0]?.total || 0
+    );
 
   const sql = `
     SELECT
+
+      dr.id AS registration_id,
+
+      dr.full_name,
+      dr.gender,
+      dr.age,
+      dr.email,
+      dr.mobile,
+      dr.medical_registration_number,
+      dr.medical_council,
+      dr.qualification,
+      dr.specialization,
+      dr.onboarding_status,
+      dr.selfie,
+
       d.id AS doctor_id,
       d.user_id,
-      d.username,
-      d.specialization,
-      d.qualification,
+
       d.experience,
-      d.consultation_fee,
-      d.medical_license_no,
-      d.bio,
-      d.age,
-      d.gender,
       d.language,
+      d.consultation_fee,
+      d.bio,
       d.availability,
       d.hospital_detail,
+      d.qr_url,
       d.accept_emergency_patients,
-      d.qr_code,
-
-      u.full_name AS user_full_name,
-      u.email AS user_email,
-      u.phone_number AS user_phone_number,
-      u.status,
 
       COALESCE(
         (
-          SELECT JSON_ARRAYAGG(
-            JSON_OBJECT(
-              'id', ui.id,
-              'fileKey', ui.file_key,
-              'folder', ui.folder_name,
-              'createdAt', ui.created_at
-            )
+          SELECT ROUND(
+            AVG(f.rating),
+            1
           )
-          FROM user_images ui
-          WHERE ui.user_id = d.user_id
-        ),
-        JSON_ARRAY()
-      ) AS images,
 
-      COALESCE(
-        (
-          SELECT ROUND(AVG(f.rating), 1)
           FROM feedbacks f
-          WHERE f.doctor_id = d.user_id
+
+          WHERE
+            f.doctor_id = d.user_id
         ),
         0
       ) AS avg_rating,
 
+
       (
         SELECT COUNT(*)
+
         FROM feedbacks f
-        WHERE f.doctor_id = d.user_id
+
+        WHERE
+          f.doctor_id = d.user_id
       ) AS total_feedbacks,
+
 
       (
         SELECT COUNT(f.rating)
+
         FROM feedbacks f
-        WHERE f.doctor_id = d.user_id
+
+        WHERE
+          f.doctor_id = d.user_id
       ) AS total_ratings,
+
 
       COALESCE(
         (
           SELECT SUM(
             CASE
-              WHEN f.rating > 3 THEN 1
+              WHEN f.rating > 3
+              THEN 1
               ELSE 0
             END
           )
+
           FROM feedbacks f
-          WHERE f.doctor_id = d.user_id
+
+          WHERE
+            f.doctor_id = d.user_id
         ),
         0
       ) AS positive_feedbacks,
 
+
       COALESCE(
         (
           SELECT SUM(
             CASE
-              WHEN f.rating <= 3 THEN 1
+              WHEN f.rating <= 3
+              THEN 1
               ELSE 0
             END
           )
+
           FROM feedbacks f
-          WHERE f.doctor_id = d.user_id
+
+          WHERE
+            f.doctor_id = d.user_id
         ),
         0
       ) AS negative_feedbacks
 
+
     FROM doctors d
 
-    INNER JOIN users u
-      ON u.id = d.user_id
+    LEFT JOIN doctor_registrations dr
+      ON dr.id = d.registration_id
 
     ${where}
 
     ORDER BY d.id DESC
 
     LIMIT ${safeLimit}
+
     OFFSET ${safeOffset}
   `;
 
-  const [rows] = await db.execute(
-    sql,
-    params
-  );
+  const [rows] =
+    await db.execute(
+      sql,
+      params
+    );
 
   return {
     rows,
