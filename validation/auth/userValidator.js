@@ -28,20 +28,31 @@ exports.registerValidation = (data) => {
       .optional(),
 
     role_id: Joi.number()
-      .valid(1,2,3)
+      .valid(1, 2, 3)
       .optional(),
 
-    doctor_id: Joi.number().integer().positive().optional()
+    doctor_id: Joi.number().integer().positive().optional(),
+
+    registration_id: Joi.number()
+      .integer()
+      .positive()
+      .required()
+      .messages({
+        "any.required": "Registration ID is required",
+        "number.base": "Registration ID must be a number",
+        "number.integer": "Registration ID must be an integer",
+        "number.positive": "Registration ID must be greater than 0",
+      }),
 
   }).options({
-      abortEarly:false,
-      allowUnknown:false
+    abortEarly: false,
+    allowUnknown: false
   });
 
-  const {error}=schema.validate(data);
+  const { error } = schema.validate(data);
 
-  if(error){
-      return error.details.map(x=>x.message);
+  if (error) {
+    return error.details.map(x => x.message);
   }
 
   return null;

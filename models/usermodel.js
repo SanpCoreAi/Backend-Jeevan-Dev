@@ -9,9 +9,10 @@ exports.createUser = async (data) => {
       "password",
       "doctor_id",
       "role_id",
+      "registration_id",
       "verificationToken",
       "email_verified",
-       "status",
+      "status",
     ];
 
     const fields = [];
