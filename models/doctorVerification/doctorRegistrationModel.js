@@ -614,10 +614,6 @@ exports.saveEmailOtp = async (
   conn = db
 ) => {
 
-  // expiryOrConn can be:
-  // 1. Date object
-  // 2. Database connection
-
   let expiry = null;
 
   if (
@@ -629,8 +625,6 @@ exports.saveEmailOtp = async (
     expiry = expiryOrConn;
   }
 
-
-  // If expiry is provided
   if (expiry) {
 
     await conn.execute(
@@ -650,7 +644,6 @@ exports.saveEmailOtp = async (
 
   } else {
 
-    // Default expiry: 5 minutes
     await conn.execute(
       `
         UPDATE doctor_registrations
@@ -746,7 +739,11 @@ exports.findDocumentsById = async (id) => {
   return rows.length ? rows[0] : null;
 };
 
-exports.updateOnboardingStatus = async (registrationId, status, conn = db) => {
+exports.updateOnboardingStatus = async (
+  registrationId,
+  status,
+  conn = db
+) => {
   const [result] = await conn.execute(
     `
     UPDATE doctor_registrations
@@ -760,7 +757,7 @@ exports.updateOnboardingStatus = async (registrationId, status, conn = db) => {
 
   return {
     affectedRows: result.affectedRows,
-    changedRows: result.changedRows
+    changedRows: result.changedRows,
   };
 };
 

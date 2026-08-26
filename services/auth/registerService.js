@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 
 const User = require("../../models/usermodel");
+const DoctorRegistrationModel = require("../../models/doctorVerification/doctorRegistrationModel");
 
 const {
   sendVerificationEmail,
@@ -71,19 +72,13 @@ exports.registerUserOrAssistant = async (data) => {
         email,
         phone_number,
         password: hashedPassword,
-
         doctor_id: doctorId,
-
         role_id: roleId,
-
         registration_id:
           registrationId,
-
         email_verified:
           emailVerified,
-
         verificationToken,
-
         status,
       });
     };
@@ -94,8 +89,7 @@ exports.registerUserOrAssistant = async (data) => {
         return {
           statusCode: 400,
           body: {
-            message:
-              "registration_id is required for doctor",
+            message: "registration_id is required for doctor",
           },
         };
       }
@@ -106,28 +100,24 @@ exports.registerUserOrAssistant = async (data) => {
       const userId =
         await createAccount({
           roleId: 2,
-
-          password:
-            doctorPassword,
-
+          password: doctorPassword,
           doctorId: null,
-
-          registrationId:
-            registration_id,
-
+          registrationId: registration_id,
           status: "INACTIVE",
         });
 
-      try {
+      await DoctorRegistrationModel.updateOnboardingStatus(
+        registration_id,
+        "VERIFIED"
+      );
 
+      try {
         await sendDoctorCredentials(
           email,
           full_name,
           doctorPassword
         );
-
       } catch (err) {
-
         console.error(
           "Doctor Email Error:",
           err.message
@@ -136,22 +126,16 @@ exports.registerUserOrAssistant = async (data) => {
 
       return {
         statusCode: 201,
-
         body: {
           message:
             "Doctor created successfully. Credentials sent to email.",
-
-          user_id:
-            userId,
-
-          status:
-            "INACTIVE",
+          user_id: userId,
+          status: "INACTIVE",
         },
       };
     }
 
     if (role_id === 3) {
-
       if (!doctor_id) {
         return {
           statusCode: 400,
@@ -168,16 +152,12 @@ exports.registerUserOrAssistant = async (data) => {
       const userId =
         await createAccount({
           roleId: 3,
-
           password:
             assistantPassword,
-
           doctorId:
             doctor_id,
-
           registrationId:
             null,
-
           status: "ACTIVE",
         });
 
@@ -199,14 +179,11 @@ exports.registerUserOrAssistant = async (data) => {
 
       return {
         statusCode: 201,
-
         body: {
           message:
             "Assistant created successfully. Credentials sent to email.",
-
           user_id:
             userId,
-
           status:
             "ACTIVE",
         },
@@ -225,21 +202,14 @@ exports.registerUserOrAssistant = async (data) => {
 
     const verificationToken =
       crypto.randomBytes(32).toString("hex");
-
     const userId =
       await createAccount({
         roleId: 1,
-
         password,
-
         doctorId: null,
-
         registrationId: null,
-
         emailVerified: 0,
-
         verificationToken,
-
         status: "ACTIVE",
       });
 
@@ -260,14 +230,11 @@ exports.registerUserOrAssistant = async (data) => {
 
     return {
       statusCode: 201,
-
       body: {
         message:
           "User registered successfully. Please verify your email.",
-
         user_id:
           userId,
-
         status:
           "ACTIVE",
       },
@@ -279,10 +246,8 @@ exports.registerUserOrAssistant = async (data) => {
       "Register Service Error:",
       error
     );
-
     return {
       statusCode: 500,
-
       body: {
         message:
           "Internal Server Error",
