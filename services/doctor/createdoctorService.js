@@ -298,13 +298,6 @@ exports.updateProfile = async (userId, body) => {
         body
       );
 
-      if (body.registrationId) {
-        await DoctorRegistrationModel.updateOnboardingStatus(
-          body.registrationId,
-          "VERIFIED"
-        );
-      }
-
       return {
         success: true,
         statusCode: 201,

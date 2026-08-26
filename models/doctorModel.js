@@ -18,8 +18,6 @@ exports.createDoctor = async (userId, data) => {
 
     gender: "gender",
 
-    registrationId: "registration_id",
-
     language: "language",
     availability: "availability",
 
@@ -131,7 +129,8 @@ exports.getBydoctorId = async (userId) => {
       SELECT
         d.id AS doctor_id,
         d.user_id,
-        d.registration_id,
+
+        u.registration_id,
 
         d.experience,
         d.language,
@@ -142,7 +141,6 @@ exports.getBydoctorId = async (userId) => {
         d.qr_url,
         d.accept_emergency_patients,
 
-        dr.id AS registration_id,
         dr.full_name,
         dr.gender,
         dr.age,
@@ -161,8 +159,11 @@ exports.getBydoctorId = async (userId) => {
 
       FROM doctors d
 
+      INNER JOIN users u
+        ON u.id = d.user_id
+
       LEFT JOIN doctor_registrations dr
-        ON dr.id = d.registration_id
+        ON dr.id = u.registration_id
 
       WHERE d.user_id = ?
       LIMIT 1
@@ -206,7 +207,8 @@ exports.getDoctorPublicProfileById = async (userId) => {
   const sql = `
     SELECT
 
-      dr.id AS registration_id,
+      u.registration_id,
+
       dr.full_name,
       dr.gender,
       dr.age,
@@ -280,8 +282,11 @@ exports.getDoctorPublicProfileById = async (userId) => {
 
     FROM doctors d
 
+    INNER JOIN users u
+      ON u.id = d.user_id
+
     LEFT JOIN doctor_registrations dr
-      ON dr.id = d.registration_id
+      ON dr.id = u.registration_id
 
     WHERE d.user_id = ?
 
@@ -332,9 +337,6 @@ exports.updateDoctor = async (userId, data) => {
 
     bio: "bio",
     age: "age",
-
-    registrationId: "registration_id",
-
     gender: "gender",
 
     language: "language",
@@ -523,14 +525,16 @@ exports.findAllWithRegistration = async ({
     );
   }
 
-
   const countSql = `
     SELECT COUNT(*) AS total
 
     FROM doctors d
 
+    INNER JOIN users u
+      ON u.id = d.user_id
+
     LEFT JOIN doctor_registrations dr
-      ON dr.id = d.registration_id
+      ON dr.id = u.registration_id
 
     ${where}
   `;
@@ -549,7 +553,7 @@ exports.findAllWithRegistration = async ({
   const sql = `
     SELECT
 
-      dr.id AS registration_id,
+      u.registration_id,
 
       dr.full_name,
       dr.gender,
@@ -581,35 +585,23 @@ exports.findAllWithRegistration = async ({
             AVG(f.rating),
             1
           )
-
           FROM feedbacks f
-
-          WHERE
-            f.doctor_id = d.user_id
+          WHERE f.doctor_id = d.user_id
         ),
         0
       ) AS avg_rating,
 
-
       (
         SELECT COUNT(*)
-
         FROM feedbacks f
-
-        WHERE
-          f.doctor_id = d.user_id
+        WHERE f.doctor_id = d.user_id
       ) AS total_feedbacks,
-
 
       (
         SELECT COUNT(f.rating)
-
         FROM feedbacks f
-
-        WHERE
-          f.doctor_id = d.user_id
+        WHERE f.doctor_id = d.user_id
       ) AS total_ratings,
-
 
       COALESCE(
         (
@@ -620,15 +612,11 @@ exports.findAllWithRegistration = async ({
               ELSE 0
             END
           )
-
           FROM feedbacks f
-
-          WHERE
-            f.doctor_id = d.user_id
+          WHERE f.doctor_id = d.user_id
         ),
         0
       ) AS positive_feedbacks,
-
 
       COALESCE(
         (
@@ -639,20 +627,19 @@ exports.findAllWithRegistration = async ({
               ELSE 0
             END
           )
-
           FROM feedbacks f
-
-          WHERE
-            f.doctor_id = d.user_id
+          WHERE f.doctor_id = d.user_id
         ),
         0
       ) AS negative_feedbacks
 
-
     FROM doctors d
 
+    INNER JOIN users u
+      ON u.id = d.user_id
+
     LEFT JOIN doctor_registrations dr
-      ON dr.id = d.registration_id
+      ON dr.id = u.registration_id
 
     ${where}
 
