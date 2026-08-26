@@ -2,6 +2,7 @@ const db = require("../config/db");
 
 exports.createUser = async (data) => {
   try {
+
     const allowedFields = [
       "full_name",
       "email",
@@ -22,7 +23,10 @@ exports.createUser = async (data) => {
 
       if (field === "doctor_id") {
 
-        if (data.doctor_id) {
+        if (
+          data.doctor_id !== undefined &&
+          data.doctor_id !== null
+        ) {
           fields.push(field);
           values.push(data.doctor_id);
         }
@@ -39,9 +43,10 @@ exports.createUser = async (data) => {
       }
     }
 
-    const placeholders = fields
-      .map(() => "?")
-      .join(", ");
+    const placeholders =
+      fields
+        .map(() => "?")
+        .join(", ");
 
     const sql = `
       INSERT INTO users
@@ -50,15 +55,22 @@ exports.createUser = async (data) => {
       (${placeholders})
     `;
 
-    const [result] = await db.query(sql, values);
+    const [result] =
+      await db.query(
+        sql,
+        values
+      );
 
     return result.insertId;
 
   } catch (error) {
 
-    console.error("Create User Model Error:", error);
-    throw error;
+    console.error(
+      "Create User Model Error:",
+      error
+    );
 
+    throw error;
   }
 };
 

@@ -51,6 +51,13 @@ exports.register = async (req, res) => {
       }
 
       body.doctor_id = req.user.id;
+
+      delete body.registration_id;
+    }
+
+    if (body.role_id === 1) {
+      delete body.registration_id;
+      delete body.doctor_id;
     }
 
     const error = registerValidation(body);
@@ -62,18 +69,24 @@ exports.register = async (req, res) => {
       });
     }
 
-    const result = await authService.registerUserOrAssistant(body);
+    const result =
+      await authService.registerUserOrAssistant(body);
 
     return res.status(result.statusCode).json({
       success: result.statusCode < 400,
       message: result.body.message,
       data: {
-        user_id: result.body.user_id || null,
+        user_id:
+          result.body.user_id || null,
       },
     });
 
   } catch (error) {
-    console.error("Register Error:", error);
+
+    console.error(
+      "Register Error:",
+      error
+    );
 
     return res.status(500).json({
       success: false,
