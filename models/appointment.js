@@ -1878,7 +1878,6 @@ exports.trackAppointment = async (userId) => {
     FROM appointments a
     WHERE a.patient_id = ?
       AND a.slot_date = CURDATE()
-      AND a.is_deleted = 0
       AND a.status IN ('PENDING', 'IN_PROGRESS')
     ORDER BY a.token_number ASC
   `;
@@ -1907,7 +1906,6 @@ exports.trackAppointment = async (userId) => {
     FROM appointments
     WHERE doctor_id IN (${doctorIds.map(() => "?").join(",")})
       AND slot_date = CURDATE()
-      AND is_deleted = 0
       AND status = 'IN_PROGRESS'
     GROUP BY doctor_id
   `;

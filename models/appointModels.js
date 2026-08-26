@@ -21,7 +21,6 @@ exports.getByAppointmentIdAndCode = async ({
     WHERE a.id = ?
       AND a.code = ?
       AND a.doctor_id = ?
-      AND a.is_deleted = 0
     `,
     [
       appointmentId,
