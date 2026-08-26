@@ -165,8 +165,6 @@ exports.getAppointmentsBySchedule = async (
     [scheduleId]
   );
 
-  console.log("Appointments:", rows);
-
   return rows;
 };
 
@@ -206,8 +204,6 @@ exports.getAppointmentBySlot = async (
       startTime
     ]
   );
-
-  console.log("Appointment By Slot:", rows);
 
   return rows[0] || null;
 };
