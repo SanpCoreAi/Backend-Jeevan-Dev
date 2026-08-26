@@ -663,106 +663,137 @@ exports.findAllWithRegistration = async ({
 };
 
 exports.findAllWithUsers = async () => {
-  const sql = `
-    SELECT
-      d.id AS doctor_id,
-      d.user_id,
-      d.username,
-      d.specialization,
-      d.qualification,
-      d.experience,
-      d.consultation_fee,
-      d.medical_license_no,
-      d.bio,
-      d.age,
-      d.gender,
-      d.language,
-      d.availability,
-      d.hospital_detail,
-      d.accept_emergency_patients,
-      d.qr_code,
+  try {
+    const sql = `
+      SELECT
 
-      u.full_name AS user_full_name,
-      u.email AS user_email,
-      u.phone_number AS user_phone_number,
-      u.status,
+        -- users
+        u.registration_id,
 
-      COALESCE(
-        (
-          SELECT JSON_ARRAYAGG(
-            JSON_OBJECT(
-              'id', ui.id,
-              'fileKey', ui.file_key,
-              'folder', ui.folder_name,
-              'createdAt', ui.created_at
+        -- doctor_registrations
+        dr.full_name,
+        dr.gender,
+        dr.age,
+        dr.email,
+        dr.mobile,
+        dr.medical_registration_number,
+        dr.medical_council,
+        dr.qualification,
+        dr.specialization,
+        dr.onboarding_status,
+        dr.selfie,
+
+        -- doctors
+        d.id AS doctor_id,
+        d.user_id,
+        d.experience,
+        d.language,
+        d.consultation_fee,
+        d.bio,
+        d.availability,
+        d.hospital_detail,
+        d.qr_url,
+        d.accept_emergency_patients,
+
+        -- doctor images
+        COALESCE(
+          (
+            SELECT JSON_ARRAYAGG(
+              JSON_OBJECT(
+                'id', ui.id,
+                'fileKey', ui.file_key,
+                'folder', ui.folder_name,
+                'createdAt', ui.created_at
+              )
             )
-          )
-          FROM user_images ui
-          WHERE ui.user_id = d.user_id
-        ),
-        JSON_ARRAY()
-      ) AS images,
+            FROM user_images ui
+            WHERE ui.user_id = d.user_id
+          ),
+          JSON_ARRAY()
+        ) AS images,
 
-      COALESCE(
+        -- average rating
+        COALESCE(
+          (
+            SELECT ROUND(
+              AVG(f.rating),
+              1
+            )
+            FROM feedbacks f
+            WHERE f.doctor_id = d.user_id
+          ),
+          0
+        ) AS avg_rating,
+
+        -- total feedbacks
         (
-          SELECT ROUND(AVG(f.rating), 1)
+          SELECT COUNT(*)
           FROM feedbacks f
           WHERE f.doctor_id = d.user_id
-        ),
-        0
-      ) AS avg_rating,
+        ) AS total_feedbacks,
 
-      (
-        SELECT COUNT(*)
-        FROM feedbacks f
-        WHERE f.doctor_id = d.user_id
-      ) AS total_feedbacks,
-
-      (
-        SELECT COUNT(f.rating)
-        FROM feedbacks f
-        WHERE f.doctor_id = d.user_id
-      ) AS total_ratings,
-
-      COALESCE(
+        -- total ratings
         (
-          SELECT SUM(
-            CASE
-              WHEN f.rating > 3 THEN 1
-              ELSE 0
-            END
-          )
+          SELECT COUNT(f.rating)
           FROM feedbacks f
           WHERE f.doctor_id = d.user_id
-        ),
-        0
-      ) AS positive_feedbacks,
+        ) AS total_ratings,
 
-      COALESCE(
-        (
-          SELECT SUM(
-            CASE
-              WHEN f.rating <= 3 THEN 1
-              ELSE 0
-            END
-          )
-          FROM feedbacks f
-          WHERE f.doctor_id = d.user_id
-        ),
-        0
-      ) AS negative_feedbacks
+        -- positive feedbacks
+        COALESCE(
+          (
+            SELECT SUM(
+              CASE
+                WHEN f.rating > 3
+                THEN 1
+                ELSE 0
+              END
+            )
+            FROM feedbacks f
+            WHERE f.doctor_id = d.user_id
+          ),
+          0
+        ) AS positive_feedbacks,
 
-    FROM doctors d
+        -- negative feedbacks
+        COALESCE(
+          (
+            SELECT SUM(
+              CASE
+                WHEN f.rating <= 3
+                THEN 1
+                ELSE 0
+              END
+            )
+            FROM feedbacks f
+            WHERE f.doctor_id = d.user_id
+          ),
+          0
+        ) AS negative_feedbacks
 
-    INNER JOIN users u
-      ON u.id = d.user_id
+      FROM doctors d
 
-    ORDER BY d.id DESC
-  `;
+      INNER JOIN users u
+        ON u.id = d.user_id
 
-  const [rows] = await db.execute(sql);
+      LEFT JOIN doctor_registrations dr
+        ON dr.id = u.registration_id
 
-  return rows;
+      ORDER BY d.id DESC
+    `;
+
+    const [rows] = await db.execute(sql);
+
+    return rows;
+
+  } catch (error) {
+    console.error(
+      "FIND ALL DOCTORS MODEL ERROR:",
+      error
+    );
+
+    throw error;
+  }
 };
 
 exports.findUserByName = async (name) => {
