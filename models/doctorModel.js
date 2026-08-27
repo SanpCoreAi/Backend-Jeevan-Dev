@@ -666,24 +666,19 @@ exports.findAllWithUsers = async () => {
   try {
     const sql = `
       SELECT
-
-        -- users
         u.registration_id,
 
-        -- doctor_registrations
-        dr.full_name,
+        dr.full_name AS user_full_name,
         dr.gender,
         dr.age,
-        dr.email,
-        dr.mobile,
-        dr.medical_registration_number,
+        dr.email AS user_email,
+        dr.mobile AS user_phone_number,
         dr.medical_council,
         dr.qualification,
         dr.specialization,
         dr.onboarding_status,
         dr.selfie,
 
-        -- doctors
         d.id AS doctor_id,
         d.user_id,
         d.experience,
@@ -695,7 +690,6 @@ exports.findAllWithUsers = async () => {
         d.qr_url,
         d.accept_emergency_patients,
 
-        -- doctor images
         COALESCE(
           (
             SELECT JSON_ARRAYAGG(
@@ -712,7 +706,6 @@ exports.findAllWithUsers = async () => {
           JSON_ARRAY()
         ) AS images,
 
-        -- average rating
         COALESCE(
           (
             SELECT ROUND(
@@ -725,27 +718,23 @@ exports.findAllWithUsers = async () => {
           0
         ) AS avg_rating,
 
-        -- total feedbacks
         (
           SELECT COUNT(*)
           FROM feedbacks f
           WHERE f.doctor_id = d.user_id
         ) AS total_feedbacks,
 
-        -- total ratings
         (
           SELECT COUNT(f.rating)
           FROM feedbacks f
           WHERE f.doctor_id = d.user_id
         ) AS total_ratings,
 
-        -- positive feedbacks
         COALESCE(
           (
             SELECT SUM(
               CASE
-                WHEN f.rating > 3
-                THEN 1
+                WHEN f.rating > 3 THEN 1
                 ELSE 0
               END
             )
@@ -760,8 +749,128 @@ exports.findAllWithUsers = async () => {
           (
             SELECT SUM(
               CASE
-                WHEN f.rating <= 3
-                THEN 1
+                WHEN f.rating <= 3 THEN 1
+                ELSE 0
+              END
+            )
+            FROM feedbacks f
+            WHERE f.doctor_id = d.user_id
+          ),
+          0
+        ) AS negative_feedbacks
+
+      FROM doctors d
+
+      INNER JOIN users u
+        ON u.id = d.user_id
+
+      LEFT JOIN doctor_registrations dr
+        ON dr.id = u.registration_id
+
+      ORDER BY d.id DESC
+    `;
+
+    const [rows] = await db.execute(sql);
+
+    return rows;
+
+  } catch (error) {
+    console.error(
+      "FIND ALL DOCTORS MODEL ERROR:",
+      error
+    );
+
+    throw error;
+  }
+};
+
+exports.findAllWithUser = async () => {
+  try {
+    const sql = `
+      SELECT
+        u.registration_id,
+
+    dr.full_name,
+    dr.gender,
+    dr.age,
+    dr.email,
+    dr.mobile,
+    dr.medical_council,
+    dr.qualification,
+    dr.specialization,
+    dr.onboarding_status,
+    dr.selfie,
+
+    d.id AS doctor_id,
+    d.user_id,
+    d.experience,
+    d.language,
+    d.consultation_fee,
+    d.bio,
+    d.availability,
+    d.hospital_detail,
+    d.qr_url,
+    d.accept_emergency_patients,
+
+        COALESCE(
+          (
+            SELECT JSON_ARRAYAGG(
+              JSON_OBJECT(
+                'id', ui.id,
+                'fileKey', ui.file_key,
+                'folder', ui.folder_name,
+                'createdAt', ui.created_at
+              )
+            )
+            FROM user_images ui
+            WHERE ui.user_id = d.user_id
+          ),
+          JSON_ARRAY()
+        ) AS images,
+
+        COALESCE(
+          (
+            SELECT ROUND(
+              AVG(f.rating),
+              1
+            )
+            FROM feedbacks f
+            WHERE f.doctor_id = d.user_id
+          ),
+          0
+        ) AS avg_rating,
+
+        (
+          SELECT COUNT(*)
+          FROM feedbacks f
+          WHERE f.doctor_id = d.user_id
+        ) AS total_feedbacks,
+
+        (
+          SELECT COUNT(f.rating)
+          FROM feedbacks f
+          WHERE f.doctor_id = d.user_id
+        ) AS total_ratings,
+
+        COALESCE(
+          (
+            SELECT SUM(
+              CASE
+                WHEN f.rating > 3 THEN 1
+                ELSE 0
+              END
+            )
+            FROM feedbacks f
+            WHERE f.doctor_id = d.user_id
+          ),
+          0
+        ) AS positive_feedbacks,
+
+        COALESCE(
+          (
+            SELECT SUM(
+              CASE
+                WHEN f.rating <= 3 THEN 1
                 ELSE 0
               END
             )

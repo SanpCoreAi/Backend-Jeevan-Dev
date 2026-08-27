@@ -2274,18 +2274,18 @@ exports.cancelAppointment = async (
 
 exports.trackAppointment = async (userId) => {
   try {
-
     const result =
       await Appointment.trackAppointment(userId);
 
-    if (!result.appointments || result.appointments.length === 0) {
+    if (
+      !result.appointments ||
+      result.appointments.length === 0
+    ) {
       return {
         success: true,
         statusCode: 200,
         body: {
-          message:
-            "No active appointment found for today.",
-
+          message: "No active appointment found for today.",
           data: []
         }
       };
@@ -2297,13 +2297,11 @@ exports.trackAppointment = async (userId) => {
       body: {
         message:
           "Appointment tracking fetched successfully.",
-
         data: result.appointments
       }
     };
 
   } catch (error) {
-
     console.error(
       "Track Appointment Service Error:",
       error

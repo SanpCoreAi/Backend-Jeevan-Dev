@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-const { findAllWithUsers } = require("../../models/doctorModel");
+const { findAllWithUser } = require("../../models/doctorModel");
 const safeParse = require("../../utils/safeJson");
 
 const S3_BASE_URL =
@@ -57,11 +57,9 @@ exports.searchDoctorService = async (filters = {}) => {
         ? "asc"
         : "desc";
 
-    // Fetch doctors
     let doctors =
-      await findAllWithUsers();
-
-    // Map data according to tables
+      await findAllWithUser();
+      
     doctors = doctors.map((doctor) => {
 
       const language =
@@ -106,9 +104,6 @@ exports.searchDoctorService = async (filters = {}) => {
         phoneNumber:
           doctor.mobile || "",
 
-        medicalRegistrationNumber:
-          doctor.medical_registration_number || "",
-
         medicalCouncil:
           doctor.medical_council || "",
 
@@ -124,7 +119,6 @@ exports.searchDoctorService = async (filters = {}) => {
         selfie:
           doctor.selfie || null,
 
-        // doctors
         experience:
           Number(doctor.experience) || 0,
 
@@ -183,7 +177,6 @@ exports.searchDoctorService = async (filters = {}) => {
 
     });
 
-    // Search
     if (search.trim()) {
 
       const words =

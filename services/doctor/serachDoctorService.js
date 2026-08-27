@@ -33,18 +33,26 @@ async function searchDoctorService(filters) {
 
   page = Math.max(1, Number(page));
   limit = Math.min(50, Math.max(1, Number(limit)));
+
   const offset = (page - 1) * limit;
 
   let doctors = await findAllWithUsers();
 
   doctors = doctors.map((d) => ({
     user_id: d.user_id,
+    registration_id: d.registration_id,
+
     full_name: d.user_full_name,
+    gender: d.gender,
+    age: d.age,
     email: d.user_email,
     phone_number: d.user_phone_number,
-    username: d.username,
-    specialization: d.specialization,
+
+    medical_council: d.medical_council,
     qualification: d.qualification,
+    specialization: d.specialization,
+    onboarding_status: d.onboarding_status,
+
     experience: Number(d.experience) || 0,
     consultation_fee: Number(d.consultation_fee) || 0,
     medical_license_no: d.medical_license_no,
@@ -62,9 +70,14 @@ async function searchDoctorService(filters) {
     hospitalDetail: parseJSON(d.hospital_detail),
     images: parseJSON(d.images),
 
-    avg_rating: d.avg_rating,
+    qr_url: d.qr_url,
+    selfie: d.selfie,
+
+    avg_rating: Number(d.avg_rating || 0),
     total_feedbacks: Number(d.total_feedbacks ?? 0),
     total_ratings: Number(d.total_ratings ?? 0),
+    positive_feedbacks: Number(d.positive_feedbacks ?? 0),
+    negative_feedbacks: Number(d.negative_feedbacks ?? 0),
   }));
 
   doctors = doctors.filter((d) => {
@@ -81,6 +94,8 @@ async function searchDoctorService(filters) {
     const specialization = normalize(d.specialization);
     const qualification = normalize(d.qualification);
     const medicalLicense = normalize(d.medical_license_no);
+    const medicalCouncil = normalize(d.medical_council);
+
     const city = normalize(d.city);
     const state = normalize(d.state);
     const district = normalize(d.district);
@@ -89,34 +104,33 @@ async function searchDoctorService(filters) {
     const acceptEmergencyPatients =
       normalize(d.accept_emergency_patients);
 
-    // Emergency search
     if (isEmergencySearch) {
       return acceptEmergencyPatients === "yes";
     }
 
     const hospitalNames = (d.hospitalDetail || [])
-      .map(h => normalize(h.hospitalName));
+      .map((h) => normalize(h.hospitalName));
 
     const streetNames = (d.hospitalDetail || [])
-      .map(h => normalize(h.streetName));
+      .map((h) => normalize(h.streetName));
 
     const areaLocalities = (d.hospitalDetail || [])
-      .map(h => normalize(h.areaLocality));
+      .map((h) => normalize(h.areaLocality));
 
     const hospitalCities = (d.hospitalDetail || [])
-      .map(h => normalize(h.city));
+      .map((h) => normalize(h.city));
 
     const hospitalStates = (d.hospitalDetail || [])
-      .map(h => normalize(h.state));
+      .map((h) => normalize(h.state));
 
     const hospitalPinCodes = (d.hospitalDetail || [])
-      .map(h => normalize(h.pinCode));
+      .map((h) => normalize(h.pinCode));
 
     const hospitalDistricts = (d.hospitalDetail || [])
-      .map(h => normalize(h.district));
+      .map((h) => normalize(h.district));
 
     const hospitalLandmarks = (d.hospitalDetail || [])
-      .map(h => normalize(h.landmark));
+      .map((h) => normalize(h.landmark));
 
     const languages = (d.language || [])
       .map((l) => normalize(l));
@@ -131,6 +145,7 @@ async function searchDoctorService(filters) {
           specialization.includes(word) ||
           qualification.includes(word) ||
           medicalLicense.includes(word) ||
+          medicalCouncil.includes(word) ||
           acceptEmergencyPatients.includes(word) ||
 
           city.includes(word) ||
@@ -138,20 +153,20 @@ async function searchDoctorService(filters) {
           district.includes(word) ||
           landmark.includes(word) ||
 
-          hospitalNames.some(h => h.includes(word)) ||
-          streetNames.some(s => s.includes(word)) ||
-          areaLocalities.some(a => a.includes(word)) ||
-          hospitalCities.some(c => c.includes(word)) ||
-          hospitalStates.some(s => s.includes(word)) ||
-          hospitalDistricts.some(d => d.includes(word)) ||
-          hospitalLandmarks.some(l => l.includes(word)) ||
+          hospitalNames.some((h) => h.includes(word)) ||
+          streetNames.some((s) => s.includes(word)) ||
+          areaLocalities.some((a) => a.includes(word)) ||
+          hospitalCities.some((c) => c.includes(word)) ||
+          hospitalStates.some((s) => s.includes(word)) ||
+          hospitalDistricts.some((d) => d.includes(word)) ||
+          hospitalLandmarks.some((l) => l.includes(word)) ||
 
           languages.some((l) => l.includes(word))
         );
       }
 
       return (
-        hospitalPinCodes.some(p => p.includes(word)) ||
+        hospitalPinCodes.some((p) => p.includes(word)) ||
         String(d.experience) === word ||
         String(d.consultation_fee) === word
       );
@@ -159,8 +174,12 @@ async function searchDoctorService(filters) {
   });
 
   const seen = new Set();
+
   doctors = doctors.filter((d) => {
-    if (seen.has(d.email)) return false;
+    if (seen.has(d.email)) {
+      return false;
+    }
+
     seen.add(d.email);
     return true;
   });
@@ -179,54 +198,94 @@ async function searchDoctorService(filters) {
     }
 
     return order === "asc"
-      ? normalize(a.full_name).localeCompare(normalize(b.full_name))
-      : normalize(b.full_name).localeCompare(normalize(a.full_name));
+      ? normalize(a.full_name).localeCompare(
+          normalize(b.full_name)
+        )
+      : normalize(b.full_name).localeCompare(
+          normalize(a.full_name)
+        );
   });
 
-  const paginated = doctors.slice(offset, offset + limit);
+  const paginated = doctors.slice(
+    offset,
+    offset + limit
+  );
 
   return {
     success: true,
+
     statusCode: 200,
+
     message: doctors.length
       ? "Doctors fetched successfully."
       : "No doctors found.",
 
     total: doctors.length,
+
     page,
+
     limit,
 
     data: paginated.map((d) => ({
       userId: d.user_id,
+      registrationId: d.registration_id,
 
       fullName: d.full_name,
+      gender: d.gender,
+      age: d.age,
+
       email: d.email,
       phoneNumber: d.phone_number,
 
-      username: d.username,
-      specialization: d.specialization,
+      medicalCouncil: d.medical_council,
       qualification: d.qualification,
+      specialization: d.specialization,
+
+      onboardingStatus: d.onboarding_status,
+
       medicalLicenseNo: d.medical_license_no,
+
       acceptEmergencyPatients:
         d.accept_emergency_patients,
 
       experience: d.experience,
+
       consultationFee: d.consultation_fee,
+
       bio: d.bio,
 
       language: d.language,
+
       availability: d.availability,
+
       hospitalDetail: d.hospitalDetail,
 
-      avgRating: Number(d.avg_rating || 0).toFixed(1),
-      totalFeedbacks: Number(d.total_feedbacks || 0),
-      totalRatings: Number(d.total_ratings || 0),
-      positiveFeedbacks: Number(d.positive_feedbacks || 0),
-      negativeFeedbacks: Number(d.negative_feedbacks || 0),
+      qrUrl: d.qr_url,
+
+      selfie: d.selfie,
+
+      avgRating: Number(
+        d.avg_rating || 0
+      ).toFixed(1),
+
+      totalFeedbacks:
+        Number(d.total_feedbacks || 0),
+
+      totalRatings:
+        Number(d.total_ratings || 0),
+
+      positiveFeedbacks:
+        Number(d.positive_feedbacks || 0),
+
+      negativeFeedbacks:
+        Number(d.negative_feedbacks || 0),
 
       profileImage:
-        d.images?.length && d.images[0].fileKey
-          ? `${BASE_FILE_URL}/${encodeURI(d.images[0].fileKey)}`
+        d.images?.length &&
+        d.images[0].fileKey
+          ? `${BASE_FILE_URL}/${encodeURI(
+              d.images[0].fileKey
+            )}`
           : null,
     })),
   };
