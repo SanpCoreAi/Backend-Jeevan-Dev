@@ -65,40 +65,29 @@ exports.bulkInsert = async (
 
 
 exports.findDoctorByUserId = async (
-
-    connection = db,
-
-    doctorId
-
+  connection = db,
+  doctorId
 ) => {
 
+  const sql = `
+    SELECT
+      id,
+      user_id,
+      qr_code,
+      hospital_detail
+    FROM doctors
+    WHERE user_id = ?
+    LIMIT 1
+  `;
 
-    const sql = `
-        SELECT
-            id,
-            user_id,
-            qr_code
-        FROM doctors
-        WHERE user_id = ?
-        LIMIT 1
-    `;
+  const [rows] = await connection.execute(
+    sql,
+    [doctorId]
+  );
 
-
-
-    const [rows] = await connection.execute(
-
-        sql,
-
-        [doctorId]
-
-    );
-
-
-
-    return rows.length
-        ? rows[0]
-        : null;
-
+  return rows.length
+    ? rows[0]
+    : null;
 };
 
 exports.findQrCode = async (
@@ -157,28 +146,36 @@ exports.findQrCode = async (
 };
 
 exports.assignQrToDoctor = async (
-    connection,
-    doctorUserId,
-    qrCode
+  connection,
+  doctorUserId,
+  qrCode,
+  hospitalDetail
 ) => {
 
-    const sql = `
-        UPDATE qr_codes
-        SET
-            status = 'ASSIGNED',
-            doctor_user_id = ?,
-            assigned_at = CURRENT_TIMESTAMP,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE qr_code = ?
-        AND status = 'AVAILABLE'
-    `;
+  const sql = `
+    UPDATE qr_codes
+    SET
+      status = 'ASSIGNED',
+      doctor_user_id = ?,
+      hospital_detail = ?,
+      assigned_at = CURRENT_TIMESTAMP,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE qr_code = ?
+    AND status = 'AVAILABLE'
+  `;
 
-    const [result] = await connection.execute(sql, [
-        doctorUserId,
-        qrCode
-    ]);
+  const [result] = await connection.execute(
+    sql,
+    [
+      doctorUserId,
+      typeof hospitalDetail === "string"
+        ? hospitalDetail
+        : JSON.stringify(hospitalDetail),
+      qrCode
+    ]
+  );
 
-    return result;
+  return result;
 };
 
 
@@ -408,6 +405,7 @@ exports.getDoctorQrCodes = async (
             qr_image,
             status,
             doctor_user_id AS user_id,
+            hospital_detail,
             assigned_at,
             created_at
 
