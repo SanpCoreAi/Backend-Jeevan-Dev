@@ -1865,6 +1865,7 @@ exports.checkTokenExists = async (
 
 exports.trackAppointment = async (userId) => {
   try {
+
     const userAppointmentSql = `
       SELECT
         a.id AS appointment_id,
@@ -1879,14 +1880,21 @@ exports.trackAppointment = async (userId) => {
       FROM appointments a
       WHERE a.patient_id = ?
         AND a.slot_date = CURDATE()
-        AND a.status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED')
-      ORDER BY a.token_number ASC
+        AND a.status IN (
+          'PENDING',
+          'IN_PROGRESS',
+          'COMPLETED'
+        )
+      ORDER BY
+        a.doctor_id ASC,
+        a.start_time ASC
     `;
 
-    const [userAppointments] = await db.execute(
-      userAppointmentSql,
-      [userId]
-    );
+    const [userAppointments] =
+      await db.execute(
+        userAppointmentSql,
+        [userId]
+      );
 
     if (userAppointments.length === 0) {
       return {
@@ -1897,7 +1905,8 @@ exports.trackAppointment = async (userId) => {
     const doctorIds = [
       ...new Set(
         userAppointments.map(
-          appointment => appointment.doctor_id
+          appointment =>
+            Number(appointment.doctor_id)
         )
       )
     ];
@@ -1907,229 +1916,477 @@ exports.trackAppointment = async (userId) => {
         doctor_id,
         MAX(token_number) AS current_serving
       FROM appointments
-      WHERE doctor_id IN (${doctorIds
-        .map(() => "?")
-        .join(",")})
-        AND slot_date = CURDATE()
-        AND status = 'IN_PROGRESS'
+      WHERE doctor_id IN (
+        ${doctorIds
+          .map(() => "?")
+          .join(",")}
+      )
+      AND slot_date = CURDATE()
+      AND status = 'IN_PROGRESS'
       GROUP BY doctor_id
     `;
 
-    const [currentRows] = await db.execute(
-      currentServingSql,
-      doctorIds
-    );
+    const [currentRows] =
+      await db.execute(
+        currentServingSql,
+        doctorIds
+      );
 
     const currentServingMap = {};
 
     currentRows.forEach(row => {
-      currentServingMap[row.doctor_id] =
+
+      currentServingMap[
+        Number(row.doctor_id)
+      ] =
         Number(row.current_serving) || 0;
+
     });
 
-    const averageTimeMap = {};
+    const timeToMinutes = (time) => {
 
-    for (const doctorId of doctorIds) {
-
-      const doctorAppointments =
-        userAppointments.filter(
-          appointment =>
-            appointment.doctor_id === doctorId
-        );
-
-      if (doctorAppointments.length === 0) {
-        averageTimeMap[doctorId] = 0;
-        continue;
+      if (!time) {
+        return null;
       }
 
-      const firstAppointment =
-        doctorAppointments[0];
-
-      const startTime =
-        firstAppointment.start_time;
-
-      const endTime =
-        firstAppointment.end_time;
-
-      if (!startTime || !endTime) {
-        averageTimeMap[doctorId] = 0;
-        continue;
-      }
-
-      const start =
-        String(startTime)
+      const parts =
+        String(time)
           .split(":")
-          .slice(0, 2)
           .map(Number);
 
-      const end =
-        String(endTime)
-          .split(":")
-          .slice(0, 2)
-          .map(Number);
-
-      const startMinutes =
-        start[0] * 60 + start[1];
-
-      const endMinutes =
-        end[0] * 60 + end[1];
-
-      let duration =
-        endMinutes - startMinutes;
-
-      if (duration < 0) {
-        duration += 24 * 60;
+      if (
+        parts.length < 2 ||
+        Number.isNaN(parts[0]) ||
+        Number.isNaN(parts[1])
+      ) {
+        return null;
       }
 
-      averageTimeMap[doctorId] =
-        Math.ceil(
-          duration / doctorAppointments.length
-        );
-    }
+      return (
+        parts[0] * 60 +
+        parts[1]
+      );
+    };
 
-    const now = new Date();
+    const formatWaitingTime = (minutes) => {
 
-    const appointments =
-      userAppointments.map((appointment) => {
-
-        const currentServing =
-          currentServingMap[
-            appointment.doctor_id
-          ] || 0;
-
-        const appointmentToken =
-          Number(appointment.token_number);
-
-        if (appointment.status === "COMPLETED") {
-          return {
-            appointment_id:
-              appointment.appointment_id,
-
-            doctor_id:
-              appointment.doctor_id,
-
-            hospital_name:
-              appointment.hospital_name,
-
-            slot_date:
-              appointment.slot_date,
-
-            start_time:
-              appointment.start_time,
-
-            end_time:
-              appointment.end_time,
-
-            my_token:
-              appointmentToken,
-
-            currently_serving:
-              currentServing,
-
-            waiting_tokens: 0,
-
-            approx_waiting_minutes: 0,
-
-            approx_waiting_time: "0 min",
-
-            status: "COMPLETED"
-          };
-        }
-
-        if (appointment.status === "IN_PROGRESS") {
-          return {
-            appointment_id:
-              appointment.appointment_id,
-
-            doctor_id:
-              appointment.doctor_id,
-
-            hospital_name:
-              appointment.hospital_name,
-
-            slot_date:
-              appointment.slot_date,
-
-            start_time:
-              appointment.start_time,
-
-            end_time:
-              appointment.end_time,
-
-            my_token:
-              appointmentToken,
-
-            currently_serving:
-              currentServing,
-
-            waiting_tokens: 0,
-
-            approx_waiting_minutes: 0,
-
-            approx_waiting_time: "0 min",
-
-            status: "IN_PROGRESS"
-          };
-        }
-
-        const appointmentDate =
-          new Date(appointment.slot_date);
-
-        const timeParts =
-          String(appointment.start_time)
-            .split(":")
-            .map(Number);
-
-        appointmentDate.setHours(
-          timeParts[0],
-          timeParts[1],
-          timeParts[2] || 0,
+      minutes =
+        Math.max(
+          Math.ceil(Number(minutes) || 0),
           0
         );
 
-        if (now < appointmentDate) {
+      if (minutes >= 60) {
 
-          const difference =
-            appointmentDate.getTime() -
-            now.getTime();
+        const hours =
+          Math.floor(minutes / 60);
 
-          const remainingMinutes =
-            Math.max(
-              Math.ceil(
-                difference / (1000 * 60)
-              ),
-              0
+        const remainingMinutes =
+          minutes % 60;
+
+        if (remainingMinutes > 0) {
+          return `${hours}h ${remainingMinutes}min`;
+        }
+
+        return `${hours}h`;
+      }
+
+      return `${minutes} min`;
+    };
+
+    const now = new Date();
+
+    const currentHours =
+      now.getHours();
+
+    const currentMinutes =
+      now.getMinutes();
+
+    const currentSeconds =
+      now.getSeconds();
+
+    const currentTimeMinutes =
+      currentHours * 60 +
+      currentMinutes +
+      currentSeconds / 60;
+
+    const appointments =
+      userAppointments.map(
+        appointment => {
+
+          const doctorId =
+            Number(appointment.doctor_id);
+
+          const myToken =
+            Number(appointment.token_number);
+
+          const currentServing =
+            currentServingMap[doctorId] || 0;
+
+          const startMinutes =
+            timeToMinutes(
+              appointment.start_time
             );
 
-          let waitingTime = "0 min";
+          const endMinutes =
+            timeToMinutes(
+              appointment.end_time
+            );
 
-          if (remainingMinutes >= 60) {
+          if (
+            appointment.status ===
+            "COMPLETED"
+          ) {
 
-            const hours =
-              Math.floor(
-                remainingMinutes / 60
+            return {
+
+              appointment_id:
+                appointment.appointment_id,
+
+              doctor_id:
+                doctorId,
+
+              hospital_name:
+                appointment.hospital_name,
+
+              slot_date:
+                appointment.slot_date,
+
+              start_time:
+                appointment.start_time,
+
+              end_time:
+                appointment.end_time,
+
+              my_token:
+                myToken,
+
+              currently_serving:
+                currentServing,
+
+              waiting_tokens: 0,
+
+              approx_waiting_minutes: 0,
+
+              approx_waiting_time:
+                "0 min",
+
+              status:
+                "COMPLETED",
+
+              message:
+                "Your appointment has been completed."
+            };
+          }
+
+          if (
+            appointment.status ===
+            "IN_PROGRESS"
+          ) {
+
+            return {
+
+              appointment_id:
+                appointment.appointment_id,
+
+              doctor_id:
+                doctorId,
+
+              hospital_name:
+                appointment.hospital_name,
+
+              slot_date:
+                appointment.slot_date,
+
+              start_time:
+                appointment.start_time,
+
+              end_time:
+                appointment.end_time,
+
+              my_token:
+                myToken,
+
+              currently_serving:
+                currentServing,
+
+              waiting_tokens: 0,
+
+              approx_waiting_minutes: 0,
+
+              approx_waiting_time:
+                "0 min",
+
+              status:
+                "IN_PROGRESS",
+
+              message:
+                "Your consultation is in progress."
+            };
+          }
+
+          if (
+            startMinutes !== null &&
+            currentTimeMinutes <
+              startMinutes
+          ) {
+
+            const waitingMinutes =
+              startMinutes -
+              currentTimeMinutes;
+
+            return {
+
+              appointment_id:
+                appointment.appointment_id,
+
+              doctor_id:
+                doctorId,
+
+              hospital_name:
+                appointment.hospital_name,
+
+              slot_date:
+                appointment.slot_date,
+
+              start_time:
+                appointment.start_time,
+
+              end_time:
+                appointment.end_time,
+
+              my_token:
+                myToken,
+
+              currently_serving:
+                currentServing,
+
+              waiting_tokens:
+                null,
+
+              approx_waiting_minutes:
+                Math.ceil(
+                  waitingMinutes
+                ),
+
+              approx_waiting_time:
+                formatWaitingTime(
+                  waitingMinutes
+                ),
+
+              status:
+                "PENDING",
+
+              message:
+                "Your appointment is scheduled."
+            };
+          }
+
+          if (
+            currentServing <
+            myToken
+          ) {
+
+            const doctorAppointments =
+              userAppointments
+                .filter(
+                  item =>
+                    Number(
+                      item.doctor_id
+                    ) === doctorId
+                )
+                .filter(
+                  item =>
+                    Number(
+                      item.token_number
+                    ) > currentServing
+                )
+                .filter(
+                  item =>
+                    Number(
+                      item.token_number
+                    ) <= myToken
+                )
+                .sort(
+                  (a, b) =>
+                    Number(
+                      a.token_number
+                    ) -
+                    Number(
+                      b.token_number
+                    )
+                );
+
+
+            let waitingMinutes = 0;
+
+            for (
+              const item
+              of doctorAppointments
+            ) {
+
+              const itemToken =
+                Number(
+                  item.token_number
+                );
+
+              if (
+                itemToken >= myToken
+              ) {
+                break;
+              }
+
+              const itemStart =
+                timeToMinutes(
+                  item.start_time
+                );
+
+              const itemEnd =
+                timeToMinutes(
+                  item.end_time
+                );
+
+              if (
+                itemStart === null ||
+                itemEnd === null
+              ) {
+                continue;
+              }
+
+              let duration =
+                itemEnd -
+                itemStart;
+
+              if (duration < 0) {
+                duration += 24 * 60;
+              }
+
+              waitingMinutes += duration;
+            }
+
+            if (
+              waitingMinutes === 0 &&
+              startMinutes !== null
+            ) {
+
+              waitingMinutes =
+                Math.max(
+                  startMinutes -
+                  currentTimeMinutes,
+                  0
+                );
+            }
+
+
+            const waitingTokens =
+              Math.max(
+                myToken -
+                currentServing -
+                1,
+                0
               );
 
-            const minutes =
-              remainingMinutes % 60;
 
-            waitingTime =
-              minutes > 0
-                ? `${hours}h ${minutes}min`
-                : `${hours}h`;
+            return {
 
-          } else {
+              appointment_id:
+                appointment.appointment_id,
 
-            waitingTime =
-              `${remainingMinutes} min`;
+              doctor_id:
+                doctorId,
+
+              hospital_name:
+                appointment.hospital_name,
+
+              slot_date:
+                appointment.slot_date,
+
+              start_time:
+                appointment.start_time,
+
+              end_time:
+                appointment.end_time,
+
+              my_token:
+                myToken,
+
+              currently_serving:
+                currentServing,
+
+              waiting_tokens:
+                waitingTokens,
+
+              approx_waiting_minutes:
+                Math.ceil(
+                  waitingMinutes
+                ),
+
+              approx_waiting_time:
+                formatWaitingTime(
+                  waitingMinutes
+                ),
+
+              status:
+                "PENDING",
+
+              message:
+                "Please wait. Your turn is coming."
+            };
+          }
+
+          if (
+            currentServing >=
+            myToken
+          ) {
+
+            return {
+
+              appointment_id:
+                appointment.appointment_id,
+
+              doctor_id:
+                doctorId,
+
+              hospital_name:
+                appointment.hospital_name,
+
+              slot_date:
+                appointment.slot_date,
+
+              start_time:
+                appointment.start_time,
+
+              end_time:
+                appointment.end_time,
+
+              my_token:
+                myToken,
+
+              currently_serving:
+                currentServing,
+
+              waiting_tokens: 0,
+
+              approx_waiting_minutes: 0,
+
+              approx_waiting_time:
+                "0 min",
+
+              status:
+                "PENDING",
+
+              message:
+                "You are late. Please contact the assistant or doctor."
+            };
           }
 
           return {
+
             appointment_id:
               appointment.appointment_id,
 
             doctor_id:
-              appointment.doctor_id,
+              doctorId,
 
             hospital_name:
               appointment.hospital_name,
@@ -2144,100 +2401,26 @@ exports.trackAppointment = async (userId) => {
               appointment.end_time,
 
             my_token:
-              appointmentToken,
+              myToken,
 
             currently_serving:
               currentServing,
 
-            waiting_tokens: null,
+            waiting_tokens: 0,
 
-            approx_waiting_minutes:
-              remainingMinutes,
+            approx_waiting_minutes: 0,
 
             approx_waiting_time:
-              waitingTime,
+              "0 min",
 
-            status: "PENDING"
+            status:
+              appointment.status,
+
+            message: null
           };
         }
+      );
 
-        const waitingTokens =
-          Math.max(
-            appointmentToken -
-            currentServing,
-            0
-          );
-
-        const averageTokenMinutes =
-          averageTimeMap[
-            appointment.doctor_id
-          ] || 0;
-
-        const waitingMinutes =
-          waitingTokens *
-          averageTokenMinutes;
-
-        let waitingTime = "0 min";
-
-        if (waitingMinutes >= 60) {
-
-          const hours =
-            Math.floor(
-              waitingMinutes / 60
-            );
-
-          const minutes =
-            waitingMinutes % 60;
-
-          waitingTime =
-            minutes > 0
-              ? `${hours}h ${minutes}min`
-              : `${hours}h`;
-
-        } else {
-
-          waitingTime =
-            `${waitingMinutes} min`;
-        }
-
-        return {
-          appointment_id:
-            appointment.appointment_id,
-
-          doctor_id:
-            appointment.doctor_id,
-
-          hospital_name:
-            appointment.hospital_name,
-
-          slot_date:
-            appointment.slot_date,
-
-          start_time:
-            appointment.start_time,
-
-          end_time:
-            appointment.end_time,
-
-          my_token:
-            appointmentToken,
-
-          currently_serving:
-            currentServing,
-
-          waiting_tokens:
-            waitingTokens,
-
-          approx_waiting_minutes:
-            waitingMinutes,
-
-          approx_waiting_time:
-            waitingTime,
-
-          status:
-            "PENDING"
-        };
-      });
 
     return {
       appointments

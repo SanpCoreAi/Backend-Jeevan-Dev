@@ -2274,6 +2274,7 @@ exports.cancelAppointment = async (
 
 exports.trackAppointment = async (userId) => {
   try {
+
     const result =
       await Appointment.trackAppointment(userId);
 
@@ -2302,6 +2303,7 @@ exports.trackAppointment = async (userId) => {
     };
 
   } catch (error) {
+
     console.error(
       "Track Appointment Service Error:",
       error
