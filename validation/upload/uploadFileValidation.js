@@ -4,18 +4,18 @@ const ALLOWED_FOLDERS = [
   "doctor-licenses",
   "doctor-profile",
   "user-profile",
-  "user-documents",
+  "documents",
   "assistant-profile",
   "assistant-documents",
-  "pan",
 ];
 
 const uploadFileQuerySchema = Joi.object({
   folder: Joi.string()
     .trim()
     .lowercase()
-    .pattern(/^[a-z0-9-]+$/)
-    .valid(...ALLOWED_FOLDERS)
+    .pattern(
+      /^(doctor-licenses|doctor-profile|user-profile|user-documents|assistant-profile|assistant-documents)\/[a-z0-9-]+$/
+    )
     .required()
     .messages({
       "string.empty": "Folder is required.",
@@ -23,10 +23,7 @@ const uploadFileQuerySchema = Joi.object({
       "any.required": "Folder is required.",
 
       "string.pattern.base":
-        "Folder can contain only lowercase letters, numbers and hyphens.",
-
-      "any.only":
-        `Folder must be one of: ${ALLOWED_FOLDERS.join(", ")}`,
+        "Folder must be in format: main-folder/sub-folder. Example: assistant-profile/subhas",
     }),
 });
 

@@ -42,7 +42,6 @@ const uploadDoctorFile = async ({
   file,
   folder,
 }) => {
-
   if (!userId) {
     return {
       success: false,
@@ -78,18 +77,15 @@ const uploadDoctorFile = async ({
   let fileKey = null;
 
   try {
-
-    const cleanFolder = folder.replace(
-      /^\/+|\/+$/g,
-      ""
-    );
+    const cleanFolder = folder
+      .trim()
+      .replace(/^\/+|\/+$/g, "");
 
     const extension = path
       .extname(file.originalname)
       .toLowerCase();
 
-    fileKey =
-      `${cleanFolder}/${uuidv4()}${extension}`;
+    fileKey = `${cleanFolder}/${uuidv4()}${extension}`;
 
     await s3.send(
       new PutObjectCommand({
@@ -101,14 +97,11 @@ const uploadDoctorFile = async ({
       })
     );
 
-    const savedFile = await DoctorFileModel.create({
+    await DoctorFileModel.create({
       doctorId: userId,
       fileKey,
       folderName: cleanFolder,
     });
-
-    const fileUrl =
-      `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${fileKey}`;
 
     return {
       success: true,
@@ -121,7 +114,6 @@ const uploadDoctorFile = async ({
     };
 
   } catch (error) {
-
     console.error(
       "Upload Doctor File Error:",
       error
@@ -131,8 +123,7 @@ const uploadDoctorFile = async ({
       try {
         await s3.send(
           new DeleteObjectCommand({
-            Bucket:
-              process.env.AWS_BUCKET_NAME,
+            Bucket: process.env.AWS_BUCKET_NAME,
             Key: fileKey,
           })
         );
@@ -151,6 +142,7 @@ const uploadDoctorFile = async ({
     };
   }
 };
+
 
 const getDoctorFiles = async (
   doctorId,
