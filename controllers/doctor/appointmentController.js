@@ -765,11 +765,9 @@ exports.cancelAppointment = async (req, res) => {
 
 exports.trackAppointment = async (req, res) => {
   try {
-
     const userId = req.user.id;
 
-    const result =
-      await appointmentService.trackAppointment(userId);
+    const result = await appointmentService.trackAppointment(userId);
 
     return res.status(result.statusCode).json({
       success: result.success,
@@ -778,11 +776,7 @@ exports.trackAppointment = async (req, res) => {
     });
 
   } catch (error) {
-
-    console.error(
-      "TRACK APPOINTMENT ERROR:",
-      error
-    );
+    console.error("TRACK APPOINTMENT ERROR:", error);
 
     return res.status(500).json({
       success: false,

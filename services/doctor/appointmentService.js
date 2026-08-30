@@ -149,7 +149,6 @@ exports.bookAppointment = async (
     const emailDate =
       dayjs(appointment_date).format("DD MMM YYYY");
 
-
     const totalAppointments =
       await Appointment.countTodayAppointments(
         patientId,
@@ -194,7 +193,6 @@ exports.bookAppointment = async (
     let slot = null;
 
     for (const s of schedules) {
-
       let days = s.active_days;
 
       if (typeof days === "string") {
@@ -254,19 +252,7 @@ exports.bookAppointment = async (
       }
     }
 
-    if (!schedule) {
-      await connection.rollback();
-
-      return {
-        success: false,
-        statusCode: 400,
-        message:
-          "Doctor not available for this hospital/date"
-      };
-    }
-
-
-    if (!slot) {
+    if (!schedule || !slot) {
       await connection.rollback();
 
       return {
@@ -274,6 +260,20 @@ exports.bookAppointment = async (
         statusCode: 409,
         message:
           `Token ${requestedToken} with start time ${start_time} is not available.`
+      };
+    }
+
+    if (
+      Number(slot.token_number) !==
+      requestedToken
+    ) {
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 409,
+        message:
+          `Token ${requestedToken} does not match the selected slot.`
       };
     }
 
@@ -297,21 +297,7 @@ exports.bookAppointment = async (
     }
 
     const tokenNumber =
-      Number(slot.token_number);
-
-    if (
-      !Number.isInteger(tokenNumber) ||
-      tokenNumber <= 0
-    ) {
-      await connection.rollback();
-
-      return {
-        success: false,
-        statusCode: 400,
-        message:
-          "Token number is not available for this slot."
-      };
-    }
+      requestedToken;
 
     const slotStartTime =
       slot.start_time;
@@ -322,11 +308,9 @@ exports.bookAppointment = async (
     let code;
 
     do {
-
       code = Math.floor(
         1000 + Math.random() * 9000
       );
-
     } while (
       await Appointment.checkCodeExists(
         doctorId,
@@ -378,7 +362,6 @@ exports.bookAppointment = async (
       booking_type === "someone_else" &&
       patient
     ) {
-
       await Appointment.insertOtherPatient(
         {
           appointment_id:
@@ -416,7 +399,6 @@ exports.bookAppointment = async (
       slotUpdated &&
       slotUpdated.affectedRows === 0
     ) {
-
       await connection.rollback();
 
       return {
@@ -428,9 +410,7 @@ exports.bookAppointment = async (
     }
 
     try {
-
       await notificationService.createNotification({
-
         userId:
           patientId,
 
@@ -449,9 +429,7 @@ exports.bookAppointment = async (
         createdBy:
           doctorId
       });
-
     } catch (notificationError) {
-
       console.error(
         "Notification Error:",
         notificationError
@@ -463,14 +441,12 @@ exports.bookAppointment = async (
     connection.release();
 
     try {
-
       const estimatedTime =
         getEstimatedTime(
           formatTime(slotStartTime)
         );
 
       await sendAppointmentEmail({
-
         to:
           patientEmail,
 
@@ -486,9 +462,7 @@ exports.bookAppointment = async (
         hospitalName:
           schedule.hospital_name
       });
-
     } catch (emailError) {
-
       console.error(
         "Appointment Email Error:",
         emailError
@@ -496,14 +470,12 @@ exports.bookAppointment = async (
     }
 
     return {
-
       success: true,
 
       message:
         "Appointment booked successfully",
 
       data: {
-
         appointmentId,
 
         code,
@@ -525,7 +497,6 @@ exports.bookAppointment = async (
     };
 
   } catch (error) {
-
     try {
       await connection.rollback();
     } catch (rollbackError) {
@@ -550,7 +521,6 @@ exports.bookAppointment = async (
     );
 
     return {
-
       success: false,
 
       statusCode: 500,
@@ -2274,14 +2244,9 @@ exports.cancelAppointment = async (
 
 exports.trackAppointment = async (userId) => {
   try {
+    const result = await Appointment.trackAppointment(userId);
 
-    const result =
-      await Appointment.trackAppointment(userId);
-
-    if (
-      !result.appointments ||
-      result.appointments.length === 0
-    ) {
+    if (!result.appointments || result.appointments.length === 0) {
       return {
         success: true,
         statusCode: 200,
@@ -2296,18 +2261,13 @@ exports.trackAppointment = async (userId) => {
       success: true,
       statusCode: 200,
       body: {
-        message:
-          "Appointment tracking fetched successfully.",
+        message: "Appointment tracking fetched successfully.",
         data: result.appointments
       }
     };
 
   } catch (error) {
-
-    console.error(
-      "Track Appointment Service Error:",
-      error
-    );
+    console.error("Track Appointment Service Error:", error);
 
     return {
       success: false,
