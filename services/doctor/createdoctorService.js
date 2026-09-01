@@ -81,8 +81,9 @@ exports.getProfile = async (userId) => {
         full_name: doctor.full_name,
         gender: doctor.gender,
         age: doctor.age,
-        email: doctor.email,
-        mobile: doctor.mobile,
+
+        email: doctor.email || doctor.user_email,
+        mobile: doctor.mobile || doctor.user_mobile,
 
         medical_registration_number:
           doctor.medical_registration_number,
@@ -130,10 +131,7 @@ exports.getProfile = async (userId) => {
           safeParse(doctor.availability, []),
 
         hospital_detail:
-          safeParse(
-            doctor.hospital_detail,
-            []
-          ),
+          safeParse(doctor.hospital_detail, []),
 
         qr_url:
           doctor.qr_url || null,
@@ -144,7 +142,6 @@ exports.getProfile = async (userId) => {
     };
 
   } catch (error) {
-
     console.error(
       "GET DOCTOR PROFILE SERVICE ERROR:",
       error

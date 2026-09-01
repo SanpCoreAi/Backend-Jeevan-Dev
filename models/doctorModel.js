@@ -127,19 +127,8 @@ exports.getBydoctorId = async (userId) => {
   try {
     const sql = `
       SELECT
-        d.id AS doctor_id,
-        d.user_id,
-
+        u.id AS user_id,
         u.registration_id,
-
-        d.experience,
-        d.language,
-        d.consultation_fee,
-        d.bio,
-        d.availability,
-        d.hospital_detail,
-        d.qr_url,
-        d.accept_emergency_patients,
 
         dr.full_name,
         dr.gender,
@@ -155,17 +144,28 @@ exports.getBydoctorId = async (userId) => {
         dr.medical_registration_certificate,
         dr.medical_degree_certificate,
         dr.government_id_proof,
-        dr.selfie
+        dr.selfie,
 
-      FROM doctors d
+        d.id AS doctor_id,
+        d.experience,
+        d.language,
+        d.consultation_fee,
+        d.bio,
+        d.availability,
+        d.hospital_detail,
+        d.qr_url,
+        d.accept_emergency_patients
 
-      INNER JOIN users u
-        ON u.id = d.user_id
+      FROM users u
 
       LEFT JOIN doctor_registrations dr
         ON dr.id = u.registration_id
 
-      WHERE d.user_id = ?
+      LEFT JOIN doctors d
+        ON d.user_id = u.id
+
+      WHERE u.id = ?
+
       LIMIT 1
     `;
 
