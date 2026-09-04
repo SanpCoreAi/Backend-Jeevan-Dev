@@ -77,6 +77,7 @@ exports.getProfile = async (userId) => {
         id: doctor.user_id,
 
         registration_id: doctor.registration_id,
+        username: doctor.username,
 
         full_name: doctor.full_name,
         gender: doctor.gender,
@@ -97,11 +98,10 @@ exports.getProfile = async (userId) => {
         specialization:
           doctor.specialization,
 
+        status: doctor.status,
+
         registration_expiry_date:
           doctor.registration_expiry_date,
-
-        onboarding_status:
-          doctor.onboarding_status,
 
         medical_registration_certificate:
           doctor.medical_registration_certificate,
@@ -132,6 +132,9 @@ exports.getProfile = async (userId) => {
 
         hospital_detail:
           safeParse(doctor.hospital_detail, []),
+
+        img_key:
+          doctor.file_key,
 
         qr_url:
           doctor.qr_url || null,
@@ -183,24 +186,22 @@ exports.getDoctorPublicProfileById = async (userId) => {
       message: "Doctor profile fetched successfully.",
 
       data: {
-        // doctor_registrations
+        username: doctor.username,
         full_name: doctor.full_name,
         gender: doctor.gender,
         age: doctor.age,
         email: doctor.email,
         mobile: doctor.mobile,
-        medical_registration_number:
-          doctor.medical_registration_number,
         medical_council:
           doctor.medical_council,
         qualification:
           doctor.qualification,
+        status:doctor.status,
         specialization:
           doctor.specialization,
         selfie:
           doctor.selfie || null,
 
-        // doctors
         experience:
           doctor.experience,
         language:
@@ -215,10 +216,10 @@ exports.getDoctorPublicProfileById = async (userId) => {
           safeParse(doctor.hospital_detail, []),
         qr_url:
           doctor.qr_url || null,
+        img_key:doctor.file_key,
         accept_emergency_patients:
           doctor.accept_emergency_patients,
 
-        // ratings
         avgRating:
           doctor.avg_rating == null
             ? "0.0"
@@ -271,6 +272,90 @@ exports.updateProfile = async (userId, body) => {
 
     const doctor = await DoctorModel.getDoctorByUserId(userId);
 
+    if (!doctor) {
+
+      if (!body.username) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Username is required to create doctor profile.",
+        };
+      }
+
+      if (body.medicalLicenseNo) {
+        const existingDoctor =
+          await DoctorModel.getDoctorByMedicalLicenseNo(
+            body.medicalLicenseNo
+          );
+
+        if (existingDoctor) {
+          return {
+            success: false,
+            statusCode: 409,
+            message: "Medical license number already exists.",
+          };
+        }
+      }
+
+      const result = await DoctorModel.createDoctor(
+        userId,
+        body
+      );
+
+      const doctorId = result.insertId;
+
+      const qrData = JSON.stringify({
+        type: "DOCTOR",
+        doctorId: doctorId,
+      });
+
+      const qrFolder = path.join(
+        process.cwd(),
+        "uploads",
+        "qr"
+      );
+
+      if (!fs.existsSync(qrFolder)) {
+        fs.mkdirSync(qrFolder, {
+          recursive: true,
+        });
+      }
+
+      const qrFileName = `doctor-${doctorId}.png`;
+
+      const qrFilePath = path.join(
+        qrFolder,
+        qrFileName
+      );
+
+      await QRCode.toFile(
+        qrFilePath,
+        qrData,
+        {
+          width: 500,
+          margin: 2,
+        }
+      );
+
+      const baseUrl =
+        process.env.BASE_URL ||
+        `http://localhost:${process.env.PORT || 4000}`;
+
+      const qrUrl =
+        `${baseUrl}/uploads/qr/${qrFileName}`;
+
+      await DoctorModel.updateDoctorQr(
+        userId,
+        qrUrl
+      );
+
+      return {
+        success: true,
+        statusCode: 201,
+        message: "Doctor profile created successfully.",
+      };
+    }
+
     if (body.medicalLicenseNo) {
       const existingDoctor =
         await DoctorModel.getDoctorByMedicalLicenseNo(
@@ -289,19 +374,6 @@ exports.updateProfile = async (userId, body) => {
       }
     }
 
-    if (!doctor) {
-      const result = await DoctorModel.createDoctor(
-        userId,
-        body
-      );
-
-      return {
-        success: true,
-        statusCode: 201,
-        message: "Doctor profile created successfully.",
-      };
-    }
-
     const result = await DoctorModel.updateDoctor(
       userId,
       body
@@ -313,13 +385,6 @@ exports.updateProfile = async (userId, body) => {
         statusCode: 400,
         message: "Doctor profile update failed.",
       };
-    }
-
-    if (body.registrationId) {
-      await DoctorRegistrationModel.updateOnboardingStatus(
-        body.registrationId,
-        "VERIFIED"
-      );
     }
 
     return {
@@ -411,6 +476,8 @@ exports.getAllDoctors = async ({
 
         experience:
           doctor.experience,
+
+        status: doctor.status,
 
         language:
           safeParse(

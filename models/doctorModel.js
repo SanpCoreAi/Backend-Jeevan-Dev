@@ -129,6 +129,7 @@ exports.getBydoctorId = async (userId) => {
       SELECT
         u.id AS user_id,
         u.registration_id,
+        u.status,
 
         dr.full_name,
         dr.gender,
@@ -147,6 +148,7 @@ exports.getBydoctorId = async (userId) => {
         dr.selfie,
 
         d.id AS doctor_id,
+        d.username,
         d.experience,
         d.language,
         d.consultation_fee,
@@ -154,7 +156,9 @@ exports.getBydoctorId = async (userId) => {
         d.availability,
         d.hospital_detail,
         d.qr_url,
-        d.accept_emergency_patients
+        d.accept_emergency_patients,
+
+        um.file_key
 
       FROM users u
 
@@ -163,6 +167,9 @@ exports.getBydoctorId = async (userId) => {
 
       LEFT JOIN doctors d
         ON d.user_id = u.id
+
+      LEFT JOIN user_images um
+        ON um.user_id = u.id
 
       WHERE u.id = ?
 
@@ -183,18 +190,17 @@ exports.getBydoctorId = async (userId) => {
   }
 };
 
-exports.updateDoctorQr = async (doctorId, qrCode) => {
-
+exports.updateDoctorQr = async (userId, qrUrl) => {
   const sql = `
     UPDATE doctors
-    SET qr_code = ?
+    SET qr_url = ?
     WHERE user_id = ?
     LIMIT 1
   `;
 
   const [result] = await db.execute(sql, [
-    qrCode,
-    doctorId
+    qrUrl,
+    userId
   ]);
 
   return {
@@ -208,19 +214,20 @@ exports.getDoctorPublicProfileById = async (userId) => {
     SELECT
 
       u.registration_id,
+      u.status,
 
       dr.full_name,
       dr.gender,
       dr.age,
       dr.email,
       dr.mobile,
-      dr.medical_registration_number,
       dr.medical_council,
       dr.qualification,
       dr.specialization,
       dr.selfie,
 
       d.id,
+      d.username,
       d.user_id,
       d.experience,
       d.language,
@@ -230,6 +237,8 @@ exports.getDoctorPublicProfileById = async (userId) => {
       d.hospital_detail,
       d.qr_url,
       d.accept_emergency_patients,
+
+      um.file_key,
 
       COALESCE(
         (
@@ -287,6 +296,9 @@ exports.getDoctorPublicProfileById = async (userId) => {
 
     LEFT JOIN doctor_registrations dr
       ON dr.id = u.registration_id
+
+    LEFT JOIN user_images um
+      ON um.user_id = u.id
 
     WHERE d.user_id = ?
 
@@ -554,6 +566,7 @@ exports.findAllWithRegistration = async ({
     SELECT
 
       u.registration_id,
+      u.status,
 
       dr.full_name,
       dr.gender,
