@@ -493,15 +493,13 @@ exports.sendEmailOtp = async ({ email }) => {
   const expiry =
     new Date(
       Date.now() +
-      10 * 60 * 1000
+      5 * 60 * 1000
     );
-
 
   const exists =
     await doctorRegistrationModel.findByEmail(
       email
     );
-
 
   if (!exists) {
 
@@ -526,6 +524,37 @@ exports.sendEmailOtp = async ({ email }) => {
     };
   }
 
+  if (exists.email_otp_sent_at) {
+
+    const lastOtpTime =
+      new Date(
+        exists.email_otp_sent_at
+      ).getTime();
+
+    const currentTime =
+      Date.now();
+
+    const difference =
+      currentTime - lastOtpTime;
+
+    const fiveMinutes =
+      5 * 60 * 1000;
+
+    if (difference < fiveMinutes) {
+
+      const remainingSeconds =
+        Math.ceil(
+          (fiveMinutes - difference) / 1000
+        );
+
+      return {
+        success: false,
+        statusCode: 429,
+        message:
+          `Please wait ${remainingSeconds} seconds before requesting another OTP.`,
+      };
+    }
+  }
 
   await doctorRegistrationModel.saveEmailOtp(
     email,
@@ -533,12 +562,10 @@ exports.sendEmailOtp = async ({ email }) => {
     expiry
   );
 
-
   await sendOtpEmail(
     email,
     otp
   );
-
 
   return {
     success: true,
