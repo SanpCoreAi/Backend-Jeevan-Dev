@@ -47,7 +47,6 @@ exports.createDoctorRegistration = async (req, res) => {
   }
 };
 
-
 exports.uploadRegistrationDocuments = (req, res) => {
   upload.fields([
     {

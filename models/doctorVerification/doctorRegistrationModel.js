@@ -142,6 +142,7 @@ exports.create = async (data, conn = db) => {
     qualification,
     specialization,
     registrationExpiryDate,
+    hospitalDetail,
   } = data;
 
   const [result] = await conn.execute(
@@ -158,9 +159,10 @@ exports.create = async (data, conn = db) => {
       qualification,
       specialization,
       registration_expiry_date,
+      hospital_detail,
       onboarding_status
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT')
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT')
     `,
     [
       fullName || null,
@@ -173,6 +175,9 @@ exports.create = async (data, conn = db) => {
       qualification || null,
       specialization || null,
       registrationExpiryDate || null,
+      hospitalDetail
+        ? JSON.stringify(hospitalDetail)
+        : null,
     ]
   );
 

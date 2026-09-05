@@ -47,18 +47,17 @@ exports.createDoctorRegistration = async (body) => {
 
     const {
       registrationId,
-
       fullName,
       gender,
       age,
       email,
       mobile,
-
       medicalRegistrationNumber,
       medicalCouncil,
       qualification,
       specialization,
       registrationExpiryDate,
+      hospitalDetail,
     } = body;
 
     if (!registrationId) {
@@ -199,6 +198,9 @@ exports.createDoctorRegistration = async (body) => {
 
             registrationExpiryDate:
               registrationExpiryDate || null,
+
+            hospitalDetail:
+              hospitalDetail || null,
           },
           connection
         );
@@ -352,8 +354,8 @@ exports.createDoctorRegistration = async (body) => {
     if (
       medicalRegistrationNumber &&
       medicalRegistrationNumber !==
-        existingRegistration
-          .medical_registration_number
+      existingRegistration
+        .medical_registration_number
     ) {
 
       const registrationExists =
