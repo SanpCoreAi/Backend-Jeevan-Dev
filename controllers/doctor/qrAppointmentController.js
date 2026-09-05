@@ -4,7 +4,6 @@ exports.scanBook = async (req, res) => {
   try {
 
     const doctorId = Number(req.params.doctorId);
-
     if (!Number.isInteger(doctorId) || doctorId <= 0) {
       return res.status(400).json({
         success: false,
