@@ -103,7 +103,7 @@ exports.bookAppointmentByAssistantValidation = Joi.object({
     .required(),
 
   mode: Joi.string()
-    .valid("offline")
+    .valid("online")
     .required(),
 
   booking_type: Joi.string()

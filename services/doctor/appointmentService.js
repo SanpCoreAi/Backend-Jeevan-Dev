@@ -536,7 +536,6 @@ exports.bookAppointmentByAssistant = async ({
   user,
   body
 }) => {
-
   let connection = null;
 
   try {
@@ -550,7 +549,6 @@ exports.bookAppointmentByAssistant = async ({
       };
     }
 
-
     const assistant = await User.findById(user.id);
 
     if (!assistant) {
@@ -562,7 +560,6 @@ exports.bookAppointmentByAssistant = async ({
       };
     }
 
-
     if (!assistant.doctor_id) {
       return {
         success: false,
@@ -571,7 +568,6 @@ exports.bookAppointmentByAssistant = async ({
         data: null
       };
     }
-
 
     const doctorId = Number(assistant.doctor_id);
 
@@ -594,7 +590,6 @@ exports.bookAppointmentByAssistant = async ({
       };
     }
 
-
     if (!hospital_name) {
       return {
         success: false,
@@ -603,7 +598,6 @@ exports.bookAppointmentByAssistant = async ({
         data: null
       };
     }
-
 
     if (!start_time) {
       return {
@@ -614,7 +608,6 @@ exports.bookAppointmentByAssistant = async ({
       };
     }
 
-
     if (booking_type !== "someone_else") {
       return {
         success: false,
@@ -623,7 +616,6 @@ exports.bookAppointmentByAssistant = async ({
         data: null
       };
     }
-
 
     if (
       !patient ||
@@ -664,61 +656,51 @@ exports.bookAppointmentByAssistant = async ({
           AND LOWER(TRIM(hospital_name))
               = LOWER(TRIM(?))
           AND LOWER(status) = 'active'
-          AND DATE(start_date) <= ?
-          AND DATE(end_date) >= ?
         ORDER BY id DESC
         LIMIT 1
         FOR UPDATE
         `,
         [
           doctorId,
-          hospital_name,
-          appointmentDate,
-          appointmentDate
+          hospital_name
         ]
       );
 
-
     if (!scheduleRows.length) {
-
       await connection.rollback();
 
       return {
         success: false,
         statusCode: 404,
         message:
-          "Doctor schedule not found for this hospital/date.",
+          "Active doctor schedule not found for this hospital.",
         data: null
       };
     }
 
+    const schedule =
+      scheduleRows[0];
 
-    const schedule = scheduleRows[0];
-
-
-    let activeDays = schedule.active_days;
+    let activeDays =
+      schedule.active_days;
 
     if (typeof activeDays === "string") {
-
       try {
-        activeDays = JSON.parse(activeDays);
+        activeDays =
+          JSON.parse(activeDays);
       } catch (error) {
         activeDays = [];
       }
     }
 
-
     if (!Array.isArray(activeDays)) {
       activeDays = [];
     }
 
-
     const appointmentDay =
       dayjs(appointmentDate).format("ddd");
 
-
     if (!activeDays.includes(appointmentDay)) {
-
       await connection.rollback();
 
       return {
@@ -732,13 +714,14 @@ exports.bookAppointmentByAssistant = async ({
 
     const convertTo24Hour = (value) => {
 
-      if (!value) return null;
+      if (!value) {
+        return null;
+      }
 
       value = String(value)
         .trim()
         .toUpperCase();
 
-      // Already HH:mm or HH:mm:ss
       if (/^\d{2}:\d{2}(:\d{2})?$/.test(value)) {
 
         if (value.length === 5) {
@@ -748,17 +731,14 @@ exports.bookAppointmentByAssistant = async ({
         return value;
       }
 
-
       const match =
         value.match(
           /^(\d{1,2}):(\d{2})\s*(AM|PM)$/
         );
 
-
       if (!match) {
         return null;
       }
-
 
       let hour =
         Number(match[1]);
@@ -769,11 +749,9 @@ exports.bookAppointmentByAssistant = async ({
       const period =
         match[3];
 
-
       if (hour < 1 || hour > 12) {
         return null;
       }
-
 
       if (period === "AM") {
 
@@ -788,7 +766,6 @@ exports.bookAppointmentByAssistant = async ({
         }
       }
 
-
       return (
         String(hour).padStart(2, "0") +
         ":" +
@@ -797,12 +774,10 @@ exports.bookAppointmentByAssistant = async ({
       );
     };
 
-
-    const startTime =
+    const requestedStartTime =
       convertTo24Hour(start_time);
 
-
-    if (!startTime) {
+    if (!requestedStartTime) {
 
       await connection.rollback();
 
@@ -811,6 +786,25 @@ exports.bookAppointmentByAssistant = async ({
         statusCode: 400,
         message:
           'Invalid start_time. Use format "10:00 AM".',
+        data: null
+      };
+    }
+
+    const slotDuration =
+      Number(schedule.slot_duration);
+
+    if (
+      !Number.isInteger(slotDuration) ||
+      slotDuration <= 0
+    ) {
+
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 400,
+        message:
+          "Invalid schedule slot duration.",
         data: null
       };
     }
@@ -839,129 +833,347 @@ exports.bookAppointmentByAssistant = async ({
           schedule.id,
           doctorId,
           appointmentDate,
-          startTime
+          requestedStartTime
         ]
       );
-
 
     let slot = null;
 
     if (existingSlotRows.length) {
 
-      slot = existingSlotRows[0];
+      const existingSlot =
+        existingSlotRows[0];
 
       if (
-        String(slot.status).toLowerCase() !== "active"
+        String(existingSlot.status).toLowerCase() ===
+        "active"
       ) {
 
-        await connection.rollback();
+        slot = existingSlot;
 
-        return {
-          success: false,
-          statusCode: 409,
-          message:
-            "This time slot is already booked. Please select another time.",
-          data: null
-        };
       }
 
+      else {
+
+        const [availableSlotRows] =
+          await connection.execute(
+            `
+            SELECT
+              id,
+              schedule_id,
+              doctor_id,
+              start_date,
+              start_time,
+              end_time,
+              token_number,
+              status
+            FROM schedule_slots
+            WHERE schedule_id = ?
+              AND doctor_id = ?
+              AND DATE(start_date) = ?
+              AND LOWER(status) = 'active'
+            ORDER BY token_number ASC
+            LIMIT 1
+            FOR UPDATE
+            `,
+            [
+              schedule.id,
+              doctorId,
+              appointmentDate
+            ]
+          );
+
+        if (availableSlotRows.length) {
+
+          await connection.rollback();
+
+          return {
+            success: false,
+            statusCode: 409,
+            message:
+              "Selected time slot is already booked. Please select another available slot.",
+            data: {
+              requested_start_time:
+                requestedStartTime,
+
+              available_slot:
+                availableSlotRows[0]
+            }
+          };
+        }
+
+        const [lastSlotRows] =
+          await connection.execute(
+            `
+            SELECT
+              id,
+              schedule_id,
+              doctor_id,
+              start_date,
+              start_time,
+              end_time,
+              token_number,
+              status
+            FROM schedule_slots
+            WHERE schedule_id = ?
+              AND doctor_id = ?
+              AND DATE(start_date) = ?
+            ORDER BY token_number DESC
+            LIMIT 1
+            FOR UPDATE
+            `,
+            [
+              schedule.id,
+              doctorId,
+              appointmentDate
+            ]
+          );
+
+        if (!lastSlotRows.length) {
+
+          const [
+            hours,
+            minutes
+          ] =
+            requestedStartTime
+              .split(":")
+              .map(Number);
+
+          const startMinutes =
+            hours * 60 + minutes;
+
+          const endMinutes =
+            startMinutes +
+            slotDuration;
+
+          const endHours =
+            Math.floor(
+              endMinutes / 60
+            );
+
+          const endMins =
+            endMinutes % 60;
+
+          const firstEndTime =
+            `${String(endHours).padStart(2, "0")}:` +
+            `${String(endMins).padStart(2, "0")}:00`;
+
+          const [slotResult] =
+            await connection.execute(
+              `
+              INSERT INTO schedule_slots
+              (
+                schedule_id,
+                doctor_id,
+                start_date,
+                start_time,
+                end_time,
+                token_number,
+                status
+              )
+              VALUES (?, ?, ?, ?, ?, ?, 'active')
+              `,
+              [
+                schedule.id,
+                doctorId,
+                appointmentDate,
+                requestedStartTime,
+                firstEndTime,
+                1
+              ]
+            );
+
+          slot = {
+            id:
+              slotResult.insertId,
+
+            schedule_id:
+              schedule.id,
+
+            doctor_id:
+              doctorId,
+
+            start_date:
+              appointmentDate,
+
+            start_time:
+              requestedStartTime,
+
+            end_time:
+              firstEndTime,
+
+            token_number:
+              1,
+
+            status:
+              "active"
+          };
+
+        }
+
+        else {
+
+          const lastSlot =
+            lastSlotRows[0];
+
+          const lastEndTime =
+            convertTo24Hour(
+              lastSlot.end_time
+            );
+
+          if (!lastEndTime) {
+
+            await connection.rollback();
+
+            return {
+              success: false,
+              statusCode: 400,
+              message:
+                "Invalid last slot end time.",
+              data: null
+            };
+          }
+
+          const [
+            lastHours,
+            lastMinutes
+          ] =
+            lastEndTime
+              .split(":")
+              .map(Number);
+
+          const lastEndMinutes =
+            lastHours * 60 +
+            lastMinutes;
+
+          const newStartMinutes =
+            lastEndMinutes;
+
+          const newEndMinutes =
+            newStartMinutes +
+            slotDuration;
+
+          const newStartHours =
+            Math.floor(
+              newStartMinutes / 60
+            );
+
+          const newStartMins =
+            newStartMinutes % 60;
+
+          const newEndHours =
+            Math.floor(
+              newEndMinutes / 60
+            );
+
+          const newEndMins =
+            newEndMinutes % 60;
+
+          const newStartTime =
+            `${String(newStartHours).padStart(2, "0")}:` +
+            `${String(newStartMins).padStart(2, "0")}:00`;
+
+          const newEndTime =
+            `${String(newEndHours).padStart(2, "0")}:` +
+            `${String(newEndMins).padStart(2, "0")}:00`;
+
+          const nextToken =
+            Number(lastSlot.token_number) + 1;
+
+          const [slotResult] =
+            await connection.execute(
+              `
+              INSERT INTO schedule_slots
+              (
+                schedule_id,
+                doctor_id,
+                start_date,
+                start_time,
+                end_time,
+                token_number,
+                status
+              )
+              VALUES (?, ?, ?, ?, ?, ?, 'active')
+              `,
+              [
+                schedule.id,
+                doctorId,
+                appointmentDate,
+                newStartTime,
+                newEndTime,
+                nextToken
+              ]
+            );
+
+          slot = {
+            id:
+              slotResult.insertId,
+
+            schedule_id:
+              schedule.id,
+
+            doctor_id:
+              doctorId,
+
+            start_date:
+              appointmentDate,
+
+            start_time:
+              newStartTime,
+
+            end_time:
+              newEndTime,
+
+            token_number:
+              nextToken,
+
+            status:
+              "active"
+          };
+        }
+      }
     }
 
     else {
 
-      const slotDuration =
-        Number(schedule.slot_duration);
-
-
-      if (
-        !Number.isInteger(slotDuration) ||
-        slotDuration <= 0
-      ) {
-
-        await connection.rollback();
-
-        return {
-          success: false,
-          statusCode: 400,
-          message:
-            "Invalid schedule slot duration.",
-          data: null
-        };
-      }
-
-      const [hours, minutes] =
-        startTime
+      const [
+        hours,
+        minutes
+      ] =
+        requestedStartTime
           .split(":")
           .map(Number);
-
 
       const startMinutes =
         hours * 60 + minutes;
 
-
       const endMinutes =
-        startMinutes + slotDuration;
-
+        startMinutes +
+        slotDuration;
 
       const endHours =
-        Math.floor(endMinutes / 60);
+        Math.floor(
+          endMinutes / 60
+        );
 
       const endMins =
         endMinutes % 60;
-
 
       const endTime =
         `${String(endHours).padStart(2, "0")}:` +
         `${String(endMins).padStart(2, "0")}:00`;
 
-
-      const scheduleStart =
-        convertTo24Hour(schedule.start_time);
-
-      const scheduleEnd =
-        convertTo24Hour(schedule.end_time);
-
-
-      if (!scheduleStart || !scheduleEnd) {
-
-        await connection.rollback();
-
-        return {
-          success: false,
-          statusCode: 400,
-          message:
-            "Invalid schedule start/end time.",
-          data: null
-        };
-      }
-
-
-      if (
-        startTime < scheduleStart ||
-        endTime > scheduleEnd
-      ) {
-
-        await connection.rollback();
-
-        return {
-          success: false,
-          statusCode: 400,
-          message:
-            "Selected time is outside doctor schedule.",
-          data: null
-        };
-      }
-
-      const [tokenRows] =
+      const [lastTokenRows] =
         await connection.execute(
           `
           SELECT
-            COALESCE(MAX(token_number), 0) + 1
-              AS next_token
+            token_number
           FROM schedule_slots
           WHERE schedule_id = ?
             AND doctor_id = ?
             AND DATE(start_date) = ?
+          ORDER BY token_number DESC
+          LIMIT 1
           FOR UPDATE
           `,
           [
@@ -971,11 +1183,12 @@ exports.bookAppointmentByAssistant = async ({
           ]
         );
 
-
       const tokenNumber =
-        Number(
-          tokenRows[0]?.next_token || 1
-        );
+        lastTokenRows.length
+          ? Number(
+              lastTokenRows[0].token_number
+            ) + 1
+          : 1;
 
       const [slotResult] =
         await connection.execute(
@@ -996,25 +1209,38 @@ exports.bookAppointmentByAssistant = async ({
             schedule.id,
             doctorId,
             appointmentDate,
-            startTime,
+            requestedStartTime,
             endTime,
             tokenNumber
           ]
         );
 
-
       slot = {
-        id: slotResult.insertId,
-        schedule_id: schedule.id,
-        doctor_id: doctorId,
-        start_date: appointmentDate,
-        start_time: startTime,
-        end_time: endTime,
-        token_number: tokenNumber,
-        status: "active"
+        id:
+          slotResult.insertId,
+
+        schedule_id:
+          schedule.id,
+
+        doctor_id:
+          doctorId,
+
+        start_date:
+          appointmentDate,
+
+        start_time:
+          requestedStartTime,
+
+        end_time:
+          endTime,
+
+        token_number:
+          tokenNumber,
+
+        status:
+          "active"
       };
     }
-
 
     if (
       slot.token_number === null ||
@@ -1026,19 +1252,17 @@ exports.bookAppointmentByAssistant = async ({
       return {
         success: false,
         statusCode: 400,
-        message: "Token number not available.",
+        message:
+          "Token number not available.",
         data: null
       };
     }
 
-
     const tokenNumber =
       Number(slot.token_number);
 
-
     const finalStartTime =
       slot.start_time;
-
 
     const finalEndTime =
       slot.end_time;
@@ -1049,9 +1273,9 @@ exports.bookAppointmentByAssistant = async ({
 
         const code =
           Math.floor(
-            1000 + Math.random() * 9000
+            1000 +
+            Math.random() * 9000
           ).toString();
-
 
         const [rows] =
           await connection.execute(
@@ -1064,18 +1288,15 @@ exports.bookAppointmentByAssistant = async ({
             [code]
           );
 
-
         if (!rows.length) {
           return code;
         }
       }
 
-
       throw new Error(
         "Unable to generate unique booking code."
       );
     };
-
 
     const code =
       await generateUniqueCode();
@@ -1083,7 +1304,8 @@ exports.bookAppointmentByAssistant = async ({
     const appointmentId =
       await Appointment.create(
         {
-          token_number: tokenNumber,
+          token_number:
+            tokenNumber,
 
           code,
 
@@ -1157,7 +1379,6 @@ exports.bookAppointmentByAssistant = async ({
         [slot.id]
       );
 
-
     if (slotUpdate.affectedRows !== 1) {
 
       await connection.rollback();
@@ -1175,7 +1396,6 @@ exports.bookAppointmentByAssistant = async ({
       dayjs(
         `${appointmentDate} ${finalEndTime}`
       );
-
 
     const estimatedTime =
       endDateTime
@@ -1235,7 +1455,6 @@ exports.bookAppointmentByAssistant = async ({
 
           hospitalName:
             schedule.hospital_name
-
         });
 
       } catch (emailError) {
@@ -1319,7 +1538,6 @@ exports.bookAppointmentByAssistant = async ({
       }
     };
 
-
   } catch (error) {
 
     if (connection) {
@@ -1327,6 +1545,7 @@ exports.bookAppointmentByAssistant = async ({
       try {
         await connection.rollback();
       } catch (rollbackError) {
+
         console.error(
           "Rollback Error:",
           rollbackError
@@ -1334,12 +1553,10 @@ exports.bookAppointmentByAssistant = async ({
       }
     }
 
-
     console.error(
       "BOOK APPOINTMENT BY ASSISTANT ERROR:",
       error
     );
-
 
     return {
 
@@ -1353,7 +1570,6 @@ exports.bookAppointmentByAssistant = async ({
 
       data: null
     };
-
 
   } finally {
 
