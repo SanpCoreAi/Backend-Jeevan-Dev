@@ -1554,6 +1554,7 @@ exports.getAppointments = async (
     WHERE
       a.doctor_id = ?
       AND DATE(a.slot_date) = ?
+      AND a.status IN ('PENDING', 'IN_PROGRESS')
 
     ORDER BY
       a.start_time ASC,
@@ -1582,6 +1583,7 @@ exports.getAppointments = async (
       FROM appointments
       WHERE doctor_id = ?
         AND DATE(slot_date) = ?
+        AND status IN ('PENDING', 'IN_PROGRESS')
       `,
       [
         doctorId,
@@ -1593,7 +1595,6 @@ exports.getAppointments = async (
     rows,
     total: count.total
   };
-
 };
 
 
