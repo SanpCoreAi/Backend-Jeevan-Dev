@@ -108,16 +108,42 @@ exports.insertMeta = async (
 
 };
 
+exports.getPrescriptionMedicines = async (
+  appointment_id
+) => {
+  const [rows] = await db.execute(
+    `
+    SELECT
+      id,
+      medicine_name,
+      dose,
+      frequency,
+      duration,
+      instructions,
+      remark,
+      diagnosis,
+      follow_up_date,
+      created_at,
+      updated_at
+    FROM prescriptions
+    WHERE appointment_id = ?
+    ORDER BY id ASC
+    `,
+    [appointment_id]
+  );
 
+  return rows;
+};
 
 exports.getAppointmentFullDataById = async (
   appointment_id
 ) => {
 
-
   const [rows] = await db.execute(
     `
     SELECT
+
+      /* ================= APPOINTMENT ================= */
 
       a.id AS appointment_id,
       a.token_number,
@@ -128,6 +154,8 @@ exports.getAppointmentFullDataById = async (
       a.hospital_name,
 
 
+      /* ================= DOCTOR ================= */
+
       doc.id AS doctor_id,
       doc.full_name AS doctor_name,
       doc.phone_number AS doctor_mobile,
@@ -136,8 +164,12 @@ exports.getAppointmentFullDataById = async (
       d.specialization,
       d.qualification,
       d.medical_license_no,
-      d.qr_code,
+      d.qr_url,
+      d.hospital_detail,
+      d.availability,
 
+
+      /* ================= PATIENT ================= */
 
       pat.id AS patient_id,
       pat.full_name AS patient_name,
@@ -179,43 +211,4 @@ exports.getAppointmentFullDataById = async (
 
 
   return rows[0] || null;
-
-};
-
-
-
-exports.getPrescriptionMedicines = async (
-  appointment_id
-) => {
-
-
-  const [rows] = await db.execute(
-    `
-    SELECT
-      id,
-      medicine_name,
-      dose,
-      frequency,
-      duration,
-      instructions,
-      remark,
-      diagnosis,
-      follow_up_date,
-      created_at,
-      updated_at
-
-    FROM prescriptions
-
-    WHERE appointment_id = ?
-
-    ORDER BY id ASC
-    `,
-    [
-      appointment_id
-    ]
-  );
-
-
-  return rows;
-
 };

@@ -3,6 +3,24 @@ const prescriptionModel = require("../../models/prescriptionModel");
 const db = require("../../config/db");
 
 
+function parseJson(value, defaultValue = []) {
+
+  if (!value) {
+    return defaultValue;
+  }
+
+  if (typeof value === "object") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return defaultValue;
+  }
+}
+
+
 exports.verifyToken = async ({
   doctorId,
   appointmentId,
@@ -470,9 +488,6 @@ exports.getDetails = async (
 };
 
 
-// =============================================
-// Get Full Prescription
-// =============================================
 exports.getFullPrescription = async (
   appointmentId
 ) => {
@@ -485,16 +500,10 @@ exports.getFullPrescription = async (
       );
 
     if (!appointment) {
-
       return {
-
         success: false,
-
-        message:
-          "Appointment not found."
-
+        message: "Appointment not found."
       };
-
     }
 
     const medicines =
@@ -503,72 +512,83 @@ exports.getFullPrescription = async (
       );
 
     return {
-
       success: true,
 
-      message:
-        "Prescription fetched successfully.",
+      message: "Prescription fetched successfully.",
 
       data: {
 
         doctor: {
 
           id: appointment.doctor_id,
+
           name: appointment.doctor_name,
+
           mobile: appointment.doctor_mobile,
+
           qualification:
             appointment.qualification,
+
           specialization:
             appointment.specialization,
+
           medical_license_no:
             appointment.medical_license_no,
-          qr_code:
-            appointment.qr_code,
+
+          qr_url:
+            appointment.qr_url,
 
           hospital_detail:
-            appointment.hospital_detail
-              ? JSON.parse(
-                  appointment.hospital_detail
-                )
-              : [],
+            parseJson(
+              appointment.hospital_detail
+            ),
 
           availability:
-            appointment.availability
-              ? JSON.parse(
-                  appointment.availability
-                )
-              : []
-
+            parseJson(
+              appointment.availability
+            )
         },
+
 
         patient: {
 
           id: appointment.patient_id,
-          name: appointment.patient_name,
-          age: appointment.age,
-          gender: appointment.gender,
-          height: appointment.height,
-          weight: appointment.weight
 
+          name: appointment.patient_name,
+
+          age: appointment.age,
+
+          gender: appointment.gender,
+
+          height: appointment.height,
+
+          weight: appointment.weight
         },
+
 
         appointment: {
 
           id: appointment.appointment_id,
+
           token_number:
             appointment.token_number,
+
           date:
             appointment.slot_date,
+
           start_time:
             appointment.start_time,
+
           end_time:
             appointment.end_time,
+
           status:
             appointment.status,
+
           hospital_name:
             appointment.hospital_name
-
         },
+
 
         prescription:
           medicines.length > 0
@@ -586,25 +606,28 @@ exports.getFullPrescription = async (
                 medicines:
                   medicines.map((medicine) => ({
 
-                    id: medicine.id,
+                    id:
+                      medicine.id,
+
                     medicine_name:
                       medicine.medicine_name,
+
                     dose:
                       medicine.dose,
+
                     frequency:
                       medicine.frequency,
+
                     duration:
                       medicine.duration,
+
                     instructions:
                       medicine.instructions
 
                   }))
-
               }
             : null
-
       }
-
     };
 
   } catch (error) {
@@ -615,21 +638,13 @@ exports.getFullPrescription = async (
     );
 
     return {
-
       success: false,
-
-      message:
-        "Internal server error."
-
+      message: "Internal server error."
     };
-
   }
-
 };
 
-// =============================================
-// Revisit Patient
-// =============================================
+
 exports.revisit = async (
   patientId,
   doctorId

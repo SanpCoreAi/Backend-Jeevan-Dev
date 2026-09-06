@@ -1470,29 +1470,16 @@ exports.getAppointments = async (
   const query = `
     SELECT
       a.id AS appointment_id,
-
       a.token_number,
-
-      DATE_FORMAT(
-        a.slot_date,
-        '%Y-%m-%d'
-      ) AS slot_date,
 
       TIME_FORMAT(
         a.start_time,
         '%h:%i %p'
       ) AS start_time,
 
-      TIME_FORMAT(
-        a.end_time,
-        '%h:%i %p'
-      ) AS end_time,
-
       a.status,
       a.reason_for_visit,
       a.appointment_type,
-      a.booking_type,
-      a.hospital_name,
 
       u.id AS patient_id,
 
@@ -1500,11 +1487,6 @@ exports.getAppointments = async (
         u.full_name,
         ap.patient_name
       ) AS patient_name,
-
-      COALESCE(
-        u.phone_number,
-        ap.patient_phone
-      ) AS phone_number,
 
       COALESCE(
         u.email,
@@ -1524,10 +1506,7 @@ exports.getAppointments = async (
       up.weight,
       up.height,
       up.blood_group,
-      up.language,
-      up.existing_conditions,
-      up.allergies,
-      up.address
+      up.language
 
     FROM appointments a
 
@@ -1564,32 +1543,30 @@ exports.getAppointments = async (
     OFFSET ?
   `;
 
-  const [rows] =
-    await connection.query(
-      query,
-      [
-        doctorId,
-        todayDate,
-        Number(limit),
-        Number(offset)
-      ]
-    );
+  const [rows] = await connection.query(
+    query,
+    [
+      doctorId,
+      todayDate,
+      Number(limit),
+      Number(offset)
+    ]
+  );
 
-  const [[count]] =
-    await connection.query(
-      `
-      SELECT
-        COUNT(*) AS total
-      FROM appointments
-      WHERE doctor_id = ?
-        AND DATE(slot_date) = ?
-        AND status IN ('PENDING', 'IN_PROGRESS')
-      `,
-      [
-        doctorId,
-        todayDate
-      ]
-    );
+  const [[count]] = await connection.query(
+    `
+    SELECT
+      COUNT(*) AS total
+    FROM appointments
+    WHERE doctor_id = ?
+      AND DATE(slot_date) = ?
+      AND status IN ('PENDING', 'IN_PROGRESS')
+    `,
+    [
+      doctorId,
+      todayDate
+    ]
+  );
 
   return {
     rows,
