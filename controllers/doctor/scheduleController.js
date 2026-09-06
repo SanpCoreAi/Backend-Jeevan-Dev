@@ -293,3 +293,34 @@ exports.deleteSchedule = async (req, res) => {
     });
   }
 };
+
+exports.activateScheduleSlot = async (req, res) => {
+  try {
+    const scheduleId = Number(req.params.scheduleId);
+
+    if (!scheduleId || isNaN(scheduleId)) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Valid scheduleId is required."
+      });
+    }
+
+    const result = await ScheduleService.activateScheduleSlot(
+      scheduleId,
+      req.body,
+      req.user.id
+    );
+
+    return res.status(result.statusCode).json(result);
+
+  } catch (error) {
+    console.error("ACTIVATE SCHEDULE SLOT ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error."
+    });
+  }
+};

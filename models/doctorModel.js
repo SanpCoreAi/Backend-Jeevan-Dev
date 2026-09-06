@@ -316,7 +316,6 @@ exports.getDoctorByUserId = async (userId) => {
       d.id AS doctor_id,
       d.user_id,
       u.id AS users_id,
-      d.registration_id,
       d.medical_license_no
     FROM doctors d
     INNER JOIN users u
@@ -332,7 +331,7 @@ exports.getDoctorByUserId = async (userId) => {
   ]);
 
   return rows.length ? rows[0] : null;
-};
+}
 
 exports.updateDoctor = async (userId, data) => {
   const fieldMap = {

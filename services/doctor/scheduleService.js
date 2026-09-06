@@ -1301,11 +1301,9 @@ async function updateSchedule(doctorId, scheduleId, body) {
 
 
 async function deleteSchedule(scheduleId, body, doctorId) {
-
   let connection;
 
   try {
-
     if (!doctorId) {
       return {
         success: false,
@@ -1322,11 +1320,7 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       };
     }
 
-    const {
-      date,
-      slotId,
-      reason
-    } = body || {};
+    const { date, slotId, reason } = body || {};
 
     connection = await db.getConnection();
 
@@ -1340,14 +1334,10 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         AND doctor_id = ?
       LIMIT 1
       `,
-      [
-        scheduleId,
-        doctorId
-      ]
+      [scheduleId, doctorId]
     );
 
     if (!schedule.length) {
-
       await connection.rollback();
 
       return {
@@ -1355,34 +1345,23 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         statusCode: 404,
         message: "Schedule not found."
       };
-
     }
 
-    let patients = [];
-
-    /* =====================================================
-       COMPLETE SCHEDULE DELETE
-    ====================================================== */
-
     if (!date && !slotId) {
+      const slots = await SlotModel.getSlotsBySchedule(
+        scheduleId,
+        connection
+      );
 
-      const slots =
-        await SlotModel.getSlotsBySchedule(
-          scheduleId,
-          connection
-        );
-
-      const hasBookedSlots =
-        slots.some(
-          slot =>
-            String(slot.status).toLowerCase() === "inactive"
-        );
+      const hasBookedSlots = slots.some(
+        slot =>
+          String(slot.status).toLowerCase() === "inactive"
+      );
 
       if (
         hasBookedSlots &&
         (!reason || !reason.trim())
       ) {
-
         await connection.rollback();
 
         return {
@@ -1391,23 +1370,20 @@ async function deleteSchedule(scheduleId, body, doctorId) {
           message:
             "Reason is required because booked slots exist."
         };
-
       }
 
-      patients =
+      const patients =
         await AppointmentModel.getAppointmentsBySchedule(
           scheduleId,
           connection
         );
 
       for (const item of patients) {
-
         await AppointmentModel.cancelAppointment(
           item.id,
           reason || null,
           connection
         );
-
       }
 
       await SlotModel.deleteCompleteSchedule(
@@ -1421,95 +1397,58 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       await connection.commit();
 
       for (const patient of patients) {
-
         if (!patient.email) continue;
 
         await sendAppointmentCancelledEmail({
-
           email: patient.email,
-
           patientName: patient.patient_name,
-
           reason: reason || "Schedule removed",
-
           date: patient.slot_date,
-
           startTime: patient.start_time,
-
           endTime: patient.end_time
-
         });
-
       }
 
       return {
-
         success: true,
-
         statusCode: 200,
-
         message: "Schedule deleted successfully."
-
       };
-
     }
 
-    /* =====================================================
-       ONE DAY DELETE
-    ====================================================== */
-
     if (date && !slotId) {
+      const formattedDate = normalizeDateValue(date);
 
-      const formattedDate =
-        normalizeDateValue(date);
-
-      const slots =
-        await SlotModel.getSlotsByDate(
-          scheduleId,
-          formattedDate,
-          connection
-        );
-
-      const hasBookedSlots =
-        slots.some(
-          slot =>
-            String(slot.status).toLowerCase() === "inactive"
-        );
-
-      if (
-        hasBookedSlots &&
-        (!reason || !reason.trim())
-      ) {
-
-        await connection.rollback();
-
-        return {
-          success: false,
-          statusCode: 400,
-          message:
-            "Reason is required because booked slots exist."
-        };
-
-      }
-
-      patients =
+      const patients =
         await AppointmentModel.getAppointmentsByDate(
           scheduleId,
           formattedDate,
           connection
         );
 
-      for (const item of patients) {
+      if (
+        patients.length > 0 &&
+        (!reason || !reason.trim())
+      ) {
+        await connection.rollback();
 
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "Reason is required because booked appointments exist."
+        };
+      }
+
+      for (const item of patients) {
         await AppointmentModel.cancelAppointment(
           item.id,
           reason || null,
           connection
         );
-
       }
 
-      await SlotModel.deleteSlotsByDate(
+      await SlotModel.makeSlotsInactiveByDate(
         {
           doctorId,
           scheduleId,
@@ -1521,45 +1460,26 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       await connection.commit();
 
       for (const patient of patients) {
-
         if (!patient.email) continue;
 
         await sendAppointmentCancelledEmail({
-
           email: patient.email,
-
           patientName: patient.patient_name,
-
-          reason: reason || "Schedule removed",
-
+          reason: reason || "Schedule date removed",
           date: patient.slot_date,
-
           startTime: patient.start_time,
-
           endTime: patient.end_time
-
         });
-
       }
 
       return {
-
         success: true,
-
         statusCode: 200,
-
-        message: "Schedule date deleted successfully."
-
+        message: "Schedule date disabled successfully."
       };
-
     }
 
-    /* =====================================================
-       SINGLE SLOT DELETE
-    ====================================================== */
-
     if (slotId) {
-
       const [slot] = await connection.query(
         `
         SELECT
@@ -1582,7 +1502,6 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       );
 
       if (!slot.length) {
-
         await connection.rollback();
 
         return {
@@ -1590,17 +1509,20 @@ async function deleteSchedule(scheduleId, body, doctorId) {
           statusCode: 404,
           message: "Slot not found."
         };
-
       }
 
-      const isBooked =
-        String(slot[0].status).toLowerCase() === "inactive";
+      const patient =
+        await AppointmentModel.getAppointmentBySlot(
+          scheduleId,
+          slot[0].start_date,
+          slot[0].start_time,
+          connection
+        );
 
       if (
-        isBooked &&
+        patient &&
         (!reason || !reason.trim())
       ) {
-
         await connection.rollback();
 
         return {
@@ -1609,34 +1531,18 @@ async function deleteSchedule(scheduleId, body, doctorId) {
           message:
             "Reason is required because this slot is booked."
         };
-
       }
 
-      let patient = null;
-
-      if (isBooked) {
-
-        patient =
-          await AppointmentModel.getAppointmentBySlot(
-            scheduleId,
-            slot[0].start_date,
-            slot[0].start_time,
-            connection
-          );
-
-        if (patient) {
-
-          await AppointmentModel.cancelAppointment(
-            patient.id,
-            reason,
-            connection
-          );
-
-        }
-
+      // Cancel appointment if booked
+      if (patient) {
+        await AppointmentModel.cancelAppointment(
+          patient.id,
+          reason,
+          connection
+        );
       }
 
-      await SlotModel.deleteSingleSlot(
+      await SlotModel.makeSingleSlotInactive(
         {
           doctorId,
           scheduleId,
@@ -1648,55 +1554,34 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       await connection.commit();
 
       if (patient?.email) {
-
         await sendAppointmentCancelledEmail({
-
           email: patient.email,
-
           patientName: patient.patient_name,
-
           reason,
-
           date: patient.slot_date,
-
           startTime: patient.start_time,
-
           endTime: patient.end_time
-
         });
-
       }
 
       return {
-
         success: true,
-
         statusCode: 200,
-
-        message: "Slot deleted successfully."
-
+        message: "Slot disabled successfully."
       };
-
     }
 
     await connection.rollback();
 
     return {
-
       success: false,
-
       statusCode: 400,
-
       message: "Invalid request."
-
     };
 
   } catch (error) {
-
     if (connection) {
-
       await connection.rollback();
-
     }
 
     console.error(
@@ -1705,25 +1590,16 @@ async function deleteSchedule(scheduleId, body, doctorId) {
     );
 
     return {
-
       success: false,
-
       statusCode: 500,
-
       message: "Internal Server Error"
-
     };
 
   } finally {
-
     if (connection) {
-
       connection.release();
-
     }
-
   }
-
 }
 
 async function getUserById(id) {
@@ -1846,6 +1722,149 @@ async function getHospitalNamesByDoctor(doctorId) {
   }
 }
 
+async function activateScheduleSlot(
+  scheduleId,
+  body,
+  doctorId
+) {
+  let connection;
+
+  try {
+    if (!doctorId) {
+      return {
+        success: false,
+        statusCode: 401,
+        message: "Doctor authentication required."
+      };
+    }
+
+    if (!scheduleId || isNaN(scheduleId)) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Valid scheduleId is required."
+      };
+    }
+
+    const { date, slotId } = body;
+
+    if (!date && !slotId) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Either date or slotId is required."
+      };
+    }
+
+    if (date && slotId) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Provide either date or slotId, not both."
+      };
+    }
+
+    connection = await db.getConnection();
+
+    await connection.beginTransaction();
+
+    // Verify schedule belongs to doctor
+    const [schedule] = await connection.query(
+      `
+      SELECT id
+      FROM schedules
+      WHERE id = ?
+        AND doctor_id = ?
+      LIMIT 1
+      `,
+      [scheduleId, doctorId]
+    );
+
+    if (!schedule.length) {
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Schedule not found."
+      };
+    }
+
+    // DATE ACTIVATE
+    if (date) {
+      const result = await SlotModel.makeSlotsActiveByDate(
+        {
+          doctorId,
+          scheduleId,
+          date
+        },
+        connection
+      );
+
+      await connection.commit();
+
+      return {
+        success: true,
+        statusCode: 200,
+        message: "Schedule date activated successfully.",
+        data: {
+          affectedSlots: result.affectedRows
+        }
+      };
+    }
+
+    // SINGLE SLOT ACTIVATE
+    const result = await SlotModel.makeSingleSlotActive(
+      {
+        doctorId,
+        scheduleId,
+        slotId
+      },
+      connection
+    );
+
+    if (result.affectedRows === 0) {
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Inactive slot not found."
+      };
+    }
+
+    await connection.commit();
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Slot activated successfully.",
+      data: {
+        slotId,
+        affectedSlots: result.affectedRows
+      }
+    };
+
+  } catch (error) {
+    if (connection) {
+      await connection.rollback();
+    }
+
+    console.error("ACTIVATE SCHEDULE SLOT ERROR:", error);
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error."
+    };
+
+  } finally {
+    if (connection) {
+      connection.release();
+    }
+  }
+}
+
 module.exports = {
   createSchedule,
   getAllSchedules,
@@ -1853,6 +1872,7 @@ module.exports = {
   getSchedulePublicByDoctorId,
   updateSchedule,
   deleteSchedule,
+  activateScheduleSlot,
   getUserById,
   getHospitalNamesByDoctor
 };

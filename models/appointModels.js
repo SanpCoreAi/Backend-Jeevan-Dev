@@ -34,7 +34,7 @@ exports.getByAppointmentIdAndCode = async ({
 
 exports.getAppointmentsByDate = async (
   scheduleId,
-  slotDate,
+  date,
   connection = db
 ) => {
 
@@ -42,28 +42,26 @@ exports.getAppointmentsByDate = async (
     `
     SELECT
       a.id,
+      a.schedule_id,
+      a.patient_id,
       a.slot_date,
       a.start_time,
       a.end_time,
-      COALESCE(u.full_name, ap.patient_name) AS patient_name,
-      COALESCE(u.email, ap.patient_email) AS email
+      u.full_name AS patient_name,
+      u.email
     FROM appointments a
-
     LEFT JOIN users u
       ON u.id = a.patient_id
-
-    LEFT JOIN appointment_patients ap
-      ON ap.appointment_id = a.id
-
     WHERE a.schedule_id = ?
-      AND DATE(a.slot_date)=?
+      AND DATE(a.slot_date) = DATE(?)
       AND a.status <> 'CANCELLED'
     `,
     [
       scheduleId,
-      slotDate
+      date
     ]
   );
+
   return rows;
 };
 
@@ -170,7 +168,7 @@ exports.getAppointmentsBySchedule = async (
 
 exports.getAppointmentBySlot = async (
   scheduleId,
-  slotDate,
+  startDate,
   startTime,
   connection = db
 ) => {
@@ -179,35 +177,54 @@ exports.getAppointmentBySlot = async (
     `
     SELECT
       a.id,
+      a.schedule_id,
+      a.patient_id,
       a.slot_date,
       a.start_time,
       a.end_time,
-      COALESCE(u.full_name, ap.patient_name) AS patient_name,
-      COALESCE(u.email, ap.patient_email) AS email
+      u.full_name AS patient_name,
+      u.email
     FROM appointments a
-
     LEFT JOIN users u
       ON u.id = a.patient_id
-
-    LEFT JOIN appointment_patients ap
-      ON ap.appointment_id = a.id
-
     WHERE a.schedule_id = ?
       AND DATE(a.slot_date) = DATE(?)
-      AND TIME(a.start_time) = TIME(?)
+      AND a.start_time = ?
       AND a.status <> 'CANCELLED'
     LIMIT 1
     `,
     [
       scheduleId,
-      slotDate,
+      startDate,
       startTime
     ]
   );
 
-  return rows[0] || null;
+  return rows.length ? rows[0] : null;
 };
 
+
+exports.makeSlotsInactiveByDate = async (
+  { doctorId, scheduleId, date },
+  connection = db
+) => {
+  const [result] = await connection.query(
+    `
+    UPDATE schedule_slots
+    SET status = 'INACTIVE'
+    WHERE doctor_id = ?
+      AND schedule_id = ?
+      AND DATE(start_date) = DATE(?)
+    `,
+    [
+      doctorId,
+      scheduleId,
+      date
+    ]
+  );
+
+  return result;
+};
 
 exports.cancelAppointment = async (
   appointmentId,

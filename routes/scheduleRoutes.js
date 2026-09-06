@@ -21,4 +21,10 @@ router.delete(
   ctrl.deleteSchedule
 );
 
+router.patch(
+  "/Activate/:scheduleId",
+  verifyToken,
+  ctrl.activateScheduleSlot
+);
+
 module.exports = router;

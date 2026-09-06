@@ -276,6 +276,42 @@ async function deleteCompleteSchedule(
 }
 
 
+async function makeSlotsInactiveByDate(
+  { doctorId, scheduleId, date },
+  connection = db
+) {
+  const [result] = await connection.query(
+    `
+    UPDATE schedule_slots
+    SET status = 'INACTIVE'
+    WHERE doctor_id = ?
+      AND schedule_id = ?
+      AND DATE(start_date) = DATE(?)
+    `,
+    [doctorId, scheduleId, date]
+  );
+
+  return result;
+}
+
+async function makeSingleSlotInactive(
+  { doctorId, scheduleId, slotId },
+  connection = db
+) {
+  const [result] = await connection.query(
+    `
+    UPDATE schedule_slots
+    SET status = 'INACTIVE'
+    WHERE id = ?
+      AND doctor_id = ?
+      AND schedule_id = ?
+    `,
+    [slotId, doctorId, scheduleId]
+  );
+
+  return result;
+}
+
 async function deleteSlotsByDate(
   { doctorId, scheduleId, date },
   connection = db
@@ -334,6 +370,44 @@ async function deleteSingleSlot(
 }
 
 
+async function makeSlotsActiveByDate(
+  { doctorId, scheduleId, date },
+  connection = db
+) {
+  const [result] = await connection.query(
+    `
+    UPDATE schedule_slots
+    SET status = 'ACTIVE'
+    WHERE doctor_id = ?
+      AND schedule_id = ?
+      AND DATE(start_date) = DATE(?)
+      AND status = 'INACTIVE'
+    `,
+    [doctorId, scheduleId, date]
+  );
+
+  return result;
+}
+
+async function makeSingleSlotActive(
+  { doctorId, scheduleId, slotId },
+  connection = db
+) {
+  const [result] = await connection.query(
+    `
+    UPDATE schedule_slots
+    SET status = 'ACTIVE'
+    WHERE id = ?
+      AND doctor_id = ?
+      AND schedule_id = ?
+      AND status = 'INACTIVE'
+    `,
+    [slotId, doctorId, scheduleId]
+  );
+
+  return result;
+}
+
 module.exports = {
   insertSlots,
   insertTokens,
@@ -341,7 +415,11 @@ module.exports = {
   getDoctorSlots,
   getSlotsBySchedule,
   deactivateSlot,
+  makeSlotsInactiveByDate,
+  makeSingleSlotInactive,
   getSlotsByDate,
+  makeSlotsActiveByDate,
+  makeSingleSlotActive,
   deleteCompleteSchedule,
   deleteSlotsByDate,
   deleteSingleSlot,
