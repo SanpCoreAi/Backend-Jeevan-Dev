@@ -283,7 +283,6 @@ async function deleteCompleteSchedule(
   return result;
 }
 
-
 async function makeSlotsActiveByDate(
   { doctorId, scheduleId, date },
   connection = db
@@ -295,13 +294,15 @@ async function makeSlotsActiveByDate(
       WHEN EXISTS (
         SELECT 1
         FROM appointments a
-        WHERE a.schedule_id = ss.schedule_id
-          AND a.doctor_id = ss.doctor_id
+        WHERE a.doctor_id = ss.doctor_id
+          AND a.schedule_id = ss.schedule_id
           AND a.slot_date = ss.start_date
           AND TIME(a.start_time) = TIME(ss.start_time)
-          AND a.status IN ('PENDING', 'IN_PROGRESS')
+          AND a.token_number = ss.token_number
+          AND a.is_deleted = 0
       )
       THEN 'inactive'
+
       ELSE 'active'
     END
     WHERE ss.doctor_id = ?
@@ -327,13 +328,15 @@ async function makeSingleSlotActive(
       WHEN EXISTS (
         SELECT 1
         FROM appointments a
-        WHERE a.schedule_id = ss.schedule_id
-          AND a.doctor_id = ss.doctor_id
+        WHERE a.doctor_id = ss.doctor_id
+          AND a.schedule_id = ss.schedule_id
           AND a.slot_date = ss.start_date
           AND TIME(a.start_time) = TIME(ss.start_time)
-          AND a.status IN ('PENDING', 'IN_PROGRESS')
+          AND a.token_number = ss.token_number
+          AND a.is_deleted = 0
       )
       THEN 'inactive'
+
       ELSE 'active'
     END
     WHERE ss.id = ?
