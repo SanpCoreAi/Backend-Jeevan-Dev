@@ -1,6 +1,5 @@
 const db = require("../config/db");
 
-
 exports.getByAppointment = async (
   id,
   conn = db
@@ -29,8 +28,6 @@ exports.deleteByAppointment = async (id, conn = db) => {
     [id]
   );
 };
-
-
 
 exports.insert = async (
   id,
@@ -106,8 +103,6 @@ exports.getAppointmentFullDataById = async (
     `
     SELECT
 
-      /* ================= APPOINTMENT ================= */
-
       a.id AS appointment_id,
       a.token_number,
       a.slot_date,
@@ -116,13 +111,9 @@ exports.getAppointmentFullDataById = async (
       a.status,
       a.hospital_name,
 
-
-      /* ================= DOCTOR ================= */
-
       doc.id AS doctor_id,
       doc.full_name AS doctor_name,
       doc.phone_number AS doctor_mobile,
-
 
       d.specialization,
       d.qualification,
@@ -130,9 +121,6 @@ exports.getAppointmentFullDataById = async (
       d.qr_url,
       d.hospital_detail,
       d.availability,
-
-
-      /* ================= PATIENT ================= */
 
       pat.id AS patient_id,
       pat.full_name AS patient_name,
@@ -171,7 +159,6 @@ exports.getAppointmentFullDataById = async (
       appointment_id
     ]
   );
-
 
   return rows[0] || null;
 };
