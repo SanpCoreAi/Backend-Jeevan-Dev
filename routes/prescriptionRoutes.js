@@ -3,7 +3,7 @@ const ctrl = require("../controllers/doctor/prescriptionController");
 
 const {verifyToken} = require("../middlewares/authMiddleware")
 
-router.post("/", verifyToken, ctrl.save);
+router.post("/save", verifyToken, ctrl.save);
 
 router.put("/update/:appointmentId", ctrl.update);
 

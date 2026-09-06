@@ -18,11 +18,7 @@ const { verifyToken } = require("../middlewares/authMiddleware");
 
 router.post("/register", validateRegister, register);
 
-router.post(
-  "/assistant-register",
-  verifyToken,
-  register
-);
+router.post("/assistant-register",verifyToken, register);
 
 router.get("/verify-email", verifyEmail);
 

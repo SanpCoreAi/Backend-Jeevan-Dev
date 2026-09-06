@@ -32,6 +32,30 @@ exports.getByAppointmentIdAndCode = async ({
   return rows[0] || null;
 };
 
+exports.getByIdForUpdate = async (
+  id,
+  connection = db
+) => {
+
+  const [rows] =
+    await connection.execute(
+      `
+      SELECT
+        id,
+        patient_id,
+        doctor_id,
+        status
+      FROM appointments
+      WHERE id = ?
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [id]
+    );
+
+  return rows[0] || null;
+};
+
 exports.getAppointmentsByDate = async (
   scheduleId,
   date,
@@ -79,8 +103,8 @@ exports.getById = async (id) => {
   return rows[0] || null;
 };
 
-exports.start = async (id) => {
-  const [result] = await db.execute(
+exports.start = async (id, connection = db) => {
+  const [result] = await connection.execute(
     `
     UPDATE appointments
     SET
@@ -94,21 +118,25 @@ exports.start = async (id) => {
   return result;
 };
 
-exports.complete = async (id) => {
+exports.completeAppointment = async (
+  appointmentId,
+  connection = db
+) => {
 
-  const [result] = await db.execute(
-    `
-    UPDATE appointments
-    SET 
-      status = 'COMPLETED',
-      completed_at = NOW()
-    WHERE id = ?
-      AND status = 'IN_PROGRESS'
-    `,
-    [id]
-  );
+  const [result] =
+    await connection.execute(
+      `
+      UPDATE appointments
+      SET
+        status = 'COMPLETED',
+        updated_at = NOW()
+      WHERE id = ?
+        AND status = 'IN_PROGRESS'
+      `,
+      [appointmentId]
+    );
 
-  return result;
+  return result.affectedRows > 0;
 };
 
 exports.revisit = async (

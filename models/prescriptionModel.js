@@ -20,15 +20,11 @@ exports.getByAppointment = async (
   return rows;
 };
 
-exports.deleteByAppointment = async (
-  id,
-  conn = db
-) => {
-
+exports.deleteByAppointment = async (id, conn = db) => {
   await conn.execute(
     `
-    DELETE FROM prescriptions
-    WHERE appointment_id = ?
+      DELETE FROM prescriptions
+      WHERE appointment_id = ?
     `,
     [id]
   );
@@ -45,7 +41,6 @@ exports.insert = async (
   conn = db
 ) => {
 
-
   await conn.execute(
     `
     INSERT INTO prescriptions
@@ -60,52 +55,20 @@ exports.insert = async (
       follow_up_date,
       diagnosis
     )
-
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       id,
-      med.medicine_name,
-      med.dose,
-      med.frequency,
-      med.duration,
-      med.instructions || null,
-      remark || null,
-      followUpDate || null,
-      diagnosis || null
+      med.medicine_name ?? null,
+      med.dose ?? null,
+      med.frequency ?? null,
+      med.duration ?? null,
+      med.instructions ?? null,
+      remark ?? null,
+      followUpDate ?? null,
+      diagnosis ?? null
     ]
   );
-
-};
-
-
-
-exports.insertMeta = async (
-  id,
-  remark,
-  followUpDate,
-  diagnosis,
-  conn = db
-) => {
-
-
-  await conn.execute(
-    `
-    UPDATE appointments
-    SET
-      remark = ?,
-      follow_up_date = ?,
-      diagnosis = ?
-    WHERE id = ?
-    `,
-    [
-      remark || null,
-      followUpDate || null,
-      diagnosis || null,
-      id
-    ]
-  );
-
 };
 
 exports.getPrescriptionMedicines = async (
