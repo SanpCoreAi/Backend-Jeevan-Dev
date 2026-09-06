@@ -324,7 +324,6 @@ exports.getPatientDetails = async (
   appointmentId,
   connection = db
 ) => {
-
   const [rows] = await connection.execute(
     `
     SELECT
@@ -333,6 +332,8 @@ exports.getPatientDetails = async (
       u.email,
       u.phone_number,
 
+      DATE(u.created_at) AS registration_date,
+
       up.age,
       up.gender,
       up.weight,
@@ -340,7 +341,7 @@ exports.getPatientDetails = async (
       up.blood_group,
 
       a.id AS appointment_id,
-      a.slot_date,
+      DATE(a.slot_date) AS slot_date,
       a.start_time,
       a.end_time,
       a.status,

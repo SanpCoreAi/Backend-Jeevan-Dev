@@ -333,6 +333,7 @@ exports.findById = async (id, conn = db) => {
         qualification,
         specialization,
         registration_expiry_date,
+        hospital_detail,
 
         medical_registration_certificate,
         medical_degree_certificate,
@@ -388,6 +389,7 @@ exports.findAll = async (filters = {}, conn = db) => {
       medical_council,
       qualification,
       specialization,
+      hospital_detail,
       registration_expiry_date,
 
       medical_registration_certificate,
@@ -731,6 +733,7 @@ exports.findDocumentsById = async (id) => {
       medical_registration_certificate,
       medical_degree_certificate,
       government_id_proof,
+      hospital_detail,
       selfie,
       created_at,
       updated_at
