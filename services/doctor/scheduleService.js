@@ -1300,10 +1300,15 @@ async function updateSchedule(doctorId, scheduleId, body) {
 }
 
 
-async function deleteSchedule(scheduleId, body, doctorId) {
+async function deleteSchedule(
+  scheduleId,
+  body,
+  doctorId
+) {
   let connection;
 
   try {
+
     if (!doctorId) {
       return {
         success: false,
@@ -1312,7 +1317,10 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       };
     }
 
-    if (!scheduleId || isNaN(scheduleId)) {
+    if (
+      !scheduleId ||
+      isNaN(scheduleId)
+    ) {
       return {
         success: false,
         statusCode: 400,
@@ -1320,7 +1328,11 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       };
     }
 
-    const { date, slotId, reason } = body || {};
+    const {
+      date,
+      slotId,
+      reason
+    } = body || {};
 
     connection = await db.getConnection();
 
@@ -1334,10 +1346,14 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         AND doctor_id = ?
       LIMIT 1
       `,
-      [scheduleId, doctorId]
+      [
+        scheduleId,
+        doctorId
+      ]
     );
 
     if (!schedule.length) {
+
       await connection.rollback();
 
       return {
@@ -1348,20 +1364,25 @@ async function deleteSchedule(scheduleId, body, doctorId) {
     }
 
     if (!date && !slotId) {
-      const slots = await SlotModel.getSlotsBySchedule(
-        scheduleId,
-        connection
-      );
 
-      const hasBookedSlots = slots.some(
-        slot =>
-          String(slot.status).toLowerCase() === "inactive"
-      );
+      const slots =
+        await SlotModel.getSlotsBySchedule(
+          scheduleId,
+          connection
+        );
+
+      const hasBookedSlots =
+        slots.some(
+          slot =>
+            String(slot.status).toLowerCase() ===
+            "inactive"
+        );
 
       if (
         hasBookedSlots &&
         (!reason || !reason.trim())
       ) {
+
         await connection.rollback();
 
         return {
@@ -1372,13 +1393,16 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         };
       }
 
+      // Get active appointments
       const patients =
         await AppointmentModel.getAppointmentsBySchedule(
           scheduleId,
           connection
         );
 
+      // Cancel appointments
       for (const item of patients) {
+
         await AppointmentModel.cancelAppointment(
           item.id,
           reason || null,
@@ -1386,6 +1410,7 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         );
       }
 
+      // Physical delete
       await SlotModel.deleteCompleteSchedule(
         {
           doctorId,
@@ -1396,13 +1421,19 @@ async function deleteSchedule(scheduleId, body, doctorId) {
 
       await connection.commit();
 
+      // Send cancellation emails
       for (const patient of patients) {
-        if (!patient.email) continue;
+
+        if (!patient.email) {
+          continue;
+        }
 
         await sendAppointmentCancelledEmail({
           email: patient.email,
           patientName: patient.patient_name,
-          reason: reason || "Schedule removed",
+          reason:
+            reason ||
+            "Schedule removed",
           date: patient.slot_date,
           startTime: patient.start_time,
           endTime: patient.end_time
@@ -1412,13 +1443,17 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       return {
         success: true,
         statusCode: 200,
-        message: "Schedule deleted successfully."
+        message:
+          "Schedule deleted successfully."
       };
     }
 
     if (date && !slotId) {
-      const formattedDate = normalizeDateValue(date);
 
+      const formattedDate =
+        normalizeDateValue(date);
+
+      // Get appointments for this date
       const patients =
         await AppointmentModel.getAppointmentsByDate(
           scheduleId,
@@ -1426,10 +1461,12 @@ async function deleteSchedule(scheduleId, body, doctorId) {
           connection
         );
 
+      // Reason required if appointment exists
       if (
         patients.length > 0 &&
         (!reason || !reason.trim())
       ) {
+
         await connection.rollback();
 
         return {
@@ -1440,7 +1477,9 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         };
       }
 
+      // Cancel appointments
       for (const item of patients) {
+
         await AppointmentModel.cancelAppointment(
           item.id,
           reason || null,
@@ -1448,7 +1487,8 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         );
       }
 
-      await SlotModel.makeSlotsInactiveByDate(
+      // Mark all slots as deleted
+      await SlotModel.deleteSlotsByDate(
         {
           doctorId,
           scheduleId,
@@ -1459,13 +1499,19 @@ async function deleteSchedule(scheduleId, body, doctorId) {
 
       await connection.commit();
 
+      // Send cancellation emails
       for (const patient of patients) {
-        if (!patient.email) continue;
+
+        if (!patient.email) {
+          continue;
+        }
 
         await sendAppointmentCancelledEmail({
           email: patient.email,
           patientName: patient.patient_name,
-          reason: reason || "Schedule date removed",
+          reason:
+            reason ||
+            "Schedule date removed",
           date: patient.slot_date,
           startTime: patient.start_time,
           endTime: patient.end_time
@@ -1475,39 +1521,56 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       return {
         success: true,
         statusCode: 200,
-        message: "Schedule date disabled successfully."
+        message:
+          "Schedule date deleted successfully."
       };
     }
 
     if (slotId) {
-      const [slot] = await connection.query(
-        `
-        SELECT
-          id,
-          status,
-          start_date,
-          start_time,
-          end_time
-        FROM schedule_slots
-        WHERE id = ?
-          AND doctor_id = ?
-          AND schedule_id = ?
-        LIMIT 1
-        `,
-        [
-          slotId,
-          doctorId,
-          scheduleId
-        ]
-      );
+
+      // Get slot
+      const [slot] =
+        await connection.query(
+          `
+          SELECT
+            id,
+            status,
+            is_deleted,
+            start_date,
+            start_time,
+            end_time
+          FROM schedule_slots
+          WHERE id = ?
+            AND doctor_id = ?
+            AND schedule_id = ?
+          LIMIT 1
+          `,
+          [
+            slotId,
+            doctorId,
+            scheduleId
+          ]
+        );
 
       if (!slot.length) {
+
         await connection.rollback();
 
         return {
           success: false,
           statusCode: 404,
           message: "Slot not found."
+        };
+      }
+
+      if (Number(slot[0].is_deleted) === 1) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Slot is already deleted."
         };
       }
 
@@ -1523,6 +1586,7 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         patient &&
         (!reason || !reason.trim())
       ) {
+
         await connection.rollback();
 
         return {
@@ -1533,8 +1597,8 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         };
       }
 
-      // Cancel appointment if booked
       if (patient) {
+
         await AppointmentModel.cancelAppointment(
           patient.id,
           reason,
@@ -1542,7 +1606,7 @@ async function deleteSchedule(scheduleId, body, doctorId) {
         );
       }
 
-      await SlotModel.makeSingleSlotInactive(
+      await SlotModel.deleteSingleSlot(
         {
           doctorId,
           scheduleId,
@@ -1554,10 +1618,13 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       await connection.commit();
 
       if (patient?.email) {
+
         await sendAppointmentCancelledEmail({
           email: patient.email,
           patientName: patient.patient_name,
-          reason,
+          reason:
+            reason ||
+            "Slot removed",
           date: patient.slot_date,
           startTime: patient.start_time,
           endTime: patient.end_time
@@ -1567,7 +1634,8 @@ async function deleteSchedule(scheduleId, body, doctorId) {
       return {
         success: true,
         statusCode: 200,
-        message: "Slot disabled successfully."
+        message:
+          "Slot deleted successfully."
       };
     }
 
@@ -1580,6 +1648,7 @@ async function deleteSchedule(scheduleId, body, doctorId) {
     };
 
   } catch (error) {
+
     if (connection) {
       await connection.rollback();
     }
@@ -1592,10 +1661,12 @@ async function deleteSchedule(scheduleId, body, doctorId) {
     return {
       success: false,
       statusCode: 500,
-      message: "Internal Server Error"
+      message:
+        "Internal Server Error"
     };
 
   } finally {
+
     if (connection) {
       connection.release();
     }
@@ -1767,8 +1838,7 @@ async function activateScheduleSlot(
     connection = await db.getConnection();
 
     await connection.beginTransaction();
-
-    // Verify schedule belongs to doctor
+  
     const [schedule] = await connection.query(
       `
       SELECT id

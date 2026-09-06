@@ -191,21 +191,29 @@ async function getDoctorSlots(
   return rows;
 }
 
-
-async function getSlotsBySchedule(scheduleId) {
-  const [rows] = await db.query(
+async function getSlotsBySchedule(
+  scheduleId,
+  connection = db
+) {
+  const [rows] = await connection.query(
     `
     SELECT
       id,
       schedule_id,
+      doctor_id,
+      status,
       start_date,
+      end_date,
       start_time,
       end_time,
-      status,
       token_number
     FROM schedule_slots
     WHERE schedule_id = ?
-    ORDER BY start_date ASC, start_time ASC
+      AND status != 'DELETED'
+    ORDER BY
+      start_date ASC,
+      start_time ASC,
+      token_number ASC
     `,
     [scheduleId]
   );
@@ -233,12 +241,12 @@ async function getSlotsByDate(
     FROM schedule_slots
     WHERE schedule_id = ?
       AND DATE(start_date) = DATE(?)
-    ORDER BY start_time ASC
+      AND status != 'DELETED'
+    ORDER BY
+      start_time ASC,
+      token_number ASC
     `,
-    [
-      scheduleId,
-      date
-    ]
+    [scheduleId, date]
   );
 
   return rows;
@@ -276,17 +284,30 @@ async function deleteCompleteSchedule(
 }
 
 
-async function makeSlotsInactiveByDate(
+async function makeSlotsActiveByDate(
   { doctorId, scheduleId, date },
   connection = db
 ) {
   const [result] = await connection.query(
     `
-    UPDATE schedule_slots
-    SET status = 'INACTIVE'
-    WHERE doctor_id = ?
-      AND schedule_id = ?
-      AND DATE(start_date) = DATE(?)
+    UPDATE schedule_slots ss
+    SET ss.status = CASE
+      WHEN EXISTS (
+        SELECT 1
+        FROM appointments a
+        WHERE a.schedule_id = ss.schedule_id
+          AND a.doctor_id = ss.doctor_id
+          AND a.slot_date = ss.start_date
+          AND TIME(a.start_time) = TIME(ss.start_time)
+          AND a.status IN ('PENDING', 'IN_PROGRESS')
+      )
+      THEN 'inactive'
+      ELSE 'active'
+    END
+    WHERE ss.doctor_id = ?
+      AND ss.schedule_id = ?
+      AND ss.start_date = ?
+      AND ss.status = 'deleted'
     `,
     [doctorId, scheduleId, date]
   );
@@ -294,17 +315,31 @@ async function makeSlotsInactiveByDate(
   return result;
 }
 
-async function makeSingleSlotInactive(
+
+async function makeSingleSlotActive(
   { doctorId, scheduleId, slotId },
   connection = db
 ) {
   const [result] = await connection.query(
     `
-    UPDATE schedule_slots
-    SET status = 'INACTIVE'
-    WHERE id = ?
-      AND doctor_id = ?
-      AND schedule_id = ?
+    UPDATE schedule_slots ss
+    SET ss.status = CASE
+      WHEN EXISTS (
+        SELECT 1
+        FROM appointments a
+        WHERE a.schedule_id = ss.schedule_id
+          AND a.doctor_id = ss.doctor_id
+          AND a.slot_date = ss.start_date
+          AND TIME(a.start_time) = TIME(ss.start_time)
+          AND a.status IN ('PENDING', 'IN_PROGRESS')
+      )
+      THEN 'inactive'
+      ELSE 'active'
+    END
+    WHERE ss.id = ?
+      AND ss.doctor_id = ?
+      AND ss.schedule_id = ?
+      AND ss.status = 'deleted'
     `,
     [slotId, doctorId, scheduleId]
   );
@@ -318,20 +353,19 @@ async function deleteSlotsByDate(
 ) {
   const [result] = await connection.query(
     `
-    DELETE FROM schedule_slots
+    UPDATE schedule_slots
+    SET status = 'DELETED'
     WHERE doctor_id = ?
       AND schedule_id = ?
-      AND DATE(start_date) = ?
+      AND DATE(start_date) = DATE(?)
+      AND status != 'DELETED'
     `,
-    [
-      doctorId,
-      scheduleId,
-      date
-    ]
+    [doctorId, scheduleId, date]
   );
 
   return result;
 }
+
 
 
 async function insertTokens(
@@ -354,59 +388,19 @@ async function deleteSingleSlot(
 ) {
   const [result] = await connection.query(
     `
-    DELETE FROM schedule_slots
+    UPDATE schedule_slots
+    SET status = 'DELETED'
     WHERE id = ?
       AND doctor_id = ?
       AND schedule_id = ?
-    `,
-    [
-      slotId,
-      doctorId,
-      scheduleId
-    ]
-  );
-
-  return result;
-}
-
-
-async function makeSlotsActiveByDate(
-  { doctorId, scheduleId, date },
-  connection = db
-) {
-  const [result] = await connection.query(
-    `
-    UPDATE schedule_slots
-    SET status = 'ACTIVE'
-    WHERE doctor_id = ?
-      AND schedule_id = ?
-      AND DATE(start_date) = DATE(?)
-      AND status = 'INACTIVE'
-    `,
-    [doctorId, scheduleId, date]
-  );
-
-  return result;
-}
-
-async function makeSingleSlotActive(
-  { doctorId, scheduleId, slotId },
-  connection = db
-) {
-  const [result] = await connection.query(
-    `
-    UPDATE schedule_slots
-    SET status = 'ACTIVE'
-    WHERE id = ?
-      AND doctor_id = ?
-      AND schedule_id = ?
-      AND status = 'INACTIVE'
+      AND status != 'DELETED'
     `,
     [slotId, doctorId, scheduleId]
   );
 
   return result;
 }
+
 
 module.exports = {
   insertSlots,
@@ -415,11 +409,9 @@ module.exports = {
   getDoctorSlots,
   getSlotsBySchedule,
   deactivateSlot,
-  makeSlotsInactiveByDate,
-  makeSingleSlotInactive,
-  getSlotsByDate,
-  makeSlotsActiveByDate,
   makeSingleSlotActive,
+  makeSlotsActiveByDate,
+  getSlotsByDate,
   deleteCompleteSchedule,
   deleteSlotsByDate,
   deleteSingleSlot,
