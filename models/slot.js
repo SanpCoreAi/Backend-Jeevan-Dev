@@ -167,6 +167,7 @@ async function getDoctorSlots(
         SELECT COUNT(*)
         FROM schedule_slots s2
         WHERE s2.schedule_id = ss.schedule_id
+          AND s2.start_date = ss.start_date
           AND LOWER(s2.status) = 'inactive'
       ) AS booking_length
 
