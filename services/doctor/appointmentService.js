@@ -2414,16 +2414,16 @@ exports.cancelAppointment = async (
     if (
       appointment.schedule_id &&
       appointment.doctor_id &&
-      appointment.appointment_date &&
-      appointment.start_time
+      appointment.slot_date &&
+      appointment.token_number
     ) {
 
       const slotActivated =
         await Appointment.activateSlot(
           appointment.schedule_id,
           appointment.doctor_id,
-          appointment.appointment_date,
-          appointment.start_time,
+          appointment.slot_date,
+          appointment.token_number,
           connection
         );
 
@@ -2455,7 +2455,7 @@ exports.cancelAppointment = async (
           "Appointment Cancelled",
 
         message:
-          `Your appointment on ${appointment.appointment_date} has been cancelled successfully.`,
+          `Your appointment on ${appointment.slot_date} has been cancelled successfully.`,
 
         type:
           "WARNING",
