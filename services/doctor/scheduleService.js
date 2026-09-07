@@ -1673,7 +1673,6 @@ async function getUserById(id) {
 
 async function getHospitalNamesByDoctor(doctorId) {
   try {
-
     if (!doctorId) {
       return {
         success: false,
@@ -1684,7 +1683,9 @@ async function getHospitalNamesByDoctor(doctorId) {
 
     const [rows] = await db.query(
       `
-      SELECT hospital_detail
+      SELECT 
+        hospital_detail,
+        availability
       FROM doctors
       WHERE user_id = ?
       LIMIT 1
@@ -1700,84 +1701,56 @@ async function getHospitalNamesByDoctor(doctorId) {
       };
     }
 
-    if (!rows[0].hospital_detail) {
-      return {
-        success: true,
-        statusCode: 200,
-        message: "No hospitals found.",
-        count: 0,
-        data: []
-      };
-    }
+    let hospitalDetail = rows[0].hospital_detail;
+    let availability = rows[0].availability;
 
-    let hospitals = [];
-
-    try {
-      hospitals =
-        typeof rows[0].hospital_detail === "string"
-          ? JSON.parse(rows[0].hospital_detail)
-          : rows[0].hospital_detail;
-    } catch (error) {
-      return {
-        success: false,
-        statusCode: 500,
-        message: "Invalid hospital detail format."
-      };
-    }
-
-    if (!Array.isArray(hospitals)) {
-      hospitals = [];
-    }
-
-    const uniqueHospitals = [];
-    const seen = new Set();
-
-    for (const hospital of hospitals) {
-
-      const item = {
-        hospitalName: hospital?.hospitalName || "",
-        landmark: hospital?.landmark || "",
-        areaLocality: hospital?.areaLocality || "",
-        streetName: hospital?.streetName || "",
-        city: hospital?.city || "",
-        district: hospital?.district || "",
-        state: hospital?.state || "",
-        pinCode: hospital?.pinCode || ""
-      };
-
-      const key = JSON.stringify(item).toLowerCase();
-
-      if (!seen.has(key)) {
-        seen.add(key);
-        uniqueHospitals.push(item);
+    if (typeof hospitalDetail === "string") {
+      try {
+        hospitalDetail = JSON.parse(hospitalDetail);
+      } catch (error) {
+        hospitalDetail = [];
       }
     }
 
-    uniqueHospitals.sort((a, b) =>
-      a.hospitalName.localeCompare(b.hospitalName)
-    );
+    if (typeof availability === "string") {
+      try {
+        availability = JSON.parse(availability);
+      } catch (error) {
+        availability = [];
+      }
+    }
+
+    if (!Array.isArray(hospitalDetail)) {
+      hospitalDetail = [];
+    }
+
+    if (!Array.isArray(availability)) {
+      availability = [];
+    }
+
+    const formattedAvailability = availability
+      .filter(item => item?.day)
+      .map(item => ({
+        day: item.day
+      }));
 
     return {
       success: true,
       statusCode: 200,
       message: "Hospital list fetched successfully.",
-      count: uniqueHospitals.length,
-      data: uniqueHospitals
+      count: hospitalDetail.length,
+      data: hospitalDetail,
+      availability: formattedAvailability
     };
 
   } catch (error) {
-
-    console.error(
-      "Get Hospital Names Service Error:",
-      error
-    );
+    console.error("GET HOSPITALS SERVICE ERROR:", error);
 
     return {
       success: false,
       statusCode: 500,
       message: "Internal Server Error"
     };
-
   }
 }
 
