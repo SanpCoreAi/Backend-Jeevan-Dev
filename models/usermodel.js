@@ -83,14 +83,10 @@ exports.findByEmail = async (email) => {
         u.*,
         ui.file_key AS image
       FROM users u
-
       LEFT JOIN user_images ui
         ON ui.user_id = u.id
-
       WHERE u.email = ?
-
       ORDER BY ui.id DESC
-
       LIMIT 1
       `,
       [email]

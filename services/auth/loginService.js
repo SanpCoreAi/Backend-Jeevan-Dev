@@ -111,9 +111,7 @@ exports.loginUser = async ({ email, password }) => {
             phone_number: user.phone_number,
             role_id: user.role_id,
             doctor_id: user.doctor_id || null,
-
-            // Doctor image
-            image: user.doctor_image || null,
+            image: user.image || null,
           },
         },
       },
