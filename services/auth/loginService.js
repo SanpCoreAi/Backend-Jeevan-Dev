@@ -36,18 +36,18 @@ exports.loginUser = async ({ email, password }) => {
       };
     }
 
-
-if (
-  user.role_id === 2 &&
-  user.status !== "ACTIVE"
-) {
-  return {
-    statusCode: 403,
-    body: {
-      message: "Your account is inactive. Please contact administrator.",
-    },
-  };
-}
+    if (
+      user.role_id === 2 &&
+      user.status !== "ACTIVE"
+    ) {
+      return {
+        statusCode: 403,
+        body: {
+          message:
+            "Your account is inactive. Please contact administrator.",
+        },
+      };
+    }
 
     const isPasswordMatched = await bcrypt.compare(
       password,
@@ -99,9 +99,11 @@ if (
       statusCode: 200,
       body: {
         message: "Login successful",
+
         data: {
           accessToken,
           refreshToken,
+
           user: {
             id: user.id,
             full_name: user.full_name,
@@ -109,6 +111,9 @@ if (
             phone_number: user.phone_number,
             role_id: user.role_id,
             doctor_id: user.doctor_id || null,
+
+            // Doctor image
+            image: user.doctor_image || null,
           },
         },
       },

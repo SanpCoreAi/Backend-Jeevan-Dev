@@ -74,15 +74,23 @@ exports.createUser = async (data) => {
   }
 };
 
-
 exports.findByEmail = async (email) => {
   try {
 
     const [rows] = await db.query(
       `
-      SELECT *
-      FROM users
-      WHERE email = ?
+      SELECT
+        u.*,
+        ui.file_key AS image
+      FROM users u
+
+      LEFT JOIN user_images ui
+        ON ui.user_id = u.id
+
+      WHERE u.email = ?
+
+      ORDER BY ui.id DESC
+
       LIMIT 1
       `,
       [email]
@@ -94,7 +102,6 @@ exports.findByEmail = async (email) => {
 
     console.error("Find By Email Model Error:", error);
     throw error;
-
   }
 };
 

@@ -2348,13 +2348,15 @@ exports.cancelAppointment = async (
 
       return {
         success: false,
-        message: "Cancellation reason is required"
+        statusCode: 400,
+        message: "Cancellation reason is required",
+        data: null
       };
 
     }
 
     const appointment =
-      await Appointment.cancelAppointment(
+      await Appointment.getAppointmentForCancel(
         appointmentId,
         patientId,
         connection
@@ -2366,7 +2368,9 @@ exports.cancelAppointment = async (
 
       return {
         success: false,
-        message: "Appointment not found"
+        statusCode: 404,
+        message: "Appointment not found",
+        data: null
       };
 
     }
@@ -2380,53 +2384,92 @@ exports.cancelAppointment = async (
 
       return {
         success: false,
-        message: "Appointment already cancelled"
+        statusCode: 400,
+        message: "Appointment already cancelled",
+        data: null
       };
 
     }
 
-    await Appointment.cancelAppointment(
-      appointmentId,
-      reason.trim(),
-      connection
-    );
-
-    // Slot ko dobara available karo
-    if (appointment.schedule_id) {
-
-      await SlotModel.activateSlot(
-        appointment.schedule_id,
-        appointment.doctor_id,
-        appointment.slot_date,
-        appointment.start_time,
+    const cancelled =
+      await Appointment.cancelAppointment(
+        appointmentId,
+        reason.trim(),
         connection
       );
+
+    if (!cancelled) {
+
+      await connection.rollback();
+
+      return {
+        success: false,
+        statusCode: 400,
+        message: "Unable to cancel appointment",
+        data: null
+      };
+
+    }
+
+    if (
+      appointment.schedule_id &&
+      appointment.doctor_id &&
+      appointment.appointment_date &&
+      appointment.start_time
+    ) {
+
+      const slotActivated =
+        await Appointment.activateSlot(
+          appointment.schedule_id,
+          appointment.doctor_id,
+          appointment.appointment_date,
+          appointment.start_time,
+          connection
+        );
+
+      if (!slotActivated) {
+
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "Appointment cancelled but slot could not be activated.",
+          data: null
+        };
+
+      }
 
     }
 
     await connection.commit();
+
     try {
 
       await notificationService.createNotification({
 
         userId: patientId,
 
-        title: "Appointment Cancelled",
+        title:
+          "Appointment Cancelled",
 
         message:
-          `Your appointment on ${appointment.slot_date} has been cancelled successfully.`,
+          `Your appointment on ${appointment.appointment_date} has been cancelled successfully.`,
 
-        type: "WARNING",
+        type:
+          "WARNING",
 
-        createdBy: patientId
+        createdBy:
+          patientId
 
       });
 
-    } catch (error) {
+    } catch (notificationError) {
 
       console.error(
         "Notification Error:",
-        error.message
+        notificationError.message
       );
 
     }
@@ -2435,16 +2478,45 @@ exports.cancelAppointment = async (
 
       success: true,
 
-      message: "Appointment cancelled successfully"
+      statusCode: 200,
+
+      message:
+        "Appointment cancelled successfully",
+
+      data: {
+
+        appointment_id:
+          appointmentId,
+
+        status:
+          "CANCELLED",
+
+        slot_status:
+          "ACTIVE"
+
+      }
 
     };
 
   } catch (error) {
 
-    await connection.rollback();
+    if (connection) {
+
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+
+        console.error(
+          "Rollback Error:",
+          rollbackError
+        );
+
+      }
+
+    }
 
     console.error(
-      "Cancel Appointment Error:",
+      "Cancel Appointment Service Error:",
       error
     );
 
@@ -2452,7 +2524,9 @@ exports.cancelAppointment = async (
 
   } finally {
 
-    connection.release();
+    if (connection) {
+      connection.release();
+    }
 
   }
 

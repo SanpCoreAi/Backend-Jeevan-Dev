@@ -473,17 +473,20 @@ exports.getAppointmentForCancel = async (
     `
     SELECT
       id,
-      doctor_id,
       patient_id,
+      doctor_id,
       schedule_id,
       slot_date,
       start_time,
       end_time,
-      status
+      token_number,
+      status,
+      hospital_name
     FROM appointments
     WHERE id = ?
       AND patient_id = ?
     LIMIT 1
+    FOR UPDATE
     `,
     [
       appointmentId,
@@ -509,6 +512,7 @@ exports.cancelAppointment = async (
         cancel_reason = ?,
         updated_at = NOW()
       WHERE id = ?
+        AND status <> 'CANCELLED'
       `,
       [
         reason,
@@ -516,7 +520,7 @@ exports.cancelAppointment = async (
       ]
     );
 
-  return result.affectedRows;
+  return result.affectedRows === 1;
 };
 
 exports.autoCancelPendingAppointments = async (
@@ -656,6 +660,78 @@ exports.getByIdAndPatient = async (
   return rows;
 };
 
+
+exports.activateSlot = async (
+  scheduleId,
+  doctorId,
+  appointmentDate,
+  tokenNumber,
+  connection = db
+) => {
+
+  // Pehle exact slot find karo
+  const [slotRows] = await connection.query(
+    `
+    SELECT
+      id,
+      schedule_id,
+      doctor_id,
+      start_date,
+      start_time,
+      end_time,
+      token_number,
+      status
+    FROM schedule_slots
+    WHERE schedule_id = ?
+      AND doctor_id = ?
+      AND DATE(start_date) = ?
+      AND token_number = ?
+    LIMIT 1
+    FOR UPDATE
+    `,
+    [
+      scheduleId,
+      doctorId,
+      appointmentDate,
+      tokenNumber
+    ]
+  );
+
+  console.log("ACTIVATE SLOT SEARCH:", {
+    scheduleId,
+    doctorId,
+    appointmentDate,
+    tokenNumber,
+    foundSlot: slotRows
+  });
+
+  if (!slotRows.length) {
+    console.log("SLOT NOT FOUND FOR ACTIVATION");
+
+    return false;
+  }
+
+  const slot = slotRows[0];
+
+  console.log("SLOT BEFORE ACTIVATION:", slot);
+
+  // Slot ko active karo
+  const [result] = await connection.query(
+    `
+    UPDATE schedule_slots
+    SET status = 'active'
+    WHERE id = ?
+    `,
+    [slot.id]
+  );
+
+  console.log("SLOT ACTIVATION RESULT:", {
+    slotId: slot.id,
+    affectedRows: result.affectedRows
+  });
+
+  return result.affectedRows === 1;
+};
 
 exports.getAppointmentDetails = async (
   doctorId,
