@@ -300,7 +300,6 @@ async function makeSlotsActiveByDate(
           AND a.slot_date = ss.start_date
           AND TIME(a.start_time) = TIME(ss.start_time)
           AND a.token_number = ss.token_number
-          AND a.is_deleted = 0
       )
       THEN 'inactive'
 
@@ -334,7 +333,6 @@ async function makeSingleSlotActive(
           AND a.slot_date = ss.start_date
           AND TIME(a.start_time) = TIME(ss.start_time)
           AND a.token_number = ss.token_number
-          AND a.is_deleted = 0
       )
       THEN 'inactive'
 

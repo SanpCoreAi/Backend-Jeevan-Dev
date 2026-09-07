@@ -1535,7 +1535,6 @@ async function deleteSchedule(
           SELECT
             id,
             status,
-            is_deleted,
             start_date,
             start_time,
             end_time
@@ -1560,17 +1559,6 @@ async function deleteSchedule(
           success: false,
           statusCode: 404,
           message: "Slot not found."
-        };
-      }
-
-      if (Number(slot[0].is_deleted) === 1) {
-
-        await connection.rollback();
-
-        return {
-          success: false,
-          statusCode: 400,
-          message: "Slot is already deleted."
         };
       }
 
