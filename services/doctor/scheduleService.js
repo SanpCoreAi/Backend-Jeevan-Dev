@@ -1562,6 +1562,19 @@ async function deleteSchedule(
         };
       }
 
+      if (
+        String(slot[0].status).toLowerCase() === "inactive" &&
+        (!reason || !reason.trim())
+      ) {
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Reason is required because this slot is inactive."
+        };
+      }
+
       const patient =
         await AppointmentModel.getAppointmentBySlot(
           scheduleId,
@@ -1569,21 +1582,6 @@ async function deleteSchedule(
           slot[0].start_time,
           connection
         );
-
-      if (
-        patient &&
-        (!reason || !reason.trim())
-      ) {
-
-        await connection.rollback();
-
-        return {
-          success: false,
-          statusCode: 400,
-          message:
-            "Reason is required because this slot is booked."
-        };
-      }
 
       if (patient) {
 
