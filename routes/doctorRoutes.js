@@ -25,7 +25,12 @@ router.get("/doctor/search", DoctorSearchController.searchDoctors);
 
 router.get("/public/:doctorId", doctorController.getDoctorPublicProfileById);
 
-router.get("/:doctorId", DoctorRatingController.getDoctorProfileWithRating);
+      
+router.get(
+  "/check-username",
+  doctorController.checkUsername
+);
 
+router.get("/:doctorId", DoctorRatingController.getDoctorProfileWithRating);
 
 module.exports = router;

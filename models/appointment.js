@@ -1416,7 +1416,9 @@ exports.getAppointmentsByDateForDoctor = async (
       a.appointment_type AS mode,
       a.patient_id,
 
-      u.full_name AS doctor_name,
+      patient.full_name AS patient_name,
+
+      doctor.full_name AS doctor_name,
       d.specialization AS doctor_department
 
     FROM appointments a
@@ -1427,8 +1429,11 @@ exports.getAppointmentsByDateForDoctor = async (
     LEFT JOIN doctors d
       ON d.user_id = a.doctor_id
 
-    LEFT JOIN users u
-      ON u.id = a.doctor_id
+    LEFT JOIN users doctor
+      ON doctor.id = a.doctor_id
+
+    LEFT JOIN users patient
+      ON patient.id = a.patient_id
 
     WHERE
       a.doctor_id = ?

@@ -1,3 +1,4 @@
+const db = require("../../config/db");
 const DoctorModel = require("../../models/doctorModel");
 const DoctorRegistrationModel = require("../../models/doctorVerification/doctorRegistrationModel");
 const safeParse = require("../../utils/safeJson");
@@ -550,5 +551,46 @@ exports.getAllDoctors = async ({
     );
 
     throw error;
+  }
+};
+
+exports.checkUsername = async (username) => {
+  try {
+    const [rows] = await db.query(
+      `
+      SELECT id
+      FROM doctors
+      WHERE username = ?
+      LIMIT 1
+      `,
+      [username]
+    );
+
+    if (rows.length > 0) {
+      return {
+        success: false,
+        statusCode: 409,
+        message: "This username already exists. Please choose a unique username.",
+        available: false,
+        username
+      };
+    }
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Username is available",
+      available: true,
+      username
+    };
+
+  } catch (error) {
+    console.error("CHECK USERNAME SERVICE ERROR:", error);
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
+    };
   }
 };

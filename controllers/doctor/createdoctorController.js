@@ -165,3 +165,44 @@ exports.getAllDoctors = async (req, res) => {
     });
   }
 };
+
+exports.checkUsername = async (req, res) => {
+  try {
+    const { username } = req.query;
+
+    if (!username) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message: "Username is required"
+      });
+    }
+
+    const cleanUsername = username.trim().toLowerCase();
+
+    if (!/^[a-z0-9_]+$/.test(cleanUsername)) {
+      return res.status(400).json({
+        success: false,
+        statusCode: 400,
+        message:
+          "Username can contain only letters, numbers and underscore"
+      });
+    }
+
+    const result =
+      await DoctorService.checkUsername(cleanUsername);
+
+    return res
+      .status(result.statusCode)
+      .json(result);
+
+  } catch (error) {
+    console.error("CHECK USERNAME CONTROLLER ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: "Internal Server Error"
+    });
+  }
+};
