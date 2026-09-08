@@ -158,7 +158,22 @@ exports.getBydoctorId = async (userId) => {
         d.qr_url,
         d.accept_emergency_patients,
 
-        um.file_key
+        um.file_key,
+
+        COALESCE(
+          (
+            SELECT ROUND(AVG(f.rating), 1)
+            FROM feedbacks f
+            WHERE f.doctor_id = u.id
+          ),
+          0
+        ) AS avg_rating,
+
+        (
+          SELECT COUNT(f.rating)
+          FROM feedbacks f
+          WHERE f.doctor_id = u.id
+        ) AS total_ratings
 
       FROM users u
 

@@ -142,6 +142,14 @@ exports.getProfile = async (userId) => {
 
         accept_emergency_patients:
           doctor.accept_emergency_patients,
+
+        avgRating:
+          doctor.avg_rating == null
+            ? "0.0"
+            : Number(doctor.avg_rating).toFixed(1),
+
+        totalRatings:
+          Number(doctor.total_ratings ?? 0),
       },
     };
 
