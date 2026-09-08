@@ -188,6 +188,29 @@ exports.findByRefreshToken = async (
   }
 };
 
+exports.getDoctorIdByAssistantId = async (
+  assistantId,
+  connection = db
+) => {
+  const [rows] = await connection.query(
+    `
+    SELECT
+      id,
+      doctor_id,
+      role_id
+    FROM users
+    WHERE id = ?
+      AND role_id = 3
+    LIMIT 1
+    `,
+    [assistantId]
+  );
+
+  return rows.length > 0
+    ? rows[0]
+    : null;
+};
+
 exports.verifyUserByToken = async (token) => {
   try {
 

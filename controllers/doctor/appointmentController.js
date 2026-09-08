@@ -1,4 +1,5 @@
 const appointmentService = require("../../services/doctor/appointmentService");
+const UserModel = require("../../models/usermodel");
 const {
   bookAppointmentValidation,
   bookAppointmentByAssistantValidation
@@ -671,21 +672,45 @@ exports.getMyAppointments = async (req, res) => {
 
 exports.getDoctorSlots = async (req, res) => {
   try {
-
     let {
       doctorId,
       hospitalName,
       date
     } = req.query;
 
-    if (req.user.role === 2) {
+    const role = Number(req.user.role);
+
+    if (role === 2) {
       doctorId = req.user.id;
+    }
+
+    else if (role === 3) {
+
+      const doctor = await UserModel.getDoctorIdByAssistantId(
+        req.user.id
+      );
+
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          message: "Doctor assigned to assistant not found."
+        });
+      }
+
+      doctorId = doctor.doctor_id;
+    }
+
+    else {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized role."
+      });
     }
 
     if (!doctorId || !hospitalName || !date) {
       return res.status(400).json({
         success: false,
-        message: "doctorId, hospitalName and date are required"
+        message: "hospitalName and date are required"
       });
     }
 
@@ -701,14 +726,12 @@ exports.getDoctorSlots = async (req, res) => {
     });
 
   } catch (error) {
-
     console.error("Get Doctor Slots Error:", error);
 
     return res.status(500).json({
       success: false,
       message: "Internal server error"
     });
-
   }
 };
 
