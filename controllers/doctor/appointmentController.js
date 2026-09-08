@@ -638,7 +638,8 @@ exports.getMyAppointments = async (req, res) => {
       year: req.query.year,
       month: req.query.month,
       week: req.query.week,
-      date: req.query.date
+      date: req.query.date,
+      status: req.query.status
     };
 
     const result = await appointmentService.getMyAppointments(
@@ -661,14 +662,12 @@ exports.getMyAppointments = async (req, res) => {
       error
     );
 
-    return res.status(500).json({
+    return res.status(error.statusCode || 500).json({
       success: false,
-      message: "Internal server error."
+      message: error.message || "Internal server error."
     });
   }
 };
-
-
 
 exports.getDoctorSlots = async (req, res) => {
   try {

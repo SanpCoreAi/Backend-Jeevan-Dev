@@ -870,6 +870,7 @@ exports.getAllByPatient = async (
   userId,
   limit,
   offset,
+  status = null,
   connection = db
 ) => {
 
@@ -887,14 +888,17 @@ exports.getAllByPatient = async (
     LEFT JOIN users u
       ON u.id = a.doctor_id
     WHERE
-      a.patient_id = ?
-      OR ap.user_id = ?
+      (
+        a.patient_id = ?
+        OR ap.user_id = ?
+      )
+      AND (? IS NULL OR a.status = ?)
     ORDER BY
       a.slot_date DESC,
       a.start_time ASC
     LIMIT ? OFFSET ?
     `,
-    [userId, userId, limit, offset]
+    [userId, userId, status, status, limit, offset]
   );
 
   return rows;
@@ -903,6 +907,7 @@ exports.getAllByPatient = async (
 exports.getAppointmentsByDateForPatient = async (
   patientId,
   date,
+  status = null,
   connection = db
 ) => {
   const [rows] = await connection.query(
@@ -914,9 +919,10 @@ exports.getAppointmentsByDateForPatient = async (
       a.end_time,
       a.status,
       a.appointment_type AS mode,
+      a.code,
+      a.token_number,
       a.patient_id,
 
-      a.doctor_id,
       u.full_name AS doctor_name,
       d.specialization AS doctor_department
 
@@ -936,8 +942,11 @@ exports.getAppointmentsByDateForPatient = async (
         a.patient_id = ?
         OR ap.user_id = ?
       )
+
       AND a.slot_date >= ?
       AND a.slot_date < DATE_ADD(?, INTERVAL 1 DAY)
+
+      AND (? IS NULL OR a.status = ?)
 
     ORDER BY
       a.start_time ASC,
@@ -947,7 +956,9 @@ exports.getAppointmentsByDateForPatient = async (
       patientId,
       patientId,
       date,
-      date
+      date,
+      status,
+      status
     ]
   );
 
@@ -1403,6 +1414,7 @@ exports.getWeeklyAppointmentStatsForPatient = async (
 exports.getAppointmentsByDateForDoctor = async (
   doctorId,
   date,
+  status = null,
   connection = db
 ) => {
   const [rows] = await connection.query(
@@ -1414,6 +1426,8 @@ exports.getAppointmentsByDateForDoctor = async (
       a.end_time,
       a.status,
       a.appointment_type AS mode,
+      a.code,
+      a.token_number,
       a.patient_id,
 
       patient.full_name AS patient_name,
@@ -1437,8 +1451,11 @@ exports.getAppointmentsByDateForDoctor = async (
 
     WHERE
       a.doctor_id = ?
+
       AND a.slot_date >= ?
       AND a.slot_date < DATE_ADD(?, INTERVAL 1 DAY)
+
+      AND (? IS NULL OR a.status = ?)
 
     ORDER BY
       a.start_time ASC
@@ -1446,7 +1463,9 @@ exports.getAppointmentsByDateForDoctor = async (
     [
       doctorId,
       date,
-      date
+      date,
+      status,
+      status
     ]
   );
 
@@ -1457,6 +1476,7 @@ exports.getAppointmentsByDateForDoctor = async (
 
 exports.getPatientAppointmentCount = async (
   userId,
+  status = null,
   connection = db
 ) => {
 
@@ -1467,10 +1487,13 @@ exports.getPatientAppointmentCount = async (
     LEFT JOIN appointment_patients ap
       ON ap.appointment_id = a.id
     WHERE
-      a.patient_id = ?
-      OR ap.user_id = ?
+      (
+        a.patient_id = ?
+        OR ap.user_id = ?
+      )
+      AND (? IS NULL OR a.status = ?)
     `,
-    [userId, userId]
+    [userId, userId, status, status]
   );
 
   return rows[0].total;
@@ -1480,6 +1503,7 @@ exports.getAllByDoctor = async (
   doctorId,
   limit,
   offset,
+  status = null,
   connection = db
 ) => {
 
@@ -1505,12 +1529,13 @@ exports.getAllByDoctor = async (
       ON u.id = a.doctor_id
     WHERE
       a.doctor_id = ?
+      AND (? IS NULL OR a.status = ?)
     ORDER BY
       a.slot_date DESC,
       a.start_time ASC
     LIMIT ? OFFSET ?
     `,
-    [doctorId, limit, offset]
+    [doctorId, status, status, limit, offset]
   );
 
   return rows;
@@ -1518,6 +1543,7 @@ exports.getAllByDoctor = async (
 
 exports.getDoctorAppointmentCount = async (
   doctorId,
+  status = null,
   connection = db
 ) => {
 
@@ -1526,8 +1552,9 @@ exports.getDoctorAppointmentCount = async (
     SELECT COUNT(*) AS total
     FROM appointments
     WHERE doctor_id = ?
+      AND (? IS NULL OR status = ?)
     `,
-    [doctorId]
+    [doctorId, status, status]
   );
 
   return rows[0].total;

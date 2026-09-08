@@ -8,6 +8,29 @@ const { sendAppointmentEmail, sendAppointmentEmails } = require("../../utils/sen
 const notificationService = require("../notification/notificationService");
 const dayjs = require("dayjs");
 
+const validateAppointmentStatus = (status) => {
+  if (status === undefined || status === null || status === "") {
+    return undefined;
+  }
+
+  const normalizedStatus = String(status).trim().toUpperCase();
+  const validStatuses = [
+    "PENDING",
+    "IN_PROGRESS",
+    "COMPLETED",
+    "CANCELLED"
+  ];
+
+  if (!validStatuses.includes(normalizedStatus)) {
+    throw {
+      statusCode: 400,
+      message: "Invalid appointment status."
+    };
+  }
+
+  return normalizedStatus;
+};
+
 const getEstimatedTime = (startTime) => {
   if (!startTime) return null;
 
@@ -89,6 +112,29 @@ const formatTime = (time) => {
   // Already AM/PM format
   return value;
 };
+
+const formatAppointmentResponse = (appointments = []) =>
+  appointments.map((appointment) => {
+    const response = {
+      appointmentId: appointment.appointment_id,
+      slot_date: appointment.slot_date,
+      start_time: formatTime(appointment.start_time),
+      end_time: formatTime(appointment.end_time),
+      status: appointment.status,
+      mode: appointment.mode,
+      patientId: appointment.patient_id,
+      patientName: appointment.patient_name,
+      doctorName: appointment.doctor_name,
+      doctorDepartment: appointment.doctor_department
+    };
+
+    if (String(appointment.status).toUpperCase() !== "CANCELLED") {
+      response.code = appointment.code;
+      response.token_number = appointment.token_number;
+    }
+
+    return response;
+  });
 
 exports.bookAppointment = async (
   patientId,
@@ -2097,16 +2143,23 @@ exports.getMyAppointments = async (
       year,
       month,
       week,
-      date
+      date,
+      status
     } = filters;
 
-    const filterCount = [
+    const validStatus =
+      validateAppointmentStatus(status);
+
+    const dateFilters = [
       year,
       month,
       week,
       date
-    ].filter(value => value !== undefined && value !== "")
-      .length;
+    ].filter(
+      value => value !== undefined && value !== ""
+    );
+
+    const filterCount = dateFilters.length;
 
     if (filterCount === 0) {
       const offset = (page - 1) * limit;
@@ -2115,25 +2168,34 @@ exports.getMyAppointments = async (
       let total;
 
       if (role === 1) {
-        appointments = await Appointment.getAllByPatient(
-          userId,
-          limit,
-          offset
-        );
+        appointments =
+          await Appointment.getAllByPatient(
+            userId,
+            limit,
+            offset,
+            validStatus
+          );
 
-        total = await Appointment.getPatientAppointmentCount(
-          userId
-        );
+        total =
+          await Appointment.getPatientAppointmentCount(
+            userId,
+            validStatus
+          );
+
       } else {
-        appointments = await Appointment.getAllByDoctor(
-          userId,
-          limit,
-          offset
-        );
+        appointments =
+          await Appointment.getAllByDoctor(
+            userId,
+            limit,
+            offset,
+            validStatus
+          );
 
-        total = await Appointment.getDoctorAppointmentCount(
-          userId
-        );
+        total =
+          await Appointment.getDoctorAppointmentCount(
+            userId,
+            validStatus
+          );
       }
 
       return {
@@ -2141,128 +2203,160 @@ exports.getMyAppointments = async (
         statusCode: 200,
         message: "Appointments fetched successfully.",
         data: {
-          filter: "all",
+          filter: validStatus
+            ? "status"
+            : "all",
+
+          status: validStatus || undefined,
+
           page,
           limit,
+
           totalRecords: Number(total),
-          totalPages: Math.ceil(total / limit),
+
+          totalPages: Math.ceil(
+            Number(total) / limit
+          ),
+
           count: appointments.length,
-          data: appointments
+
+          data: formatAppointmentResponse(
+            appointments
+          )
         }
       };
     }
 
     if (year && !month && !week && !date) {
-
       const validYear = validateYear(year);
 
       const data =
         role === 1
           ? await Appointment.getYearlyAppointmentStatsForPatient(
-            userId,
-            validYear
-          )
+              userId,
+              validYear,
+              validStatus
+            )
           : await Appointment.getYearlyAppointmentStatsForDoctor(
-            userId,
-            validYear
-          );
+              userId,
+              validYear,
+              validStatus
+            );
 
       return {
         success: true,
         statusCode: 200,
-        message: "Yearly appointment statistics fetched successfully.",
+        message:
+          "Yearly appointment statistics fetched successfully.",
         data: {
           filter: "year",
           year: validYear,
+          status: validStatus || undefined,
+
           totalAppointments: data.reduce(
-            (sum, item) => sum + item.appointmentCount,
+            (sum, item) =>
+              sum + item.appointmentCount,
             0
           ),
+
           data
         }
       };
     }
 
     if (year && month && !week && !date) {
-
       const validYear = validateYear(year);
       const validMonth = validateMonth(month);
 
       const data =
         role === 1
           ? await Appointment.getMonthlyAppointmentStatsForPatient(
-            userId,
-            validYear,
-            validMonth
-          )
+              userId,
+              validYear,
+              validMonth,
+              validStatus
+            )
           : await Appointment.getMonthlyAppointmentStatsForDoctor(
-            userId,
-            validYear,
-            validMonth
-          );
+              userId,
+              validYear,
+              validMonth,
+              validStatus
+            );
 
       return {
         success: true,
         statusCode: 200,
-        message: "Monthly appointment statistics fetched successfully.",
+        message:
+          "Monthly appointment statistics fetched successfully.",
         data: {
           filter: "month",
           year: validYear,
           month: validMonth,
+          status: validStatus || undefined,
+
           totalAppointments: data.reduce(
-            (sum, item) => sum + item.appointmentCount,
+            (sum, item) =>
+              sum + item.appointmentCount,
             0
           ),
+
           data
         }
       };
     }
 
     if (week && !year && !month && !date) {
-
       const validWeek = validateWeek(week);
 
       const data =
         role === 1
           ? await Appointment.getWeeklyAppointmentStatsForPatient(
-            userId,
-            validWeek
-          )
+              userId,
+              validWeek,
+              validStatus
+            )
           : await Appointment.getWeeklyAppointmentStatsForDoctor(
-            userId,
-            validWeek
-          );
+              userId,
+              validWeek,
+              validStatus
+            );
 
       return {
         success: true,
         statusCode: 200,
-        message: "Weekly appointment statistics fetched successfully.",
+        message:
+          "Weekly appointment statistics fetched successfully.",
         data: {
           filter: "week",
           week: validWeek,
+          status: validStatus || undefined,
+
           totalAppointments: data.reduce(
-            (sum, item) => sum + item.appointmentCount,
+            (sum, item) =>
+              sum + item.appointmentCount,
             0
           ),
+
           data
         }
       };
     }
 
     if (date && !year && !month && !week) {
-
       const validDate = validateDate(date);
 
       const appointments =
         role === 1
           ? await Appointment.getAppointmentsByDateForPatient(
-            userId,
-            validDate
-          )
+              userId,
+              validDate,
+              validStatus
+            )
           : await Appointment.getAppointmentsByDateForDoctor(
-            userId,
-            validDate
-          );
+              userId,
+              validDate,
+              validStatus
+            );
 
       return {
         success: true,
@@ -2271,8 +2365,13 @@ exports.getMyAppointments = async (
         data: {
           filter: "date",
           date: validDate,
+          status: validStatus || undefined,
+
           count: appointments.length,
-          data: appointments
+
+          data: formatAppointmentResponse(
+            appointments
+          )
         }
       };
     }
@@ -2281,7 +2380,7 @@ exports.getMyAppointments = async (
       success: false,
       statusCode: 400,
       message:
-        "Invalid filter combination. Use year, year+month, week, or date."
+        "Invalid filter combination. Use year, year+month, week, or date with optional status."
     };
 
   } catch (error) {
