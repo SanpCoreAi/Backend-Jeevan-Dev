@@ -103,7 +103,7 @@ exports.bookAppointmentByAssistantValidation = Joi.object({
     .required(),
 
   mode: Joi.string()
-    .valid("online")
+    .valid("offline")
     .required(),
 
   booking_type: Joi.string()
@@ -112,7 +112,7 @@ exports.bookAppointmentByAssistantValidation = Joi.object({
 
   start_time: Joi.string()
     .pattern(/^(0?[1-9]|1[0-2]):[0-5][0-9]\s?(AM|PM)$/i)
-    .required()
+    .optional()
     .messages({
       "string.pattern.base":
         'Start time must be in format "10:00 AM".',
@@ -123,7 +123,7 @@ exports.bookAppointmentByAssistantValidation = Joi.object({
   token: Joi.number()
     .integer()
     .positive()
-    .required()
+    .optional()
     .messages({
       "number.base": "Token must be a number.",
       "number.integer": "Token must be an integer.",

@@ -636,7 +636,6 @@ exports.bookAppointmentByAssistant = async ({
       hospital_name,
       mode,
       booking_type,
-      start_time,
       reason_for_visit,
       patient
     } = body;
@@ -655,15 +654,6 @@ exports.bookAppointmentByAssistant = async ({
         success: false,
         statusCode: 400,
         message: "Hospital name is required.",
-        data: null
-      };
-    }
-
-    if (!start_time) {
-      return {
-        success: false,
-        statusCode: 400,
-        message: "Appointment start time is required.",
         data: null
       };
     }
@@ -702,18 +692,11 @@ exports.bookAppointmentByAssistant = async ({
         `
         SELECT
           id,
-          COALESCE(p.full_name, ap.patient_name) AS patient_name,
-          ap.age,
-          ap.gender,
-          COALESCE(p.phone_number, ap.patient_phone) AS patient_phone,
-          COALESCE(p.email, ap.patient_email) AS patient_email,
           doctor_id,
           hospital_name,
           start_date,
           end_date,
           active_days,
-        LEFT JOIN users p
-          ON p.id = a.patient_id
           start_time,
           end_time,
           slot_duration,
@@ -841,10 +824,12 @@ exports.bookAppointmentByAssistant = async ({
       );
     };
 
-    const requestedStartTime =
-      convertTo24Hour(start_time);
+    let requestedStartTime =
+      body.start_time
+        ? convertTo24Hour(body.start_time)
+        : null;
 
-    if (!requestedStartTime) {
+    if (body.start_time && !requestedStartTime) {
 
       await connection.rollback();
 
@@ -855,6 +840,66 @@ exports.bookAppointmentByAssistant = async ({
           'Invalid start_time. Use format "10:00 AM".',
         data: null
       };
+    }
+
+    if (!requestedStartTime) {
+      const [nextAvailableSlotRows] =
+        await connection.execute(
+          `
+          SELECT
+            id,
+            schedule_id,
+            doctor_id,
+            start_date,
+            start_time,
+            end_time,
+            token_number,
+            status
+          FROM schedule_slots
+          WHERE schedule_id = ?
+            AND doctor_id = ?
+            AND DATE(start_date) = ?
+            AND LOWER(status) = 'active'
+          ORDER BY token_number ASC
+          LIMIT 1
+          FOR UPDATE
+          `,
+          [schedule.id, doctorId, appointmentDate]
+        );
+
+      if (nextAvailableSlotRows.length) {
+        requestedStartTime = nextAvailableSlotRows[0].start_time;
+      } else {
+        const [lastSlotRows] =
+          await connection.execute(
+            `
+            SELECT end_time
+            FROM schedule_slots
+            WHERE schedule_id = ?
+              AND doctor_id = ?
+              AND DATE(start_date) = ?
+            ORDER BY token_number DESC
+            LIMIT 1
+            FOR UPDATE
+            `,
+            [schedule.id, doctorId, appointmentDate]
+          );
+
+        requestedStartTime = lastSlotRows.length
+          ? convertTo24Hour(lastSlotRows[0].end_time)
+          : convertTo24Hour(schedule.start_time);
+      }
+
+      if (!requestedStartTime) {
+        await connection.rollback();
+
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Unable to determine the next appointment time from the schedule.",
+          data: null
+        };
+      }
     }
 
     const slotDuration =
