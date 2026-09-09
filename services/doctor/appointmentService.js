@@ -2699,14 +2699,21 @@ exports.cancelAppointment = async (
 
 exports.trackAppointment = async (userId) => {
   try {
-    const result = await Appointment.trackAppointment(userId);
+    const result =
+      await Appointment.trackAppointment(
+        userId
+      );
 
-    if (!result.appointments || result.appointments.length === 0) {
+    if (
+      !result.appointments ||
+      result.appointments.length === 0
+    ) {
       return {
         success: true,
         statusCode: 200,
         body: {
-          message: "No active appointment found for today.",
+          message:
+            "No active appointment found for today.",
           data: []
         }
       };
@@ -2716,19 +2723,24 @@ exports.trackAppointment = async (userId) => {
       success: true,
       statusCode: 200,
       body: {
-        message: "Appointment tracking fetched successfully.",
+        message:
+          "Appointment tracking fetched successfully.",
         data: result.appointments
       }
     };
 
   } catch (error) {
-    console.error("Track Appointment Service Error:", error);
+    console.error(
+      "Track Appointment Service Error:",
+      error
+    );
 
     return {
       success: false,
       statusCode: 500,
       body: {
-        message: "Internal Server Error.",
+        message:
+          "Internal Server Error.",
         data: null
       }
     };
