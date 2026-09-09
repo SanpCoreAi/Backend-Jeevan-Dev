@@ -116,21 +116,29 @@ const formatTime = (time) => {
 const formatAppointmentResponse = (appointments = []) =>
   appointments.map((appointment) => {
     const response = {
-      appointmentId: appointment.appointment_id,
+      patientName: appointment.patient_name,
+      age: appointment.age,
+      gender: appointment.gender,
+      phone: appointment.patient_phone,
+      email: appointment.patient_email,
+      token_number:
+        String(appointment.status).toUpperCase() !== "CANCELLED"
+          ? appointment.token_number
+          : undefined,
+      status: appointment.status,
       slot_date: appointment.slot_date,
       start_time: formatTime(appointment.start_time),
       end_time: formatTime(appointment.end_time),
-      status: appointment.status,
-      mode: appointment.mode,
-      patientId: appointment.patient_id,
-      patientName: appointment.patient_name,
       doctorName: appointment.doctor_name,
-      doctorDepartment: appointment.doctor_department
+      reason_for_visit: appointment.reason_for_visit,
+      appointmentId: appointment.appointment_id,
+      doctorDepartment: appointment.doctor_department,
+      mode: appointment.mode,
+      patientId: appointment.patient_id
     };
 
     if (String(appointment.status).toUpperCase() !== "CANCELLED") {
       response.code = appointment.code;
-      response.token_number = appointment.token_number;
     }
 
     return response;
@@ -688,11 +696,18 @@ exports.bookAppointmentByAssistant = async ({
         `
         SELECT
           id,
+          COALESCE(p.full_name, ap.patient_name) AS patient_name,
+          ap.age,
+          ap.gender,
+          COALESCE(p.phone_number, ap.patient_phone) AS patient_phone,
+          COALESCE(p.email, ap.patient_email) AS patient_email,
           doctor_id,
           hospital_name,
           start_date,
           end_date,
           active_days,
+        LEFT JOIN users p
+          ON p.id = a.patient_id
           start_time,
           end_time,
           slot_duration,
