@@ -116,6 +116,9 @@ const formatTime = (time) => {
 const formatAppointmentResponse = (appointments = []) =>
   appointments.map((appointment) => {
     const response = {
+      id: appointment.id ?? appointment.appointment_id,
+      appointment_type:
+        appointment.appointment_type ?? appointment.mode,
       patientName: appointment.patient_name,
       age: appointment.age,
       gender: appointment.gender,
@@ -130,11 +133,14 @@ const formatAppointmentResponse = (appointments = []) =>
       start_time: formatTime(appointment.start_time),
       end_time: formatTime(appointment.end_time),
       doctorName: appointment.doctor_name,
+      doctor_name: appointment.doctor_name,
       reason_for_visit: appointment.reason_for_visit,
       appointmentId: appointment.appointment_id,
       doctorDepartment: appointment.doctor_department,
+      doctor_department: appointment.doctor_department,
       mode: appointment.mode,
-      patientId: appointment.patient_id
+      patientId: appointment.patient_id,
+      hospital_name: appointment.hospital_name
     };
 
     if (String(appointment.status).toUpperCase() !== "CANCELLED") {

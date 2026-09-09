@@ -37,7 +37,7 @@ router.get(
   appointmentController.trackAppointment
 );
 
-router.get("/doctor-slots",verifyToken, appointmentController.getDoctorSlots);
+router.get("/doctor-slots",verifyToken,allowRoles(1, 2, 3), appointmentController.getDoctorSlots);
 
 router.get(
   "/:appointmentId/token/:token",

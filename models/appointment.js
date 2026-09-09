@@ -920,16 +920,12 @@ exports.getAppointmentsByDateForPatient = async (
   const [rows] = await connection.query(
     `
     SELECT
-      a.id AS appointment_id,
-      a.slot_date,
-      a.start_time,
-      a.end_time,
-      a.status,
-      a.appointment_type AS mode,
-      a.code,
-      a.token_number,
-      a.patient_id,
-
+      a.*,
+      COALESCE(p.full_name, ap.patient_name) AS patient_name,
+      ap.age,
+      ap.gender,
+      COALESCE(p.phone_number, ap.patient_phone) AS patient_phone,
+      COALESCE(p.email, ap.patient_email) AS patient_email,
       u.full_name AS doctor_name,
       d.specialization AS doctor_department
 
@@ -937,10 +933,10 @@ exports.getAppointmentsByDateForPatient = async (
 
     LEFT JOIN appointment_patients ap
       ON ap.appointment_id = a.id
-
+    LEFT JOIN users p
+      ON p.id = a.patient_id
     LEFT JOIN doctors d
       ON d.user_id = a.doctor_id
-
     LEFT JOIN users u
       ON u.id = a.doctor_id
 

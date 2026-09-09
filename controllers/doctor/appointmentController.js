@@ -680,7 +680,11 @@ exports.getDoctorSlots = async (req, res) => {
 
     const role = Number(req.user.role);
 
-    if (role === 2) {
+    if (role === 1) {
+      doctorId = Number(doctorId);
+    }
+
+    else if (role === 2) {
       doctorId = req.user.id;
     }
 
