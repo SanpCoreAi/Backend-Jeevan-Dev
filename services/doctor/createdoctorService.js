@@ -103,6 +103,7 @@ exports.getProfile = async (userId) => {
 
         registration_id: doctor.registration_id,
         username: doctor.username,
+        registration_number: doctor.registration_number,
 
         full_name: doctor.full_name,
         gender: doctor.gender,
@@ -321,14 +322,6 @@ exports.updateProfile = async (userId, body) => {
           message: "Username is required to create doctor profile.",
         };
       }
-
-      // if (!createBody.specialization) {
-      //   return {
-      //     success: false,
-      //     statusCode: 400,
-      //     message: "Specialization is required to create doctor profile.",
-      //   };
-      // }
 
       if (createBody.medicalLicenseNo) {
         const existingDoctor =
