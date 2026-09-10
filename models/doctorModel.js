@@ -12,6 +12,8 @@ exports.createDoctor = async (userId, data) => {
 
     medical_license_no: "medical_license_no",
     medicalLicenseNo: "medical_license_no",
+    registration_number: "registration_number",
+    registrationNumber: "registration_number",
 
     bio: "bio",
     age: "age",
@@ -157,6 +159,7 @@ exports.getBydoctorId = async (userId) => {
         d.hospital_detail,
         d.qr_url,
         d.accept_emergency_patients,
+        d.registration_number,
 
         um.file_key,
 
@@ -252,6 +255,7 @@ exports.getDoctorPublicProfileById = async (userId) => {
       d.hospital_detail,
       d.qr_url,
       d.accept_emergency_patients,
+      d.registration_number,
 
       um.file_key,
 
@@ -361,6 +365,9 @@ exports.updateDoctor = async (userId, data) => {
 
     medicalLicenseNo: "medical_license_no",
     medical_license_no: "medical_license_no",
+    registration_number: "registration_number",
+    registrationNumber: "registration_number",
+
 
     bio: "bio",
     age: "age",

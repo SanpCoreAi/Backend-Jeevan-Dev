@@ -315,6 +315,14 @@ exports.updateProfile = async (userId, body) => {
         };
       }
 
+      if (!body.specialization) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Specialization is required to create doctor profile.",
+        };
+      }
+
       if (body.medicalLicenseNo) {
         const existingDoctor =
           await DoctorModel.getDoctorByMedicalLicenseNo(

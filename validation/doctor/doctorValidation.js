@@ -186,6 +186,13 @@ const updateDoctorSchema = Joi.object({
     .max(100)
     .optional(),
 
+  registration_number: Joi.string()
+    .trim()
+    .min(1)
+    .max(100)
+    .allow(null)
+    .optional(),
+
   bio: Joi.string()
     .trim()
     .max(500)
