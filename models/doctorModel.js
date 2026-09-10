@@ -331,7 +331,8 @@ exports.getDoctorByUserId = async (userId) => {
       d.id AS doctor_id,
       d.user_id,
       u.id AS users_id,
-      d.medical_license_no
+      d.medical_license_no,
+      d.qr_url
     FROM doctors d
     INNER JOIN users u
       ON u.id = d.user_id

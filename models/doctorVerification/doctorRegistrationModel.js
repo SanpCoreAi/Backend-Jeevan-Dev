@@ -785,7 +785,6 @@ exports.getDoctorRegistrations = async ({
     const conditions = [];
     const params = [];
 
-    // Date filter
     if (filter && date) {
       let startDate;
       let endDate;
@@ -884,7 +883,6 @@ exports.getDoctorRegistrations = async ({
       }
     }
 
-    // Onboarding status filter
     if (onboarding_status) {
       conditions.push(`
         dr.onboarding_status = ?
@@ -898,7 +896,6 @@ exports.getDoctorRegistrations = async ({
         ? `WHERE ${conditions.join(" AND ")}`
         : "";
 
-    // Pagination
     const safePage = Math.max(
       1,
       Number(page) || 1
@@ -912,7 +909,6 @@ exports.getDoctorRegistrations = async ({
     const offset =
       (safePage - 1) * safeLimit;
 
-    // Count query
     const countSql = `
       SELECT COUNT(*) AS total
       FROM doctor_registrations dr
@@ -928,7 +924,6 @@ exports.getDoctorRegistrations = async ({
       countRows[0]?.total || 0
     );
 
-    // Final data query
     const dataSql = `
       SELECT
         dr.id,

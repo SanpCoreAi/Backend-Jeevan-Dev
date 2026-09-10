@@ -46,6 +46,30 @@ const buildAddress = (hospital) => {
     .join(", ");
 };
 
+const generateDoctorQr = async (userId, doctorId) => {
+  const qrData = JSON.stringify({
+    type: "DOCTOR",
+    doctorId,
+  });
+
+  const qrFileName = `doctor-${doctorId}.png`;
+  const qrFilePath = path.join(qrFolder, qrFileName);
+
+  await QRCode.toFile(qrFilePath, qrData, {
+    width: 500,
+    margin: 2,
+  });
+
+  const baseUrl =
+    process.env.BASE_URL ||
+    `http://localhost:${process.env.PORT || 4000}`;
+  const qrUrl = `${baseUrl}/uploads/qr/${qrFileName}`;
+
+  await DoctorModel.updateDoctorQr(userId, qrUrl);
+
+  return qrUrl;
+};
+
 exports.getProfile = async (userId) => {
   try {
     if (!Number.isInteger(userId) || userId <= 0) {
@@ -311,52 +335,7 @@ exports.updateProfile = async (userId, body) => {
         body
       );
 
-      const doctorId = result.insertId;
-
-      const qrData = JSON.stringify({
-        type: "DOCTOR",
-        doctorId: doctorId,
-      });
-
-      const qrFolder = path.join(
-        process.cwd(),
-        "uploads",
-        "qr"
-      );
-
-      if (!fs.existsSync(qrFolder)) {
-        fs.mkdirSync(qrFolder, {
-          recursive: true,
-        });
-      }
-
-      const qrFileName = `doctor-${doctorId}.png`;
-
-      const qrFilePath = path.join(
-        qrFolder,
-        qrFileName
-      );
-
-      await QRCode.toFile(
-        qrFilePath,
-        qrData,
-        {
-          width: 500,
-          margin: 2,
-        }
-      );
-
-      const baseUrl =
-        process.env.BASE_URL ||
-        `http://localhost:${process.env.PORT || 4000}`;
-
-      const qrUrl =
-        `${baseUrl}/uploads/qr/${qrFileName}`;
-
-      await DoctorModel.updateDoctorQr(
-        userId,
-        qrUrl
-      );
+      await generateDoctorQr(userId, result.insertId);
 
       return {
         success: true,
@@ -394,6 +373,10 @@ exports.updateProfile = async (userId, body) => {
         statusCode: 400,
         message: "Doctor profile update failed.",
       };
+    }
+
+    if (!doctor.qr_url) {
+      await generateDoctorQr(userId, doctor.doctor_id);
     }
 
     return {
