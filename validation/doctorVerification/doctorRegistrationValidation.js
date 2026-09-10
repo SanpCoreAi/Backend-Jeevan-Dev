@@ -170,7 +170,68 @@ exports.updateDoctorRegistration = Joi.object({
 
     registrationExpiryDate: Joi.date()
         .allow(null)
-        .optional()
+      .optional(),
+
+    hospitalDetail: Joi.array()
+      .items(
+        Joi.object({
+          hospitalName: Joi.string()
+            .trim()
+            .max(150)
+            .required(),
+
+          flatPlotNo: Joi.string()
+            .trim()
+            .max(100)
+            .allow("")
+            .optional(),
+
+          buildingSociety: Joi.string()
+            .trim()
+            .max(150)
+            .allow("")
+            .optional(),
+
+          streetName: Joi.string()
+            .trim()
+            .max(150)
+            .allow("")
+            .optional(),
+
+          areaLocality: Joi.string()
+            .trim()
+            .max(150)
+            .allow("")
+            .optional(),
+
+          landmark: Joi.string()
+            .trim()
+            .max(150)
+            .allow("")
+            .optional(),
+
+          city: Joi.string()
+            .trim()
+            .max(100)
+            .required(),
+
+          district: Joi.string()
+            .trim()
+            .max(100)
+            .required(),
+
+          state: Joi.string()
+            .trim()
+            .max(100)
+            .required(),
+
+          pinCode: Joi.string()
+            .trim()
+            .pattern(/^[0-9]{6}$/)
+            .required(),
+        })
+      )
+      .optional()
 
 }).min(1).messages({
     "object.min": "At least one field is required for update."

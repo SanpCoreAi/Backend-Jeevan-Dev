@@ -380,35 +380,29 @@ exports.createDoctorRegistration = async (body) => {
     }
 
 
+    const updateData = {
+      fullName,
+      gender,
+      age,
+      email,
+      mobile,
+      medicalRegistrationNumber,
+      medicalCouncil,
+      qualification,
+      specialization,
+      registrationExpiryDate,
+      hospitalDetail,
+    };
+
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
     await doctorRegistrationModel.updatePartial(
       registrationId,
-      {
-        fullName,
-        gender,
-        age,
-        email,
-        mobile,
-
-        medicalRegistrationNumber:
-          medicalRegistrationNumber ||
-          null,
-
-        medicalCouncil:
-          medicalCouncil ||
-          null,
-
-        qualification:
-          qualification ||
-          null,
-
-        specialization:
-          specialization ||
-          null,
-
-        registrationExpiryDate:
-          registrationExpiryDate ||
-          null,
-      },
+      updateData,
       connection
     );
 

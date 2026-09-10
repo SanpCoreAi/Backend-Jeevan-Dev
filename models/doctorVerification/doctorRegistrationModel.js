@@ -203,6 +203,7 @@ exports.updatePartial = async (
     specialization: "specialization",
     registrationExpiryDate:
       "registration_expiry_date",
+    hospitalDetail: "hospital_detail",
   };
 
   const fields = [];
@@ -216,11 +217,15 @@ exports.updatePartial = async (
         `${fieldMap[key]} = ?`
       );
 
-      values.push(
-        data[key] === ""
-          ? null
-          : data[key]
-      );
+      let value = data[key];
+
+      if (value === "") {
+        value = null;
+      } else if (key === "hospitalDetail") {
+        value = JSON.stringify(value);
+      }
+
+      values.push(value);
     }
   });
 
