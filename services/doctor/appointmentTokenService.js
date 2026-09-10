@@ -523,6 +523,7 @@ exports.getFullPrescription = async (
           id: appointment.doctor_id,
 
           name: appointment.doctor_name,
+          registration_number: appointment.registration_number,
 
           mobile: appointment.doctor_mobile,
 

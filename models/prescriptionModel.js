@@ -118,6 +118,7 @@ exports.getAppointmentFullDataById = async (
       d.specialization,
       d.qualification,
       d.medical_license_no,
+      d.registration_number,
       d.qr_url,
       d.hospital_detail,
       d.availability,
