@@ -113,6 +113,22 @@ exports.findUserByPhone = async (phone, conn = db) => {
   return rows[0] || null;
 };
 
+exports.findByUserId = async (userId, conn = db) => {
+  const [rows] = await conn.execute(
+    `
+    SELECT dr.*
+    FROM users u
+    INNER JOIN doctor_registrations dr
+      ON dr.id = u.registration_id
+    WHERE u.id = ?
+    LIMIT 1
+    `,
+    [userId]
+  );
+
+  return rows[0] || null;
+};
+
 
 exports.findByRegistrationNumber = async (
     registrationNumber,

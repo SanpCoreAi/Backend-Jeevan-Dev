@@ -306,8 +306,15 @@ exports.updateProfile = async (userId, body) => {
     const doctor = await DoctorModel.getDoctorByUserId(userId);
 
     if (!doctor) {
+      const registration =
+        await DoctorRegistrationModel.findByUserId(userId);
+      const createBody = {
+        ...body,
+        specialization:
+          body.specialization || registration?.specialization,
+      };
 
-      if (!body.username) {
+      if (!createBody.username) {
         return {
           success: false,
           statusCode: 400,
@@ -315,18 +322,18 @@ exports.updateProfile = async (userId, body) => {
         };
       }
 
-      if (!body.specialization) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: "Specialization is required to create doctor profile.",
-        };
-      }
+      // if (!createBody.specialization) {
+      //   return {
+      //     success: false,
+      //     statusCode: 400,
+      //     message: "Specialization is required to create doctor profile.",
+      //   };
+      // }
 
-      if (body.medicalLicenseNo) {
+      if (createBody.medicalLicenseNo) {
         const existingDoctor =
           await DoctorModel.getDoctorByMedicalLicenseNo(
-            body.medicalLicenseNo
+            createBody.medicalLicenseNo
           );
 
         if (existingDoctor) {
@@ -340,7 +347,7 @@ exports.updateProfile = async (userId, body) => {
 
       const result = await DoctorModel.createDoctor(
         userId,
-        body
+        createBody
       );
 
       await generateDoctorQr(userId, result.insertId);
