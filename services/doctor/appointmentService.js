@@ -471,24 +471,29 @@ exports.bookAppointment = async (
 
     try {
       await notificationService.createNotification({
-        userId:
-          patientId,
-
-        title:
-          "Appointment Booked",
-
+        userId: patientId,
+        title: "Appointment Booked",
         message:
           `Your appointment has been booked successfully. ` +
           `Token No: ${tokenNumber}. ` +
           `Booking Code: ${code}. ` +
           `Time: ${slotStartTime} - ${slotEndTime}`,
-
-        type:
-          "SUCCESS",
-
-        createdBy:
-          doctorId
+        type: "SUCCESS",
+        createdBy: doctorId
       });
+
+      await notificationService.createNotification({
+        userId: doctorId,
+        title: "New Appointment Booked",
+        message:
+          `A new appointment has been booked. ` +
+          `Token No: ${tokenNumber}. ` +
+          `Time: ${slotStartTime} - ${slotEndTime}. ` +
+          `Hospital: ${schedule.hospital_name}`,
+        type: "SUCCESS",
+        createdBy: patientId
+      });
+
     } catch (notificationError) {
       console.error(
         "Notification Error:",
@@ -1298,8 +1303,8 @@ exports.bookAppointmentByAssistant = async ({
       const tokenNumber =
         lastTokenRows.length
           ? Number(
-              lastTokenRows[0].token_number
-            ) + 1
+            lastTokenRows[0].token_number
+          ) + 1
           : 1;
 
       const [slotResult] =
@@ -1537,12 +1542,34 @@ exports.bookAppointmentByAssistant = async ({
           doctorId
       });
 
+      await notificationService.createNotification({
+
+        userId:
+          assistantId,
+
+        title:
+          "New Appointment Booked",
+
+        message:
+          `A new appointment has been booked. ` +
+          `Token No: ${tokenNumber}. ` +
+          `Time: ${finalStartTime} - ${finalEndTime}. ` +
+          `Booking Code: ${code}`,
+
+        type:
+          "SUCCESS",
+
+        createdBy:
+          user.id
+      });
+
     } catch (notificationError) {
 
       console.error(
         "Notification Error:",
         notificationError
       );
+
     }
 
     await connection.commit();
@@ -2299,15 +2326,15 @@ exports.getMyAppointments = async (
       const data =
         role === 1
           ? await Appointment.getYearlyAppointmentStatsForPatient(
-              userId,
-              validYear,
-              validStatus
-            )
+            userId,
+            validYear,
+            validStatus
+          )
           : await Appointment.getYearlyAppointmentStatsForDoctor(
-              userId,
-              validYear,
-              validStatus
-            );
+            userId,
+            validYear,
+            validStatus
+          );
 
       return {
         success: true,
@@ -2337,17 +2364,17 @@ exports.getMyAppointments = async (
       const data =
         role === 1
           ? await Appointment.getMonthlyAppointmentStatsForPatient(
-              userId,
-              validYear,
-              validMonth,
-              validStatus
-            )
+            userId,
+            validYear,
+            validMonth,
+            validStatus
+          )
           : await Appointment.getMonthlyAppointmentStatsForDoctor(
-              userId,
-              validYear,
-              validMonth,
-              validStatus
-            );
+            userId,
+            validYear,
+            validMonth,
+            validStatus
+          );
 
       return {
         success: true,
@@ -2377,15 +2404,15 @@ exports.getMyAppointments = async (
       const data =
         role === 1
           ? await Appointment.getWeeklyAppointmentStatsForPatient(
-              userId,
-              validWeek,
-              validStatus
-            )
+            userId,
+            validWeek,
+            validStatus
+          )
           : await Appointment.getWeeklyAppointmentStatsForDoctor(
-              userId,
-              validWeek,
-              validStatus
-            );
+            userId,
+            validWeek,
+            validStatus
+          );
 
       return {
         success: true,
@@ -2414,15 +2441,15 @@ exports.getMyAppointments = async (
       const appointments =
         role === 1
           ? await Appointment.getAppointmentsByDateForPatient(
-              userId,
-              validDate,
-              validStatus
-            )
+            userId,
+            validDate,
+            validStatus
+          )
           : await Appointment.getAppointmentsByDateForDoctor(
-              userId,
-              validDate,
-              validStatus
-            );
+            userId,
+            validDate,
+            validStatus
+          );
 
       return {
         success: true,
@@ -2614,13 +2641,35 @@ exports.cancelAppointment = async (
 
       await notificationService.createNotification({
 
-        userId: patientId,
+        userId:
+          patientId,
 
         title:
           "Appointment Cancelled",
 
         message:
-          `Your appointment on ${appointment.slot_date} has been cancelled successfully.`,
+          `Your appointment on ${appointment.slot_date} ` +
+          `has been cancelled successfully.`,
+
+        type:
+          "WARNING",
+
+        createdBy:
+          patientId
+
+      });
+
+      await notificationService.createNotification({
+
+        userId:
+          appointment.doctor_id,
+
+        title:
+          "Appointment Cancelled",
+
+        message:
+          `Appointment for Token No. ${appointment.token_number} ` +
+          `on ${appointment.slot_date} has been cancelled by the patient.`,
 
         type:
           "WARNING",
