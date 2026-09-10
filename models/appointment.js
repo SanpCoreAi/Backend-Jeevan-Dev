@@ -2009,7 +2009,6 @@ exports.trackAppointment = async (userId) => {
       );
     };
 
-    // Appointment duration
     const getDuration = (appointment) => {
       const start = timeToMinutes(
         appointment.start_time
@@ -2030,7 +2029,6 @@ exports.trackAppointment = async (userId) => {
       return end - start;
     };
 
-    // Format minutes
     const formatWaitingTime = (minutes) => {
       const totalMinutes = Math.max(
         Math.ceil(Number(minutes) || 0),
@@ -2308,6 +2306,7 @@ exports.trackAppointment = async (userId) => {
               currentServing
             );
 
+          // COMPLETED
           if (
             appointment.status ===
             "COMPLETED"
@@ -2330,6 +2329,7 @@ exports.trackAppointment = async (userId) => {
             };
           }
 
+          // IN_PROGRESS
           if (
             appointment.status ===
             "IN_PROGRESS"
@@ -2357,12 +2357,12 @@ exports.trackAppointment = async (userId) => {
               appointment.start_time
             );
 
+          // USER IS LATE
           if (
             startMinutes !== null &&
             currentTimeMinutes >=
               startMinutes + 30
           ) {
-
             const lateByMinutes =
               Math.max(
                 currentTimeMinutes -
@@ -2373,15 +2373,15 @@ exports.trackAppointment = async (userId) => {
             return {
               ...base,
 
-              late_by_minutes:
+              approx_waiting_minutes:
                 Math.floor(
                   lateByMinutes
                 ),
 
-              late_by_time:
-                formatWaitingTime(
+              approx_waiting_time:
+                `${formatWaitingTime(
                   lateByMinutes
-                ),
+                )} you are late`,
 
               status:
                 "PENDING",
@@ -2391,10 +2391,10 @@ exports.trackAppointment = async (userId) => {
             };
           }
 
+          // DOCTOR ALREADY PASSED USER TOKEN
           if (
             currentServing > myToken
           ) {
-
             const lateByMinutes =
               startMinutes !== null
                 ? Math.max(
@@ -2407,15 +2407,15 @@ exports.trackAppointment = async (userId) => {
             return {
               ...base,
 
-              late_by_minutes:
+              approx_waiting_minutes:
                 Math.floor(
                   lateByMinutes
                 ),
 
-              late_by_time:
-                formatWaitingTime(
+              approx_waiting_time:
+                `${formatWaitingTime(
                   lateByMinutes
-                ),
+                )} you are late`,
 
               status:
                 "PENDING",
@@ -2428,7 +2428,6 @@ exports.trackAppointment = async (userId) => {
           const waitingAppointments =
             doctorQueue
               .filter(item => {
-
                 const token =
                   Number(
                     item.token_number
@@ -2462,7 +2461,6 @@ exports.trackAppointment = async (userId) => {
           if (
             currentInProgress
           ) {
-
             const currentEnd =
               timeToMinutes(
                 currentInProgress.end_time
@@ -2471,7 +2469,6 @@ exports.trackAppointment = async (userId) => {
             if (
               currentEnd !== null
             ) {
-
               const remainingTime =
                 Math.max(
                   currentEnd -
@@ -2561,6 +2558,7 @@ exports.trackAppointment = async (userId) => {
               0
             );
 
+          // NO CURRENT SERVING TOKEN
           if (
             currentServing === 0
           ) {
@@ -2570,7 +2568,6 @@ exports.trackAppointment = async (userId) => {
                 0 &&
               startMinutes !== null
             ) {
-
               waitingMinutes =
                 Math.max(
                   startMinutes -
@@ -2603,6 +2600,7 @@ exports.trackAppointment = async (userId) => {
             };
           }
 
+          // USER IS WAITING
           return {
             ...base,
 
@@ -2635,7 +2633,6 @@ exports.trackAppointment = async (userId) => {
     };
 
   } catch (error) {
-
     console.error(
       "Track Appointment Model Error:",
       error

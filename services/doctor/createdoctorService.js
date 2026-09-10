@@ -226,6 +226,7 @@ exports.getDoctorPublicProfileById = async (userId) => {
         age: doctor.age,
         email: doctor.email,
         mobile: doctor.mobile,
+        registration_number: doctor.registration_number,
         medical_council:
           doctor.medical_council,
         qualification:
