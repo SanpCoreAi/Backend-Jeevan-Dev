@@ -14,7 +14,7 @@ const uploadFileQuerySchema = Joi.object({
     .trim()
     .lowercase()
     .pattern(
-      /^(doctor-licenses|doctor-profile|user-profile|user-documents|assistant-profile|assistant-documents)\/[a-z0-9-]+$/
+      /^(doctor-licenses|doctor-profile|user-profile|documents|user-documents|assistant-profile|assistant-documents)(\/[a-z0-9-]+)?$/
     )
     .required()
     .messages({
