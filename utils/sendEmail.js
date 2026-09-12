@@ -12,7 +12,7 @@ const transporterOptions = smtpHost
   ? {
       host: smtpHost,
       port: smtpPort,
-      secure: smtpPort === 465,
+      secure: smtpPort === 587,
       auth: {
         user: smtpUser,
         pass: smtpPass,

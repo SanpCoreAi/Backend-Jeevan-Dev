@@ -42,7 +42,6 @@ router.get(
   getAssistantStats
 );
 
-
 router.post(
 "/forgot-password",
 forgotPassword
