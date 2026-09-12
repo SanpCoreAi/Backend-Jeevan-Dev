@@ -12,10 +12,9 @@ const ALLOWED_FOLDERS = [
 const uploadFileQuerySchema = Joi.object({
   folder: Joi.string()
     .trim()
-    .lowercase()
-    .pattern(
-      /^(doctor-licenses|doctor-profile|user-profile|documents|user-documents|assistant-profile|assistant-documents)(\/[a-z0-9-]+)?$/
-    )
+   .pattern(
+  /^(doctor-licenses|doctor-profile|user-profile|document|user-documents|assistant-profile|assistant-documents)(\/[a-zA-Z0-9_-]+)?$/i
+)
     .required()
     .messages({
       "string.empty": "Folder is required.",
