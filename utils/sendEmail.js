@@ -3,46 +3,24 @@ dotenv.config();
 
 const nodemailer = require("nodemailer");
 
-const smtpHost = process.env.SMTP_HOST;
-const smtpPort = Number(process.env.SMTP_PORT);
-const smtpUser = process.env.EMAIL_USER;
-const smtpPass = process.env.EMAIL_PASS;
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT),
+  secure: Number(process.env.SMTP_PORT) ===  465,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
+});
 
-const transporterOptions = smtpHost
-  ? {
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    }
-  : {
-      service: "gmail",
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    };
-
-const transporter = nodemailer.createTransport(transporterOptions);
-
-transporter.verify((err, success) => {
-  if (err) {
-    console.error("❌ SMTP connection error:", err.message || err);
-    console.error("SMTP Config:", {
-      host: smtpHost,
-      port: smtpPort,
-      user: smtpUser ? smtpUser.substring(0, 5) + "***" : "NOT SET",
-      pass: smtpPass ? "SET" : "NOT SET",
-    });
+transporter.verify((error) => {
+  if (error) {
+    console.error("❌ SMTP connection error:", error.message);
   } else {
     console.log("✅ SMTP connection verified successfully");
-    console.log("Email Sender:", smtpUser);
   }
 });
 
