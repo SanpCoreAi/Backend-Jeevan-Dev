@@ -1,28 +1,32 @@
 const multer = require("multer");
+
 const {
   PutObjectCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
+  HeadObjectCommand
 } = require("@aws-sdk/client-s3");
+
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 const { v4: uuidv4 } = require("uuid");
 const path = require("path");
 
 const s3 = require("../../config/s3");
 const DoctorFileModel = require("../../models/upload-file/doctorFileModel");
 
-
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const ALLOWED_TYPES = [
   "application/pdf",
   "image/jpeg",
-  "image/png",
+  "image/png"
 ];
 
 const upload = multer({
   storage: multer.memoryStorage(),
 
   limits: {
-    fileSize: MAX_FILE_SIZE,
+    fileSize: MAX_FILE_SIZE
   },
 
   fileFilter: (req, file, cb) => {
@@ -33,20 +37,20 @@ const upload = multer({
     }
 
     cb(null, true);
-  },
+  }
 });
 
 const uploadDoctorFile = async ({
   userId,
   role,
   file,
-  folder,
+  folder
 }) => {
   if (!userId) {
     return {
       success: false,
       statusCode: 401,
-      message: "Unauthorized user.",
+      message: "Unauthorized user."
     };
   }
 
@@ -54,7 +58,7 @@ const uploadDoctorFile = async ({
     return {
       success: false,
       statusCode: 403,
-      message: "User, doctor and assistant can upload files.",
+      message: "User, doctor and assistant can upload files."
     };
   }
 
@@ -62,7 +66,7 @@ const uploadDoctorFile = async ({
     return {
       success: false,
       statusCode: 400,
-      message: "File is required.",
+      message: "File is required."
     };
   }
 
@@ -70,7 +74,7 @@ const uploadDoctorFile = async ({
     return {
       success: false,
       statusCode: 400,
-      message: "Folder is required.",
+      message: "Folder is required."
     };
   }
 
@@ -94,13 +98,16 @@ const uploadDoctorFile = async ({
         Body: file.buffer,
         ContentType: file.mimetype,
         ContentDisposition: "inline",
+        Metadata: {
+          originalname: encodeURIComponent(file.originalname)
+        }
       })
     );
 
     await DoctorFileModel.create({
       doctorId: userId,
       fileKey,
-      folderName: cleanFolder,
+      folderName: cleanFolder
     });
 
     return {
@@ -109,82 +116,111 @@ const uploadDoctorFile = async ({
       data: {
         userId,
         key: fileKey,
-        folderName: cleanFolder,
-      },
+        folderName: cleanFolder
+      }
     };
-
   } catch (error) {
-    console.error(
-      "Upload Doctor File Error:",
-      error
-    );
+    console.error("Upload Doctor File Error:", error);
 
     if (fileKey) {
       try {
         await s3.send(
           new DeleteObjectCommand({
             Bucket: process.env.AWS_BUCKET_NAME,
-            Key: fileKey,
+            Key: fileKey
           })
         );
       } catch (deleteError) {
-        console.error(
-          "S3 Rollback Error:",
-          deleteError
-        );
+        console.error("S3 Rollback Error:", deleteError);
       }
     }
 
     return {
       success: false,
       statusCode: 500,
-      message: "Failed to upload file.",
+      message: "Failed to upload file."
     };
   }
 };
-
 
 const getDoctorFiles = async (
   doctorId,
   folder = null
 ) => {
-
   if (!doctorId) {
     return {
       success: false,
       statusCode: 401,
-      message: "Doctor id is required.",
+      message: "Doctor id is required."
     };
   }
 
-
   try {
+    const files = await DoctorFileModel.findByDoctorId(
+      doctorId,
+      folder
+    );
 
-    const files =
-      await DoctorFileModel.findByDoctorId(
-        doctorId,
-        folder
-      );
+    const filesWithSignedUrls = await Promise.all(
+      files.map(async (file) => {
+        const command = new GetObjectCommand({
+          Bucket: process.env.AWS_BUCKET_NAME,
+          Key: file.fileKey
+        });
 
+        const signedUrl = await getSignedUrl(
+          s3,
+          command,
+          {
+            expiresIn: 3600
+          }
+        );
+
+        const fileInfo = await s3.send(
+          new HeadObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: file.fileKey
+          })
+        );
+
+        const fileSize = fileInfo.ContentLength;
+
+        const originalName = decodeURIComponent(
+          fileInfo.Metadata?.originalname || ""
+        );
+
+        const baseUrl =
+          `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com`;
+
+        const relativeSignedUrl =
+          signedUrl.replace(baseUrl, "");
+
+        return {
+          id: file.id,
+          folderName: file.folderName,
+          originalName,
+          fileSize: `${(
+            fileSize /
+            (1024 * 1024)
+          ).toFixed(2)} MB`,
+          createdAt: file.createdAt,
+          fileUrl: relativeSignedUrl
+        };
+      })
+    );
 
     return {
       success: true,
       statusCode: 200,
-      data: files,
+      data: filesWithSignedUrls
     };
-
   } catch (error) {
-
-    console.error(
-      "Get Doctor Files Error:",
-      error
-    );
-
+    console.error("Get Doctor Files Error:", error);
 
     return {
       success: false,
       statusCode: 500,
-      message: "Failed to fetch files.",
+      message: "Failed to fetch files."
     };
   }
 };
@@ -192,5 +228,5 @@ const getDoctorFiles = async (
 module.exports = {
   upload,
   uploadDoctorFile,
-  getDoctorFiles,
+  getDoctorFiles
 };
