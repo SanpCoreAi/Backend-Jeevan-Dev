@@ -103,7 +103,7 @@ exports.registerUserOrAssistant = async (data) => {
           password: doctorPassword,
           doctorId: null,
           registrationId: registration_id,
-          status: "INACTIVE",
+          status: "ACTIVE",
         });
 
       await DoctorRegistrationModel.updateOnboardingStatus(
@@ -130,7 +130,7 @@ exports.registerUserOrAssistant = async (data) => {
           message:
             "Doctor created successfully. Credentials sent to email.",
           user_id: userId,
-          status: "INACTIVE",
+          status: "ACTIVE",
         },
       };
     }
@@ -279,11 +279,11 @@ exports.verifyEmail = async (token) => {
       };
     }
 
-    if (user.email_verified === 1) {
+    if (Number(user.email_verified) === 1) {
       return {
         statusCode: 400,
         body: {
-          message: "Email is already verified",
+          message: "Email already verified",
         },
       };
     }

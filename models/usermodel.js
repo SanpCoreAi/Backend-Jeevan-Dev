@@ -245,8 +245,7 @@ exports.markEmailVerified = async (userId) => {
       `
       UPDATE users
       SET
-        email_verified = 1,
-        verificationToken = NULL
+        email_verified = 1
       WHERE id = ?
       `,
       [userId]
