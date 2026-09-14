@@ -281,7 +281,7 @@ exports.verifyEmail = async (token) => {
 
     if (Number(user.email_verified) === 1) {
       return {
-        statusCode: 400,
+        statusCode: 200,
         body: {
           message: "Email already verified",
         },
