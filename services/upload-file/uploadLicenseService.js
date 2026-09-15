@@ -130,6 +130,8 @@ const uploadDoctorFile = async ({
       }
     );
 
+    const fileUrl = new URL(signedUrl).pathname + new URL(signedUrl).search;
+
     return {
       success: true,
       statusCode: 201,
@@ -140,8 +142,8 @@ const uploadDoctorFile = async ({
         folderName: cleanFolder,
         originalName: file.originalname,
         fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-        fileUrl: signedUrl,
-      }
+        fileUrl,
+      },
     };
   } catch (error) {
     console.error(
