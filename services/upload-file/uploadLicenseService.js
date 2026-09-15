@@ -213,6 +213,11 @@ const getDoctorFiles = async (
               }
             );
 
+          const url = new URL(signedUrl);
+
+          const fileUrl =
+            url.pathname + url.search;
+
           const fileInfo =
             await s3.send(
               new HeadObjectCommand({
@@ -240,8 +245,7 @@ const getDoctorFiles = async (
               (1024 * 1024)
             ).toFixed(2)} MB`,
             createdAt: file.createdAt,
-
-            fileUrl: signedUrl,
+            fileUrl,
           };
         })
       );
