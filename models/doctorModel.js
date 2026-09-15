@@ -128,71 +128,76 @@ exports.getByUserId = async (userId) => {
 exports.getBydoctorId = async (userId) => {
   try {
     const sql = `
-      SELECT
-        u.id AS user_id,
-        u.registration_id,
-        u.status,
+  SELECT
+    u.id AS user_id,
+    u.registration_id,
+    u.status,
 
-        dr.full_name,
-        dr.gender,
-        dr.age,
-        dr.email,
-        dr.mobile,
-        dr.medical_registration_number,
-        dr.medical_council,
-        dr.qualification,
-        dr.specialization,
-        dr.registration_expiry_date,
-        dr.onboarding_status,
-        dr.medical_registration_certificate,
-        dr.medical_degree_certificate,
-        dr.government_id_proof,
-        dr.selfie,
+    dr.full_name,
+    dr.gender,
+    dr.age,
+    dr.email,
+    dr.mobile,
+    dr.medical_registration_number,
+    dr.medical_council,
+    dr.qualification,
+    dr.specialization,
+    dr.registration_expiry_date,
+    dr.onboarding_status,
+    dr.medical_registration_certificate,
+    dr.medical_degree_certificate,
 
-        d.id AS doctor_id,
-        d.username,
-        d.experience,
-        d.language,
-        d.consultation_fee,
-        d.bio,
-        d.availability,
-        d.hospital_detail,
-        d.qr_url,
-        d.accept_emergency_patients,
-        d.registration_number,
+    dr.hospital_detail AS registration_hospital_detail,
 
-        um.file_key,
+    dr.government_id_proof,
+    dr.selfie,
 
-        COALESCE(
-          (
-            SELECT ROUND(AVG(f.rating), 1)
-            FROM feedbacks f
-            WHERE f.doctor_id = u.id
-          ),
-          0
-        ) AS avg_rating,
+    d.id AS doctor_id,
+    d.username,
+    d.experience,
+    d.language,
+    d.consultation_fee,
+    d.bio,
+    d.availability,
 
-        (
-          SELECT COUNT(f.rating)
-          FROM feedbacks f
-          WHERE f.doctor_id = u.id
-        ) AS total_ratings
+    d.hospital_detail AS doctor_hospital_detail,
 
-      FROM users u
+    d.qr_url,
+    d.accept_emergency_patients,
+    d.registration_number,
 
-      LEFT JOIN doctor_registrations dr
-        ON dr.id = u.registration_id
+    um.file_key,
 
-      LEFT JOIN doctors d
-        ON d.user_id = u.id
+    COALESCE(
+      (
+        SELECT ROUND(AVG(f.rating), 1)
+        FROM feedbacks f
+        WHERE f.doctor_id = u.id
+      ),
+      0
+    ) AS avg_rating,
 
-      LEFT JOIN user_images um
-        ON um.user_id = u.id
+    (
+      SELECT COUNT(f.rating)
+      FROM feedbacks f
+      WHERE f.doctor_id = u.id
+    ) AS total_ratings
 
-      WHERE u.id = ?
+  FROM users u
 
-      LIMIT 1
-    `;
+  LEFT JOIN doctor_registrations dr
+    ON dr.id = u.registration_id
+
+  LEFT JOIN doctors d
+    ON d.user_id = u.id
+
+  LEFT JOIN user_images um
+    ON um.user_id = u.id
+
+  WHERE u.id = ?
+
+  LIMIT 1
+`;
 
     const [rows] = await db.execute(sql, [userId]);
 
@@ -230,7 +235,6 @@ exports.updateDoctorQr = async (userId, qrUrl) => {
 exports.getDoctorPublicProfileById = async (userId) => {
   const sql = `
     SELECT
-
       u.registration_id,
       u.status,
 
@@ -242,6 +246,9 @@ exports.getDoctorPublicProfileById = async (userId) => {
       dr.medical_council,
       dr.qualification,
       dr.specialization,
+
+      dr.hospital_detail AS registration_hospital_detail,
+
       dr.selfie,
 
       d.id,
@@ -252,7 +259,9 @@ exports.getDoctorPublicProfileById = async (userId) => {
       d.consultation_fee,
       d.bio,
       d.availability,
-      d.hospital_detail,
+
+      d.hospital_detail AS doctor_hospital_detail,
+
       d.qr_url,
       d.accept_emergency_patients,
       d.registration_number,

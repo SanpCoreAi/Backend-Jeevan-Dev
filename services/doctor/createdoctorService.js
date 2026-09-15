@@ -61,8 +61,9 @@ const generateDoctorQr = async (userId, doctorId) => {
   });
 
   const baseUrl =
-    process.env.BASE_URL ||
+    process.env.APP_BASE_URL ||
     `http://localhost:${process.env.PORT || 4000}`;
+
   const qrUrl = `${baseUrl}/uploads/qr/${qrFileName}`;
 
   await DoctorModel.updateDoctorQr(userId, qrUrl);
@@ -92,6 +93,23 @@ exports.getProfile = async (userId) => {
         data: null,
       };
     }
+
+    const registrationHospitalDetail =
+      safeParse(
+        doctor.registration_hospital_detail,
+        []
+      );
+
+    const doctorHospitalDetail =
+      safeParse(
+        doctor.doctor_hospital_detail,
+        []
+      );
+
+    const hospitalDetail = [
+      ...registrationHospitalDetail,
+      ...doctorHospitalDetail
+    ];
 
     return {
       success: true,
@@ -124,7 +142,8 @@ exports.getProfile = async (userId) => {
         specialization:
           doctor.specialization,
 
-        status: doctor.status,
+        status:
+          doctor.status,
 
         registration_expiry_date:
           doctor.registration_expiry_date,
@@ -157,7 +176,7 @@ exports.getProfile = async (userId) => {
           safeParse(doctor.availability, []),
 
         hospital_detail:
-          safeParse(doctor.hospital_detail, []),
+          hospitalDetail,
 
         img_key:
           doctor.file_key,
@@ -214,6 +233,23 @@ exports.getDoctorPublicProfileById = async (userId) => {
       };
     }
 
+    const registrationHospitalDetail =
+      safeParse(
+        doctor.registration_hospital_detail,
+        []
+      );
+
+    const doctorHospitalDetail =
+      safeParse(
+        doctor.doctor_hospital_detail,
+        []
+      );
+
+    const hospitalDetail = [
+      ...registrationHospitalDetail,
+      ...doctorHospitalDetail
+    ];
+
     return {
       success: true,
       statusCode: 200,
@@ -226,32 +262,49 @@ exports.getDoctorPublicProfileById = async (userId) => {
         age: doctor.age,
         email: doctor.email,
         mobile: doctor.mobile,
-        registration_number: doctor.registration_number,
+
+        registration_number:
+          doctor.registration_number,
+
         medical_council:
           doctor.medical_council,
+
         qualification:
           doctor.qualification,
-        status:doctor.status,
+
+        status:
+          doctor.status,
+
         specialization:
           doctor.specialization,
+
         selfie:
           doctor.selfie || null,
 
         experience:
           doctor.experience,
+
         language:
           safeParse(doctor.language, []),
+
         consultation_fee:
           doctor.consultation_fee,
+
         bio:
           doctor.bio,
+
         availability:
           safeParse(doctor.availability, []),
+
         hospital_detail:
-          safeParse(doctor.hospital_detail, []),
+          hospitalDetail,
+
         qr_url:
           doctor.qr_url || null,
-        img_key:doctor.file_key,
+
+        img_key:
+          doctor.file_key,
+
         accept_emergency_patients:
           doctor.accept_emergency_patients,
 
@@ -269,7 +322,6 @@ exports.getDoctorPublicProfileById = async (userId) => {
     };
 
   } catch (error) {
-
     console.error(
       "GET DOCTOR PUBLIC PROFILE SERVICE ERROR:",
       error

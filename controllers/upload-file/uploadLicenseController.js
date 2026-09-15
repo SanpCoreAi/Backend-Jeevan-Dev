@@ -1,7 +1,8 @@
 const {
   upload,
   uploadDoctorFile,
-  getDoctorFiles
+  getDoctorFiles,
+  deleteDoctorFile
 } = require("../../services/upload-file/uploadLicenseService");
 
 const {
@@ -37,10 +38,11 @@ const uploadFile = (req, res) => {
         });
       }
 
-      const { error, value } = uploadFileQuerySchema.validate(req.query, {
-        abortEarly: false,
-        stripUnknown: true
-      });
+      const { error, value } =
+        uploadFileQuerySchema.validate(req.query, {
+          abortEarly: false,
+          stripUnknown: true
+        });
 
       if (error) {
         return res.status(400).json({
@@ -58,13 +60,11 @@ const uploadFile = (req, res) => {
         });
       }
 
-      const { folder } = value;
-
       const result = await uploadDoctorFile({
         userId,
         role,
         file: req.file,
-        folder
+        folder: value.folder
       });
 
       if (!result.success) {
@@ -101,10 +101,11 @@ const getFiles = async (req, res) => {
       });
     }
 
-    const { error, value } = getFilesSchema.validate(req.query, {
-      abortEarly: false,
-      stripUnknown: true
-    });
+    const { error, value } =
+      getFilesSchema.validate(req.query, {
+        abortEarly: false,
+        stripUnknown: true
+      });
 
     if (error) {
       return res.status(400).json({
@@ -134,7 +135,43 @@ const getFiles = async (req, res) => {
       data: result.data
     });
   } catch (error) {
-    console.error("Get Files Controller Error:", error);
+    console.error(
+      "Get Files Controller Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error."
+    });
+  }
+};
+
+const deleteFile = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const role = Number(req.user?.role);
+    const fileId = req.params.id;
+
+    const result = await deleteDoctorFile({
+      userId,
+      role,
+      fileId
+    });
+
+    if (!result.success) {
+      return res.status(result.statusCode || 500).json({
+        success: false,
+        message: result.message
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "File deleted successfully."
+    });
+  } catch (error) {
+    console.error("Delete File Controller Error:", error);
 
     return res.status(500).json({
       success: false,
@@ -145,5 +182,6 @@ const getFiles = async (req, res) => {
 
 module.exports = {
   uploadFile,
-  getFiles
+  getFiles,
+  deleteFile
 };

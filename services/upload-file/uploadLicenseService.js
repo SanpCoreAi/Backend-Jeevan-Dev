@@ -8,7 +8,8 @@ const {
 } = require("@aws-sdk/client-s3");
 
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
-const { v4: uuidv4 } = require("uuid");
+
+const crypto = require("crypto");
 const path = require("path");
 
 const s3 = require("../../config/s3");
@@ -24,11 +25,9 @@ const ALLOWED_TYPES = [
 
 const upload = multer({
   storage: multer.memoryStorage(),
-
   limits: {
     fileSize: MAX_FILE_SIZE
   },
-
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_TYPES.includes(file.mimetype)) {
       return cb(
@@ -85,11 +84,26 @@ const uploadDoctorFile = async ({
       .trim()
       .replace(/^\/+|\/+$/g, "");
 
+    const originalName = path.parse(file.originalname).name;
+
+    const cleanFileName = originalName
+      .replace(/[^a-zA-Z0-9_-]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 40);
+
     const extension = path
       .extname(file.originalname)
       .toLowerCase();
 
-    fileKey = `${cleanFolder}/${uuidv4()}${extension}`;
+    const shortId = crypto
+      .randomBytes(3)
+      .toString("hex");
+
+    const fileName =
+      `${cleanFileName || "file"}-${shortId}${extension}`;
+
+    fileKey = `${cleanFolder}/${fileName}`;
 
     await s3.send(
       new PutObjectCommand({
@@ -215,7 +229,10 @@ const getDoctorFiles = async (
       data: filesWithSignedUrls
     };
   } catch (error) {
-    console.error("Get Doctor Files Error:", error);
+    console.error(
+      "Get Doctor Files Error:",
+      error
+    );
 
     return {
       success: false,
@@ -225,8 +242,102 @@ const getDoctorFiles = async (
   }
 };
 
+const deleteDoctorFile = async ({
+  userId,
+  role,
+  fileId
+}) => {
+  if (!userId) {
+    return {
+      success: false,
+      statusCode: 401,
+      message: "Unauthorized user."
+    };
+  }
+
+  if (![1, 2, 3].includes(Number(role))) {
+    return {
+      success: false,
+      statusCode: 403,
+      message:
+        "User, doctor and assistant can delete files."
+    };
+  }
+
+  if (!fileId) {
+    return {
+      success: false,
+      statusCode: 400,
+      message: "File id is required."
+    };
+  }
+
+  try {
+    const file =
+      await DoctorFileModel.findById(fileId);
+
+    if (!file) {
+      return {
+        success: false,
+        statusCode: 404,
+        message:
+          "File not found or already deleted."
+      };
+    }
+
+    if (
+      Number(file.doctorId) !==
+      Number(userId)
+    ) {
+      return {
+        success: false,
+        statusCode: 403,
+        message:
+          "You are not authorized to delete this file."
+      };
+    }
+
+    await s3.send(
+      new DeleteObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME,
+        Key: file.fileKey
+      })
+    );
+
+    const updated =
+      await DoctorFileModel.softDelete(fileId);
+
+    if (!updated) {
+      return {
+        success: false,
+        statusCode: 500,
+        message:
+          "Failed to update file status."
+      };
+    }
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "File deleted successfully."
+    };
+  } catch (error) {
+    console.error(
+      "Delete Doctor File Error:",
+      error
+    );
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Failed to delete file."
+    };
+  }
+};
+
 module.exports = {
   upload,
   uploadDoctorFile,
-  getDoctorFiles
+  getDoctorFiles,
+  deleteDoctorFile
 };

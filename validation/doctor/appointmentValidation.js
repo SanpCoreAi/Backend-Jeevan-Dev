@@ -41,7 +41,7 @@ exports.bookAppointmentValidation = Joi.object({
 
   reason_for_visit: Joi.string()
     .trim()
-    .allow("", null),
+    .required(),
 
   booking_type: Joi.string()
     .valid("myself", "someone_else")
@@ -134,7 +134,7 @@ exports.bookAppointmentByAssistantValidation = Joi.object({
   reason_for_visit: Joi.string()
     .trim()
     .max(500)
-    .allow("", null),
+    .required(),
 
   patient: Joi.object({
     name: Joi.string()
