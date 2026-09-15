@@ -3,23 +3,22 @@ const db = require("../../config/db");
 const create = async ({
   doctorId,
   fileKey,
-  folderName
+  folderName,
 }) => {
   const sql = `
     INSERT INTO doctor_files
     (
       doctor_id,
       file_key,
-      folder_name,
-      status
+      folder_name
     )
-    VALUES (?, ?, ?, 'ACTIVE')
+    VALUES (?, ?, ?)
   `;
 
   const [result] = await db.execute(sql, [
     doctorId,
     fileKey,
-    folderName
+    folderName,
   ]);
 
   return result;
@@ -35,8 +34,6 @@ const findByDoctorId = async (
       doctor_id,
       file_key,
       folder_name,
-      original_name,
-      status,
       created_at
     FROM doctor_files
     WHERE doctor_id = ?
@@ -52,19 +49,14 @@ const findByDoctorId = async (
 
   sql += ` ORDER BY created_at DESC`;
 
-  const [rows] = await db.execute(
-    sql,
-    params
-  );
+  const [rows] = await db.execute(sql, params);
 
   return rows.map((row) => ({
     id: row.id,
     doctorId: row.doctor_id,
     fileKey: row.file_key,
     folderName: row.folder_name,
-    originalName: row.original_name,
-    status: row.status,
-    createdAt: row.created_at
+    createdAt: row.created_at,
   }));
 };
 
