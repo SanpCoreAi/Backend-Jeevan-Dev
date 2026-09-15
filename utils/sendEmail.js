@@ -1,5 +1,7 @@
 const dotenv = require("dotenv");
 dotenv.config();
+const fs = require("fs");
+const path = require("path");
 
 const nodemailer = require("nodemailer");
 
@@ -26,112 +28,481 @@ transporter.verify((error) => {
 
 exports.sendVerificationEmail = async (email, token) => {
   try {
-    const frontendUrl = process.env.FRONTEND_URL?.trim() || "http://localhost:3000";
-    const verificationLink = `${frontendUrl}/Home/pages/verify-email/${token}`;
+    const frontendUrl =
+      process.env.FRONTEND_URL?.trim() ||
+      "http://localhost:3000";
+
+    const verificationLink =
+      `${frontendUrl}/Home/pages/verify-email/${token}`;
+
+    const logoPath =
+      path.join(__dirname, "jeevan-dev-logo.png");
+
+    const logoExists = fs.existsSync(logoPath);
 
     const mailOptions = {
-      from: `"Hospital Portal" <${process.env.EMAIL_USER}>`,
+      from: `"Jeevan Dev" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: "Verify Your Email - Hospital Portal 🏥",
+      subject: "Verify Your Email - Jeevan Dev",
       replyTo: process.env.EMAIL_USER,
+
       headers: {
-        'X-Priority': '3',
-        'X-Mailer': 'Hospital Portal System',
+        "X-Priority": "3",
+        "X-Mailer": "Jeevan Dev Hospital Portal"
       },
+
+      ...(logoExists
+        ? {
+            attachments: [
+              {
+                filename: "jeevan-dev-logo.png",
+                path: logoPath,
+                cid: "jeevan-dev-logo"
+              }
+            ]
+          }
+        : {}),
+
       html: `
-        <!DOCTYPE html>
-        <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Verify Your Email - Hospital Portal</title>
-            <style>
-              * { margin: 0; padding: 0; box-sizing: border-box; }
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; }
-              .wrapper { background: #f5f5f5; padding: 20px; }
-              .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-              .header { background: linear-gradient(135deg, #0a3f3e 0%, #16626d 100%); color: white; padding: 40px 20px; text-align: center; }
-              .header h1 { font-size: 28px; margin-bottom: 8px; font-weight: 600; }
-              .header p { font-size: 14px; opacity: 0.9; }
-              .content { padding: 40px 30px; }
-              .content h2 { color: #0a3f3e; font-size: 20px; margin-bottom: 20px; }
-              .content p { margin-bottom: 15px; font-size: 15px; line-height: 1.7; color: #333; }
-              .button-wrapper { text-align: center; margin: 30px 0; }
-              .button { background: #007bff; color: white; padding: 14px 40px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: 600; font-size: 16px; transition: background 0.3s ease; }
-              .button:hover { background: #0056b3; }
-              .link-section { background: #f9f9f9; padding: 20px; border-radius: 5px; margin: 25px 0; }
-              .link-section p { font-size: 13px; color: #666; margin-bottom: 10px; }
-              .link-section a { color: #0056b3; text-decoration: none; word-break: break-all; font-size: 12px; }
-              .link-section a:hover { text-decoration: underline; }
-              .security-notice { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 3px; margin: 25px 0; }
-              .security-notice p { font-size: 13px; color: #856404; margin: 8px 0; }
-              .divider { border-top: 1px solid #ddd; margin: 25px 0; }
-              .footer { background: #f9f9f9; padding: 30px; text-align: center; border-top: 1px solid #ddd; }
-              .footer p { font-size: 12px; color: #999; margin: 8px 0; }
-              .footer-links a { color: #0056b3; text-decoration: none; font-size: 12px; margin: 0 10px; }
-            </style>
-          </head>
-          <body>
-            <div class="wrapper">
-              <div class="container">
-                <div class="header">
-                  <h1>Welcome to Hospital Portal</h1>
-                  <p>Email Verification Required</p>
-                </div>
+<!DOCTYPE html>
+<html lang="en">
 
-                <div class="content">
-                  <h2>Verify Your Email Address</h2>
-                  
-                  <p>Thank you for registering with Hospital Portal. We're excited to have you on board!</p>
-                  
-                  <p>To complete your registration and activate your account, please verify your email address by clicking the button below:</p>
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
 
-                  <div class="button-wrapper">
-                    <a href="${verificationLink}" class="button">Verify Email Address</a>
-                  </div>
+  <title>Verify Your Email - Jeevan Dev</title>
 
-                  <p style="text-align: center; font-size: 14px; color: #666;">or copy and paste this link in your browser:</p>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-                  <div class="link-section">
-                    <a href="${verificationLink}">${verificationLink}</a>
-                  </div>
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f3fbfa;
+      font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+      color: #163b4d;
+    }
 
-                  <div class="security-notice">
-                    <p><strong>⚠️ Security Notice:</strong></p>
-                    <p>If you did not create this account, please ignore this email or contact our support team immediately.</p>
-                    <p>Your email address will not be activated unless you click the verification link.</p>
-                  </div>
+    .wrapper {
+      width: 100%;
+      padding: 30px 15px;
+      background: #f3fbfa;
+    }
 
-                  <p style="font-size: 13px; color: #999; margin-top: 25px;">
-                    This verification link will expire in <strong>24 hours</strong> for security reasons.
-                  </p>
-                </div>
+    .container {
+      width: 100%;
+      max-width: 700px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow:
+        0 8px 30px rgba(0, 0, 0, 0.08);
+    }
 
-                <div class="footer">
-                  <p><strong>Hospital Portal</strong></p>
-                  <p>© 2024 All rights reserved</p>
-                  <p style="margin-top: 15px; font-size: 11px;">This is an automated email, please do not reply directly</p>
-                  <p style="margin-top: 10px;">
-                    <a href="mailto:support@hospitalportal.com">Contact Support</a>
-                  </p>
-                </div>
-              </div>
-            </div>
-          </body>
-        </html>
+    .top-section {
+      text-align: center;
+      padding: 35px 25px 15px;
+      background: #ffffff;
+    }
+
+    .logo {
+      width: 115px;
+      height: auto;
+      display: block;
+      margin: 0 auto 12px;
+    }
+
+    .brand-name {
+      font-size: 34px;
+      font-weight: 700;
+      color: #063c50;
+      margin-bottom: 3px;
+    }
+
+    .tagline {
+      font-size: 17px;
+      color: #397080;
+      letter-spacing: 0.2px;
+    }
+
+    .illustration {
+      text-align: center;
+      padding: 25px 20px 10px;
+    }
+
+    .illustration-box {
+      width: 220px;
+      height: 190px;
+      margin: 0 auto;
+      border-radius: 50%;
+      background: #eefcf9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mail-icon {
+      font-size: 85px;
+      line-height: 1;
+    }
+
+    .content {
+      padding: 25px 55px 40px;
+    }
+
+    .title {
+      text-align: center;
+      font-size: 42px;
+      line-height: 1.15;
+      font-weight: 700;
+      color: #092c40;
+      margin-bottom: 38px;
+    }
+
+    .content p {
+      font-size: 18px;
+      line-height: 1.7;
+      color: #40576a;
+      margin-bottom: 22px;
+    }
+
+    .hello {
+      font-size: 21px !important;
+      color: #17394e !important;
+      margin-bottom: 15px !important;
+    }
+
+    .button-wrapper {
+      text-align: center;
+      margin: 35px 0;
+    }
+
+    .button {
+      display: inline-block;
+      background: #12ad98;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 18px 45px;
+      border-radius: 12px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .or-section {
+      text-align: center;
+      margin: 25px 0 15px;
+      color: #667b8b;
+      font-size: 16px;
+    }
+
+    .link-label {
+      text-align: center;
+      font-size: 16px !important;
+      color: #526b7d !important;
+      margin-bottom: 12px !important;
+    }
+
+    .link-box {
+      background: #f2f7f9;
+      border-radius: 10px;
+      padding: 16px 20px;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .link-box a {
+      color: #123a50;
+      text-decoration: none;
+      font-size: 14px;
+      word-break: break-all;
+    }
+
+    .security {
+      background: #f0faf8;
+      border-radius: 12px;
+      padding: 22px 25px;
+      margin-top: 25px;
+    }
+
+    .security-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #153e51;
+      margin-bottom: 8px;
+    }
+
+    .security p {
+      font-size: 15px;
+      line-height: 1.6;
+      color: #557080;
+      margin: 0;
+    }
+
+    .expiry {
+      text-align: center;
+      font-size: 14px !important;
+      color: #80919d !important;
+      margin-top: 25px;
+    }
+
+    .footer {
+      border-top: 1px solid #e4eeee;
+      padding: 30px 20px;
+      text-align: center;
+      background: #ffffff;
+    }
+
+    .footer-brand {
+      font-size: 25px;
+      font-weight: 700;
+      color: #0b485a;
+      margin-bottom: 5px;
+    }
+
+    .footer-tagline {
+      font-size: 15px;
+      color: #5b7b87;
+      margin-bottom: 12px;
+    }
+
+    .footer p {
+      font-size: 12px;
+      color: #91a0a8;
+      margin: 5px 0;
+    }
+
+    @media only screen and (max-width: 600px) {
+
+      .wrapper {
+        padding: 10px;
+      }
+
+      .content {
+        padding: 20px 25px 30px;
+      }
+
+      .title {
+        font-size: 31px;
+      }
+
+      .content p {
+        font-size: 16px;
+      }
+
+      .brand-name {
+        font-size: 28px;
+      }
+
+      .button {
+        padding: 15px 30px;
+        font-size: 17px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="wrapper">
+
+    <div class="container">
+
+      <!-- BRAND -->
+      <div class="top-section">
+
+        ${logoExists
+          ? `<img
+          src="cid:jeevan-dev-logo"
+          alt="Jeevan Dev"
+          class="logo"
+        >`
+          : ""}
+
+        <div class="brand-name">
+          Jeevan Dev
+        </div>
+
+        <div class="tagline">
+          Better Care. Brighter Lives.
+        </div>
+
+      </div>
+
+
+      <!-- EMAIL ILLUSTRATION -->
+      <div class="illustration">
+
+        <div class="illustration-box">
+          <div class="mail-icon">
+            ✉️
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- CONTENT -->
+      <div class="content">
+
+        <div class="title">
+          Verify Your Email Address
+        </div>
+
+
+        <p class="hello">
+          Hello,
+        </p>
+
+
+        <p>
+          Thank you for registering with
+          <strong>Jeevan Dev Hospital Portal.</strong>
+          We're excited to have you on board!
+        </p>
+
+
+        <p>
+          To complete your registration and
+          activate your account, please verify
+          your email address by clicking the
+          button below:
+        </p>
+
+
+        <!-- BUTTON -->
+        <div class="button-wrapper">
+
+          <a
+            href="${verificationLink}"
+            class="button"
+          >
+            Verify Email Address&nbsp; →
+          </a>
+
+        </div>
+
+
+        <!-- OR -->
+        <div class="or-section">
+          ─────────── &nbsp; or &nbsp; ───────────
+        </div>
+
+
+        <p class="link-label">
+          Copy and paste this link in your browser:
+        </p>
+
+
+        <div class="link-box">
+
+          <a href="${verificationLink}">
+            ${verificationLink}
+          </a>
+
+        </div>
+
+
+        <!-- SECURITY -->
+        <div class="security">
+
+          <div class="security-title">
+            🛡️ Your email verification is secure
+          </div>
+
+          <p>
+            This verification link is secure and
+            valid for a limited time. If you didn't
+            create this account, you can safely
+            ignore this email.
+          </p>
+
+        </div>
+
+
+        <!-- EXPIRY -->
+        <p class="expiry">
+          This verification link will expire in
+          <strong>24 hours</strong> for security reasons.
+        </p>
+
+      </div>
+
+
+      <!-- FOOTER -->
+      <div class="footer">
+
+        <div class="footer-brand">
+          Jeevan Dev
+        </div>
+
+        <div class="footer-tagline">
+          Better Care. Brighter Lives.
+        </div>
+
+        <p>
+          © 2026 Jeevan Dev. All rights reserved.
+        </p>
+
+        <p>
+          This is an automated email.
+          Please do not reply directly.
+        </p>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</body>
+</html>
       `,
-      text: `Welcome to Hospital Portal\n\nThank you for registering. Your account has been created successfully.\n\nTo activate your account, please verify your email by clicking this link:\n\n${verificationLink}\n\nIf you did not create this account, please ignore this email and contact our support team.\n\nThis link will expire in 24 hours.\n\nHospital Portal Team\nSupport: support@hospitalportal.com`,
-    };
 
+      text: `
+Welcome to Jeevan Dev Hospital Portal.
+
+Thank you for registering with Jeevan Dev.
+
+To complete your registration and activate your account,
+please verify your email address using the link below:
+
+${verificationLink}
+
+This verification link will expire in 24 hours.
+
+If you did not create this account, you can safely ignore
+this email.
+
+Jeevan Dev
+Better Care. Brighter Lives.
+      `
+    };
 
     const info = await transporter.sendMail(mailOptions);
 
     return info;
 
   } catch (error) {
-    console.error(`\n [${new Date().toISOString()}] Error sending verification email to ${email}`);
-    console.error(`   Error: ${error.message}`);
-    console.error(`   Details:`, error);
+
+    console.error(
+      `\n[${new Date().toISOString()}] Error sending verification email to ${email}`
+    );
+
+    console.error(`Error: ${error.message}`);
+    console.error("Details:", error);
+
     throw error;
   }
 };
